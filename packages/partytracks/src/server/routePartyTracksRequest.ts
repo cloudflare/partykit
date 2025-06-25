@@ -65,7 +65,7 @@ export const routePartyTracksRequest = async ({
   lockSessionToInitiator = process.env.NODE_ENV === "production",
   turnServerAppToken,
   turnServerAppId,
-  turnServerCredentialTTL: ttl
+  turnServerCredentialTTL: ttl = 86400 // 24 hours
 }: Config) => {
   const { headers, body, url, method } = request;
   const previousUrl = new URL(url);
