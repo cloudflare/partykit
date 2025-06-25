@@ -1,5 +1,11 @@
 # partytracks
 
+## 0.0.50
+
+### Patch Changes
+
+- [#255](https://github.com/cloudflare/partykit/pull/255) [`a821fad`](https://github.com/cloudflare/partykit/commit/a821fada93bc874558546f773f1b739a72259dc4) Thanks [@third774](https://github.com/third774)! - Fix: set default ttl for turn credentials to 24 hours
+
 ## 0.0.49
 
 ### Patch Changes
