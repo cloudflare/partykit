@@ -1,7 +1,7 @@
 {
   "name": "@partyserver/fixture-partytracks",
   "private": true,
-  "version": "0.0.23",
+  "version": "0.0.24",
   "type": "module",
   "scripts": {
     "start": "vite dev",
@@ -9,7 +9,7 @@
   },
   "dependencies": {
     "hono": "^4.7.5",
-    "partytracks": "^0.0.49",
+    "partytracks": "^0.0.50",
     "rxjs": "^7.8.2"
   },
   "devDependencies": {
