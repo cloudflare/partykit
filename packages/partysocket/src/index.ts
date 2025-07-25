@@ -152,18 +152,16 @@ export default class PartySocket extends ReconnectingWebSocket {
     super(wsOptions.urlProvider, wsOptions.protocols, wsOptions.socketOptions);
 
     this.setWSProperties(wsOptions);
-  
+
     if (!partySocketOptions.disableNameValidation) {
       if (partySocketOptions.party?.includes("/")) {
         console.warn(
-          `PartySocket: party name "${partySocketOptions.party}" contains forward slash which may cause routing issues. ` +
-          "Consider using a name without forward slashes or set disableNameValidation: true to bypass this warning."
+          `PartySocket: party name "${partySocketOptions.party}" contains forward slash which may cause routing issues. Consider using a name without forward slashes or set disableNameValidation: true to bypass this warning.`
         );
       }
       if (partySocketOptions.room?.includes("/")) {
         console.warn(
-          `PartySocket: room name "${partySocketOptions.room}" contains forward slash which may cause routing issues. ` +
-          "Consider using a name without forward slashes or set disableNameValidation: true to bypass this warning."
+          `PartySocket: room name "${partySocketOptions.room}" contains forward slash which may cause routing issues. Consider using a name without forward slashes or set disableNameValidation: true to bypass this warning.`
         );
       }
     }
