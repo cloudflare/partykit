@@ -1,14 +1,13 @@
 import * as decoding from "lib0/decoding";
 import * as encoding from "lib0/encoding";
 import debounce from "lodash.debounce";
+import type { Connection, ConnectionContext, WSMessage } from "partyserver";
 import { Server } from "partyserver";
 import * as awarenessProtocol from "y-protocols/awareness";
 import * as syncProtocol from "y-protocols/sync";
-import { applyUpdate, encodeStateAsUpdate, Doc as YDoc } from "yjs";
+import { applyUpdate, Doc as YDoc, encodeStateAsUpdate } from "yjs";
 
 import { handleChunked } from "../shared/chunking";
-
-import type { Connection, ConnectionContext } from "partyserver";
 
 const wsReadyStateConnecting = 0;
 const wsReadyStateOpen = 1;
@@ -203,7 +202,7 @@ export class YServer<Env = unknown> extends Server<Env> {
   }
 
   // @ts-ignore something something typescript
-  onMessage = handleChunked((conn, message) => {
+  handleMessage(connection: Connection, message: WSMessage) {
     if (typeof message === "string") {
       console.warn(
         `Received non-binary message. Override onMessage on ${this.#ParentClass.name} to handle string messages if required`
@@ -230,14 +229,14 @@ export class YServer<Env = unknown> extends Server<Env> {
           // message, there is no need to send the message. When `encoder` only
           // contains the type of reply, its length is 1.
           if (encoding.length(encoder) > 1) {
-            send(this.document, conn, encoding.toUint8Array(encoder));
+            send(this.document, connection, encoding.toUint8Array(encoder));
           }
           break;
         case messageAwareness: {
           awarenessProtocol.applyAwarenessUpdate(
             this.document.awareness,
             decoding.readVarUint8Array(decoder),
-            conn
+            connection
           );
           break;
         }
@@ -247,7 +246,9 @@ export class YServer<Env = unknown> extends Server<Env> {
       // @ts-expect-error - TODO: fix this
       this.document.emit("error", [err]);
     }
-  });
+  }
+
+  onMessage = handleChunked((conn, message) => this.handleMessage(conn, message));
 
   onClose(
     connection: Connection<unknown>,
@@ -260,7 +261,10 @@ export class YServer<Env = unknown> extends Server<Env> {
 
   // TODO: explore why onError gets triggered when a connection closes
 
-  onConnect(conn: Connection<unknown>, _ctx: ConnectionContext) {
+  onConnect(
+    conn: Connection<unknown>,
+    _ctx: ConnectionContext
+  ): void | Promise<void> {
     // conn.binaryType = "arraybuffer"; // from y-websocket, breaks in our runtime
 
     this.document.conns.set(conn, new Set());
