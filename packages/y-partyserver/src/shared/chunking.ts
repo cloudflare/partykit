@@ -2,7 +2,7 @@
 // WebSocket messages. Because the Workers platform limits individual
 // WebSocket messages to 1MB, we need to split larger messages into chunks.
 
-import type { Connection } from "partyserver";
+import type { Connection, WSMessage } from "partyserver";
 
 export const CHUNK_MAX_SIZE = 1_000_000;
 
@@ -12,8 +12,7 @@ const trace = (...args: unknown[]) => TRACE_ENABLED && console.log(...args);
 
 let warnedAboutLargeMessage = false;
 
-type MessageData = ArrayBufferLike | string;
-type MessageHandler = (conn: Connection, message: MessageData) => void;
+type MessageHandler = (conn: Connection, message: WSMessage) => void;
 type Batch = {
   id: string;
   type: "start" | "end";
@@ -88,7 +87,7 @@ export const sendChunked = (data: Uint8Array, ws: WebSocket) => {
  * 4. The server forwards the message to handlers
  */
 export const handleChunked = (
-  receive: (conn: Connection, data: MessageData) => void
+  receive: (conn: Connection, data: WSMessage) => void
 ): MessageHandler => {
   let batch: ArrayBuffer[] | undefined;
   let start: Batch | undefined;
@@ -159,7 +158,7 @@ function assertEquality(expected: unknown, actual: unknown, label: string) {
 }
 
 /** Checks whether a message is batch marker */
-function isBatchSentinel(msg: MessageData): msg is string {
+function isBatchSentinel(msg: WSMessage): msg is string {
   return typeof msg === "string" && msg.startsWith(BATCH_SENTINEL);
 }
 
