@@ -197,6 +197,11 @@ export class YServer<Env = unknown> extends Server<Env> {
     );
   }
 
+  isReadOnly(connection: Connection): boolean {
+    // to be implemented by the user
+    return false;
+  }
+
   // @ts-ignore something something typescript
   onMessage = handleChunked((conn, message) => {
     if (typeof message === "string") {
@@ -217,9 +222,8 @@ export class YServer<Env = unknown> extends Server<Env> {
             decoder,
             encoder,
             this.document,
-            conn,
-            // TODO: readonly conections
-            false
+            connection,
+            this.isReadOnly(connection)
           );
 
           // If the `encoder` only contains the type of reply message and no
