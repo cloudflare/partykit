@@ -483,12 +483,6 @@ Did you try connecting directly to this Durable Object? Try using getServerByNam
     await this.setName(connection.server);
     // TODO: ^ this shouldn't be async
 
-    if (this.#status !== "started") {
-      // This means the server "woke up" after hibernation
-      // so we need to hydrate it again
-      await this.#initialize();
-    }
-
     return this.onMessage(connection, message);
   }
 
@@ -508,11 +502,6 @@ Did you try connecting directly to this Durable Object? Try using getServerByNam
     await this.setName(connection.server);
     // TODO: ^ this shouldn't be async
 
-    if (this.#status !== "started") {
-      // This means the server "woke up" after hibernation
-      // so we need to hydrate it again
-      await this.#initialize();
-    }
     return this.onClose(connection, code, reason, wasClean);
   }
 
@@ -527,11 +516,6 @@ Did you try connecting directly to this Durable Object? Try using getServerByNam
     await this.setName(connection.server);
     // TODO: ^ this shouldn't be async
 
-    if (this.#status !== "started") {
-      // This means the server "woke up" after hibernation
-      // so we need to hydrate it again
-      await this.#initialize();
-    }
     return this.onError(connection, error);
   }
 
@@ -612,9 +596,7 @@ Did you try connecting directly to this Durable Object? Try using getServerByNam
     this.#_name = name;
 
     if (this.#status !== "started") {
-      await this.ctx.blockConcurrencyWhile(async () => {
-        await this.#initialize();
-      });
+      await this.#initialize();
     }
   }
 
