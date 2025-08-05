@@ -1,5 +1,11 @@
 # partysocket
 
+## 1.1.5
+
+### Patch Changes
+
+- [#258](https://github.com/cloudflare/partykit/pull/258) [`2de055b`](https://github.com/cloudflare/partykit/commit/2de055b9b6f1e22b503a3aa706abf7d6eaf2ef6e) Thanks [@whoiskatrin](https://github.com/whoiskatrin)! - Add name validation warning for forward slashes in PartySocket
+
 ## 1.1.4
 
 ### Patch Changes

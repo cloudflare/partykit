@@ -1,5 +1,11 @@
 # y-partyserver
 
+## 0.0.46
+
+### Patch Changes
+
+- [#259](https://github.com/cloudflare/partykit/pull/259) [`dac5836`](https://github.com/cloudflare/partykit/commit/dac583681bf020dc5415ae088ee744baca96f24a) Thanks [@donovan-fournier](https://github.com/donovan-fournier)! - y-partyserver: readonly mode, allow onConnect/onMessage override
+
 ## 0.0.45
 
 ### Patch Changes
