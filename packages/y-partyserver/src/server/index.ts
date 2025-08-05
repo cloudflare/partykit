@@ -248,7 +248,9 @@ export class YServer<Env = unknown> extends Server<Env> {
     }
   }
 
-  onMessage = handleChunked((conn, message) => this.handleMessage(conn, message));
+  onMessage = handleChunked((conn, message) =>
+    this.handleMessage(conn, message)
+  );
 
   onClose(
     connection: Connection<unknown>,
