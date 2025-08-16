@@ -561,9 +561,9 @@ Did you try connecting directly to this Durable Object? Try using getServerByNam
     connection: Connection,
     ctx: ConnectionContext
   ): void | Promise<void> {
-    console.log(
-      `Connection ${connection.id} connected to ${this.#ParentClass.name}:${this.name}`
-    );
+    // console.log(
+    //   `Connection ${connection.id} connected to ${this.#ParentClass.name}:${this.name}`
+    // );
     // console.log(
     //   `Implement onConnect on ${this.#ParentClass.name} to handle websocket connections.`
     // );
@@ -573,12 +573,12 @@ Did you try connecting directly to this Durable Object? Try using getServerByNam
    * Called when a message is received from a connection.
    */
   onMessage(connection: Connection, message: WSMessage): void | Promise<void> {
-    console.log(
-      `Received message on connection ${this.#ParentClass.name}:${connection.id}`
-    );
-    console.info(
-      `Implement onMessage on ${this.#ParentClass.name} to handle this message.`
-    );
+    // console.log(
+    //   `Received message on connection ${this.#ParentClass.name}:${connection.id}`
+    // );
+    // console.info(
+    //   `Implement onMessage on ${this.#ParentClass.name} to handle this message.`
+    // );
   }
 
   /**
@@ -595,13 +595,13 @@ Did you try connecting directly to this Durable Object? Try using getServerByNam
    * Called when an error occurs on a connection.
    */
   onError(connection: Connection, error: unknown): void | Promise<void> {
-    console.error(
-      `Error on connection ${connection.id} in ${this.#ParentClass.name}:${this.name}:`,
-      error
-    );
-    console.info(
-      `Implement onError on ${this.#ParentClass.name} to handle this error.`
-    );
+    // console.error(
+    //   `Error on connection ${connection.id} in ${this.#ParentClass.name}:${this.name}:`,
+    //   error
+    // );
+    // console.info(
+    //   `Implement onError on ${this.#ParentClass.name} to handle this error.`
+    // );
   }
 
   /**
@@ -610,9 +610,9 @@ Did you try connecting directly to this Durable Object? Try using getServerByNam
   onRequest(request: Request): Response | Promise<Response> {
     // default to 404
 
-    console.warn(
-      `onRequest hasn't been implemented on ${this.#ParentClass.name}:${this.name} responding to ${request.url}`
-    );
+    // console.warn(
+    //   `onRequest hasn't been implemented on ${this.#ParentClass.name}:${this.name} responding to ${request.url}`
+    // );
 
     return new Response("Not implemented", { status: 404 });
   }
@@ -622,19 +622,19 @@ Did you try connecting directly to this Durable Object? Try using getServerByNam
    * @param error - The error that occurred.
    */
   onException(error: unknown): void | Promise<void> {
-    console.error(
-      `Exception in ${this.#ParentClass.name}:${this.name}:`,
-      error
-    );
-    console.info(
-      `Implement onException on ${this.#ParentClass.name} to handle this error.`
-    );
+    // console.error(
+    //   `Exception in ${this.#ParentClass.name}:${this.name}:`,
+    //   error
+    // );
+    // console.info(
+    //   `Implement onException on ${this.#ParentClass.name} to handle this error.`
+    // );
   }
 
   onAlarm(): void | Promise<void> {
-    console.log(
-      `Implement onAlarm on ${this.#ParentClass.name} to handle alarms.`
-    );
+    // console.log(
+    //   `Implement onAlarm on ${this.#ParentClass.name} to handle alarms.`
+    // );
   }
 
   async alarm(): Promise<void> {
