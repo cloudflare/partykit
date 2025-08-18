@@ -53,11 +53,7 @@ function isWebSocketUpgrade(c: Context): boolean {
  * Preserves the original request's URL, method, headers, and body
  */
 function createRequestFromContext(c: Context) {
-  return new Request(c.req.url, {
-    method: c.req.method,
-    headers: c.req.header(),
-    body: c.req.raw.body
-  });
+  return c.req.raw.clone();
 }
 
 /**
