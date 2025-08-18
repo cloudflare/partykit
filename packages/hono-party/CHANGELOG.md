@@ -1,5 +1,11 @@
 # hono-party
 
+## 0.0.14
+
+### Patch Changes
+
+- [#266](https://github.com/cloudflare/partykit/pull/266) [`034051c`](https://github.com/cloudflare/partykit/commit/034051cd2851aa8690a87c925558aa11c88ed385) Thanks [@vickyRathee](https://github.com/vickyRathee)! - Clone request to keep the cf and other properties
+
 ## 0.0.13
 
 ### Patch Changes
