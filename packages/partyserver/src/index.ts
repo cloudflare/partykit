@@ -33,12 +33,17 @@ const serverMapCache = new WeakMap<
 /**
  * For a given server namespace, create a server with a name.
  */
-export async function getServerByName<Env, T extends Server<Env>>(
+export async function getServerByName<
+  Env,
+  T extends Server<Env>,
+  Props extends Record<string, unknown> = Record<string, unknown>
+>(
   serverNamespace: DurableObjectNamespace<T>,
   name: string,
   options?: {
     jurisdiction?: DurableObjectJurisdiction;
     locationHint?: DurableObjectLocationHint;
+    props?: Props;
   }
 ): Promise<DurableObjectStub<T>> {
   if (options?.jurisdiction) {
@@ -48,8 +53,11 @@ export async function getServerByName<Env, T extends Server<Env>>(
   const id = serverNamespace.idFromName(name);
   const stub = serverNamespace.get(id, options);
 
-  // TODO: fix this to use RPC
+  if (options?.props) {
+    await stub.updateProps(options.props);
+  }
 
+  // TODO: fix this to use RPC
   const req = new Request(
     "http://dummy-example.cloudflare.com/cdn-cgi/partyserver/set-name/"
   );
@@ -79,10 +87,11 @@ function camelCaseToKebabCase(str: string): string {
   // Convert any remaining underscores to hyphens and remove trailing -'s
   return kebabified.replace(/_/g, "-").replace(/-$/, "");
 }
-export interface PartyServerOptions<Env> {
+export interface PartyServerOptions<Env, Props = Record<string, unknown>> {
   prefix?: string;
   jurisdiction?: DurableObjectJurisdiction;
   locationHint?: DurableObjectLocationHint;
+  props?: Props;
   onBeforeConnect?: (
     req: Request,
     lobby: {
@@ -107,11 +116,12 @@ export interface PartyServerOptions<Env> {
  */
 export async function routePartykitRequest<
   Env = unknown,
-  T extends Server<Env> = Server<Env>
+  T extends Server<Env> = Server<Env>,
+  Props extends Record<string, unknown> = Record<string, unknown>
 >(
   req: Request,
   env: Record<string, unknown>,
-  options?: PartyServerOptions<typeof env>
+  options?: PartyServerOptions<typeof env, Props>
 ): Promise<Response | null> {
   if (!serverMapCache.has(env)) {
     serverMapCache.set(
@@ -174,6 +184,10 @@ Did you forget to add a durable object binding to the class in your wrangler.tom
     const id = doNamespace.idFromName(name);
     const stub = doNamespace.get(id, options);
 
+    if (options?.props) {
+      await stub.updateProps(options.props);
+    }
+
     // const stub = await getServerByName(map[namespace], name, options); // TODO: fix this
     // make a new request with additional headers
 
@@ -216,7 +230,10 @@ Did you forget to add a durable object binding to the class in your wrangler.tom
   }
 }
 
-export class Server<Env = unknown> extends DurableObject<Env> {
+export class Server<
+  Env = unknown,
+  Props extends Record<string, unknown> = Record<string, unknown>
+> extends DurableObject<Env> {
   static options = {
     hibernate: false
   };
@@ -424,6 +441,7 @@ Did you try connecting directly to this Durable Object? Try using getServerByNam
   async #initialize(): Promise<void> {
     await this.ctx.blockConcurrencyWhile(async () => {
       this.#status = "starting";
+      this.#props = (await this.ctx.storage.get("props")) ?? ({} as Props);
       await this.onStart();
       this.#status = "started";
     });
@@ -545,6 +563,17 @@ Did you try connecting directly to this Durable Object? Try using getServerByNam
     context: ConnectionContext
   ): string[] | Promise<string[]> {
     return [];
+  }
+
+  #props!: Props;
+
+  get props() {
+    return this.#props ?? {};
+  }
+
+  async updateProps(props: Props) {
+    await this.ctx.storage.put("props", props ?? {});
+    this.#props = props;
   }
 
   // Implemented by the user
