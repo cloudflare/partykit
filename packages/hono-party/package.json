@@ -1,6 +1,6 @@
 {
   "name": "hono-party",
-  "version": "0.0.14",
+  "version": "0.0.15",
   "repository": {
     "type": "git",
     "url": "git://github.com/cloudflare/partykit.git"
@@ -32,11 +32,11 @@
   "peerDependencies": {
     "@cloudflare/workers-types": "^4.20240729.0",
     "hono": "^4.6.17",
-    "partyserver": "^0.0.72"
+    "partyserver": "^0.0.73"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20250327.0",
     "hono": "^4.7.5",
-    "partyserver": "^0.0.72"
+    "partyserver": "^0.0.73"
   }
 }

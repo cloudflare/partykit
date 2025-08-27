@@ -1,5 +1,11 @@
 # partyflare
 
+## 0.0.73
+
+### Patch Changes
+
+- [`3014f9f`](https://github.com/cloudflare/partykit/commit/3014f9fdb00bcfa6b27f61aa18630c5ba7b3932c) Thanks [@threepointone](https://github.com/threepointone)! - Allow routing ctx props to Server
+
 ## 0.0.72
 
 ### Patch Changes

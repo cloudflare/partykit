@@ -1,5 +1,12 @@
 # @partyserver/fixture-globe
 
+## 0.0.9
+
+### Patch Changes
+
+- Updated dependencies [[`3014f9f`](https://github.com/cloudflare/partykit/commit/3014f9fdb00bcfa6b27f61aa18630c5ba7b3932c)]:
+  - partyserver@0.0.73
+
 ## 0.0.8
 
 ### Patch Changes
