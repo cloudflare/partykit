@@ -54,6 +54,7 @@ export async function getServerByName<
   const stub = serverNamespace.get(id, options);
 
   // TODO: fix this to use RPC
+
   const req = new Request(
     "http://dummy-example.cloudflare.com/cdn-cgi/partyserver/set-name/"
   );
@@ -302,7 +303,7 @@ export class Server<
         this.#_props = JSON.parse(atob(encodedProps));
       } catch {
         // This should never happen but log it just in case
-        console.error(`Internal error parsing context props.`);
+        console.error("Internal error parsing context props.");
       }
     }
 
