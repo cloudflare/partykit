@@ -1,7 +1,7 @@
 {
   "name": "@partyserver/fixture-globe",
   "private": true,
-  "version": "0.0.8",
+  "version": "0.0.9",
   "type": "module",
   "scripts": {
     "start": "vite dev"
@@ -10,7 +10,7 @@
     "@types/react": "^19.0.12",
     "@types/react-dom": "^19.0.4",
     "cobe": "^0.6.3",
-    "partyserver": "^0.0.72",
+    "partyserver": "^0.0.73",
     "partysocket": "^1.1.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
