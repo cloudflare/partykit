@@ -28,7 +28,7 @@ export function useStableSocket<T extends WebSocket, TOpts extends Options>({
   createSocketMemoKey: createOptionsMemoKey
 }: {
   options: TOpts;
-  createSocket: (options: TOpts) => T;
+  createSocket: (options: TOpts) => T | null;
   createSocketMemoKey: (options: TOpts) => string;
 }) {
   // ensure we only reconnect when necessary
@@ -39,7 +39,7 @@ export function useStableSocket<T extends WebSocket, TOpts extends Options>({
   }, [shouldReconnect]);
 
   // this is the socket we return
-  const [socket, setSocket] = useState<T>(() =>
+  const [socket, setSocket] = useState<T | null>(() =>
     // only connect on first mount
     createSocket({ ...socketOptions, startClosed: true })
   );
@@ -68,13 +68,13 @@ export function useStableSocket<T extends WebSocket, TOpts extends Options>({
     } else {
       // if this is the first time we are running the hook, connect...
       if (!socketInitializedRef.current && socketOptions.startClosed !== true) {
-        socket.reconnect();
+        socket?.reconnect();
       }
       // track initialized socket so we know not to do it again
       socketInitializedRef.current = socket;
       // close the old socket the next time the socket changes or we unmount
       return () => {
-        socket.close();
+        socket?.close();
       };
     }
   }, [socket, socketOptions]);
