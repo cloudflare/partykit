@@ -62,7 +62,7 @@ export async function getServerByName<
   req.headers.set("x-partykit-room", name);
 
   if (options?.props) {
-    req.headers.set("x-partykit-props", btoa(JSON.stringify(options?.props)));
+    req.headers.set("x-partykit-props", JSON.stringify(options?.props));
   }
 
   // unfortunately we have to await this
@@ -196,7 +196,7 @@ Did you forget to add a durable object binding to the class in your wrangler.tom
     }
 
     if (options?.props) {
-      req.headers.set("x-partykit-props", btoa(JSON.stringify(options?.props)));
+      req.headers.set("x-partykit-props", JSON.stringify(options?.props));
     }
 
     if (req.headers.get("Upgrade")?.toLowerCase() === "websocket") {
@@ -297,10 +297,10 @@ export class Server<
    */
   async fetch(request: Request): Promise<Response> {
     // Set the props in-mem if the request included them.
-    const encodedProps = request.headers.get("x-partykit-props");
-    if (encodedProps) {
+    const props = request.headers.get("x-partykit-props");
+    if (props) {
       try {
-        this.#_props = JSON.parse(atob(encodedProps));
+        this.#_props = JSON.parse(props);
       } catch {
         // This should never happen but log it just in case
         console.error("Internal error parsing context props.");
