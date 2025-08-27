@@ -53,16 +53,16 @@ export async function getServerByName<
   const id = serverNamespace.idFromName(name);
   const stub = serverNamespace.get(id, options);
 
-  if (options?.props) {
-    await stub.updateProps(options.props);
-  }
-
   // TODO: fix this to use RPC
   const req = new Request(
     "http://dummy-example.cloudflare.com/cdn-cgi/partyserver/set-name/"
   );
 
   req.headers.set("x-partykit-room", name);
+
+  if (options?.props) {
+    req.headers.set("x-partykit-props", btoa(JSON.stringify(options?.props)));
+  }
 
   // unfortunately we have to await this
   await stub.fetch(req).catch((e) => {
@@ -184,10 +184,6 @@ Did you forget to add a durable object binding to the class in your wrangler.tom
     const id = doNamespace.idFromName(name);
     const stub = doNamespace.get(id, options);
 
-    if (options?.props) {
-      await stub.updateProps(options.props);
-    }
-
     // const stub = await getServerByName(map[namespace], name, options); // TODO: fix this
     // make a new request with additional headers
 
@@ -196,6 +192,10 @@ Did you forget to add a durable object binding to the class in your wrangler.tom
     req.headers.set("x-partykit-namespace", namespace);
     if (options?.jurisdiction) {
       req.headers.set("x-partykit-jurisdiction", options.jurisdiction);
+    }
+
+    if (options?.props) {
+      req.headers.set("x-partykit-props", btoa(JSON.stringify(options?.props)));
     }
 
     if (req.headers.get("Upgrade")?.toLowerCase() === "websocket") {
@@ -295,6 +295,17 @@ export class Server<
    * Handle incoming requests to the server.
    */
   async fetch(request: Request): Promise<Response> {
+    // Set the props in-mem if the request included them.
+    const encodedProps = request.headers.get("x-partykit-props");
+    if (encodedProps) {
+      try {
+        this.#_props = JSON.parse(atob(encodedProps));
+      } catch {
+        // This should never happen but log it just in case
+        console.error(`Internal error parsing context props.`);
+      }
+    }
+
     if (!this.#_name) {
       // This is temporary while we solve https://github.com/cloudflare/workerd/issues/2240
 
@@ -441,8 +452,7 @@ Did you try connecting directly to this Durable Object? Try using getServerByNam
   async #initialize(): Promise<void> {
     await this.ctx.blockConcurrencyWhile(async () => {
       this.#status = "starting";
-      this.#props = (await this.ctx.storage.get("props")) ?? ({} as Props);
-      await this.onStart();
+      await this.onStart(this.#_props);
       this.#status = "started";
     });
   }
@@ -565,23 +575,14 @@ Did you try connecting directly to this Durable Object? Try using getServerByNam
     return [];
   }
 
-  #props!: Props;
-
-  get props() {
-    return this.#props ?? {};
-  }
-
-  async updateProps(props: Props) {
-    await this.ctx.storage.put("props", props ?? {});
-    this.#props = props;
-  }
+  #_props?: Props;
 
   // Implemented by the user
 
   /**
    * Called when the server is started for the first time.
    */
-  onStart(): void | Promise<void> {}
+  onStart(props?: Props): void | Promise<void> {}
 
   /**
    * Called when a new connection is made to the server.
