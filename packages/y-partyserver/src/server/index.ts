@@ -172,7 +172,7 @@ export class YServer<Env = unknown> extends Server<Env> {
   }
 
   /**
-   * Replaces the document with a previous state using Yjs UndoManager key remapping.
+   * Replaces the document with a different state using Yjs UndoManager key remapping.
    * 
    * @param snapshotUpdate - The snapshot update to replace the document with.
    * @param getMetadata (optional) - A function that returns the type of the root for a given key.
