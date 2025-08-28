@@ -5,10 +5,12 @@ import type { Connection, ConnectionContext, WSMessage } from "partyserver";
 import { Server } from "partyserver";
 import * as awarenessProtocol from "y-protocols/awareness";
 import * as syncProtocol from "y-protocols/sync";
-import { applyUpdate, Doc as YDoc, encodeStateAsUpdate } from "yjs";
+import { applyUpdate, Doc as YDoc, encodeStateAsUpdate, encodeStateVector, UndoManager, XmlText, XmlElement, XmlFragment } from "yjs";
 
 import { handleChunked } from "../shared/chunking";
-import { base64ToUint8Array } from "./utils";
+
+const snapshotOrigin = Symbol('snapshot-origin');
+type YjsRootType = 'Text' | 'Map' | 'Array' | 'XmlText' | 'XmlElement' | 'XmlFragment';
 
 const wsReadyStateConnecting = 0;
 const wsReadyStateOpen = 1;
@@ -82,44 +84,6 @@ class WSSharedDoc extends YDoc {
     this.awareness.on("update", awarenessChangeHandler);
     // @ts-expect-error - TODO: fix this
     this.on("update", updateHandler);
-  }
-
-  replaceDocumentState({
-    replacement,
-    rootName,
-  }: {
-    replacement: string | Uint8Array | YDoc; // string is base64 encoded YDoc
-    rootName: string;
-  }) {
-    let newDocument: YDoc | null = null;
-    if (replacement instanceof Uint8Array) {
-      const doc = new YDoc();
-      applyUpdate(doc, replacement)
-    } else if (typeof replacement === 'string') {
-      const bytes = base64ToUint8Array(replacement);
-      newDocument = new YDoc();
-      applyUpdate(newDocument, bytes)
-    }
-
-    const newFragment = newDocument?.getXmlFragment(rootName);
-    const oldFragment = this.getXmlFragment(rootName);
-
-    if (!newFragment) { 
-      return false;
-    }
-    
-    this.transact(() => {
-      // Remove existing content
-      oldFragment.delete(0, oldFragment.length);
-      // Insert all new content nodes
-      const nodes = Array.from(newFragment.toArray());
-      if (nodes.length > 0) {
-        // insert each node at the corresponding position
-        oldFragment.insert(0, nodes as any);
-      }
-    });
-
-    return true;
   }
 }
 
@@ -196,14 +160,76 @@ export class YServer<Env = unknown> extends Server<Env> {
   static callbackOptions: CallbackOptions = {};
 
   #ParentClass: typeof YServer = Object.getPrototypeOf(this).constructor;
-  readonly document = new WSSharedDoc();
+  document: WSSharedDoc = new WSSharedDoc();
 
   async onLoad(): Promise<void> {
     // to be implemented by the user
     return;
   }
 
-  async onSave(): Promise<void> {}
+  async onSave(): Promise<void> {
+    // to be implemented by the user
+  }
+
+  /**
+   * Reverts the document to a previous state using Yjs UndoManager key remapping.
+   * 
+   * @param snapshotUpdate - The snapshot update to revert to.
+   * @param getMetadata (optional) - A function that returns the type of the root for a given key.
+   */
+  revertUpdate(
+    snapshotUpdate: Uint8Array,
+    getMetadata: (key: string) => YjsRootType = () => 'Map'
+  ): void {
+    try {
+      const doc = this.document;
+      const snapshotDoc = new YDoc();
+      applyUpdate(snapshotDoc, snapshotUpdate, snapshotOrigin);
+      
+      const currentStateVector = encodeStateVector(doc);
+      const snapshotStateVector = encodeStateVector(snapshotDoc);
+      
+      const changesSinceSnapshotUpdate = encodeStateAsUpdate(
+        doc,
+        snapshotStateVector
+      );
+      
+      const undoManager = new UndoManager(
+        [...snapshotDoc.share.keys()].map(key => {
+          const type = getMetadata(key);
+          if (type === 'Text') {
+            return snapshotDoc.getText(key);
+          } else if (type === 'Map') {
+            return snapshotDoc.getMap(key);
+          } else if (type === 'Array') {
+            return snapshotDoc.getArray(key);
+          } else if (type === 'XmlText') {
+            return snapshotDoc.get(key, XmlText);
+          } else if (type === 'XmlElement') {
+            return snapshotDoc.get(key, XmlElement);
+          } else if (type === 'XmlFragment') {
+            return snapshotDoc.get(key, XmlFragment);
+          }
+          throw new Error(`Unknown root type: ${type} for key: ${key}`);
+        }),
+        {
+          trackedOrigins: new Set([snapshotOrigin]),
+        }
+      );
+      
+      applyUpdate(snapshotDoc, changesSinceSnapshotUpdate, snapshotOrigin);
+      undoManager.undo();
+      
+      const revertChangesSinceSnapshotUpdate = encodeStateAsUpdate(
+        snapshotDoc,
+        currentStateVector
+      );
+      
+      applyUpdate(this.document, revertChangesSinceSnapshotUpdate);
+    } catch (error) {
+      throw new Error(`Failed to revert update: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
 
   async onStart(): Promise<void> {
     const src = await this.onLoad();
