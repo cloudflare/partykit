@@ -172,12 +172,12 @@ export class YServer<Env = unknown> extends Server<Env> {
   }
 
   /**
-   * Reverts the document to a previous state using Yjs UndoManager key remapping.
+   * Replaces the document with a previous state using Yjs UndoManager key remapping.
    * 
-   * @param snapshotUpdate - The snapshot update to revert to.
+   * @param snapshotUpdate - The snapshot update to replace the document with.
    * @param getMetadata (optional) - A function that returns the type of the root for a given key.
    */
-  revertUpdate(
+  replaceDocument(
     snapshotUpdate: Uint8Array,
     getMetadata: (key: string) => YjsRootType = () => 'Map'
   ): void {
@@ -220,14 +220,14 @@ export class YServer<Env = unknown> extends Server<Env> {
       applyUpdate(snapshotDoc, changesSinceSnapshotUpdate, snapshotOrigin);
       undoManager.undo();
       
-      const revertChangesSinceSnapshotUpdate = encodeStateAsUpdate(
+      const documentChangesSinceSnapshotUpdate = encodeStateAsUpdate(
         snapshotDoc,
         currentStateVector
       );
       
-      applyUpdate(this.document, revertChangesSinceSnapshotUpdate);
+      applyUpdate(this.document, documentChangesSinceSnapshotUpdate);
     } catch (error) {
-      throw new Error(`Failed to revert update: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(`Failed to replace document: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
