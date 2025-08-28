@@ -33,14 +33,33 @@ import { retryWithBackoff } from "./rxjs-helpers";
 import { fromFetch } from "./fromFetch";
 
 export interface PartyTracksConfig {
+  /**
+   * Additional query parameters to append to all API requests.
+   * For example, "userId=123&roomId=456"
+   */
   apiExtraParams?: string;
+  /**
+   * Custom ICE servers to use for WebRTC connections.
+   * If not provided, ICE servers will be fetched from the `/partytracks/generate-ice-servers` endpoint.
+   */
   iceServers?: RTCIceServer[];
   /**
    * The part of the pathname in the original request URL that should be replaced.
    * For example, if your proxy path is /api/partytracks/*, the value should be "/api/partytracks"
+   * 
+   * You can also provide a full URL to enable cross-domain connections:
+   * For example, "https://api.example.com/partytracks" to connect to a different host.
    */
   prefix?: string;
+  /**
+   * Maximum number of API history entries to retain for debugging purposes.
+   * Defaults to 100.
+   */
   maxApiHistory?: number;
+  /**
+   * Custom headers to include in all API requests made by PartyTracks.
+   * These headers will be appended to any existing headers for each request.
+   */
   headers?: Headers;
 }
 

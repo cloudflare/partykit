@@ -441,6 +441,76 @@ class PartyTracks {
 }
 ```
 
+### PartyTracksConfig
+
+The optional configuration object for `PartyTracks`:
+
+```ts
+interface PartyTracksConfig {
+  /**
+   * Additional query parameters to append to all API requests.
+   * For example, "userId=123&roomId=456"
+   */
+  apiExtraParams?: string;
+  /**
+   * Custom ICE servers to use for WebRTC connections.
+   * If not provided, ICE servers will be fetched from the `/partytracks/generate-ice-servers` endpoint.
+   */
+  iceServers?: RTCIceServer[];
+  /**
+   * The part of the pathname in the original request URL that should be replaced.
+   * For example, if your proxy path is /api/partytracks/*, the value should be "/api/partytracks"
+   * 
+   * You can also provide a full URL to enable cross-domain connections:
+   * For example, "https://api.example.com/partytracks" to connect to a different host.
+   */
+  prefix?: string;
+  /**
+   * Maximum number of API history entries to retain for debugging purposes.
+   * Defaults to 100.
+   */
+  maxApiHistory?: number;
+  /**
+   * Custom headers to include in all API requests made by PartyTracks.
+   * These headers will be appended to any existing headers for each request.
+   */
+  headers?: Headers;
+}
+```
+
+#### Configuration Examples
+
+```js
+// Default configuration (same domain)
+const partyTracks = new PartyTracks();
+
+// Custom path prefix for same-domain deployment
+const partyTracks = new PartyTracks({
+  prefix: "/api/partytracks"
+});
+
+// Cross-domain configuration
+const partyTracks = new PartyTracks({
+  prefix: "https://api.example.com/partytracks"
+});
+
+// Custom ICE servers and additional parameters
+const partyTracks = new PartyTracks({
+  iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
+  apiExtraParams: "userId=123&roomId=456",
+  maxApiHistory: 50
+});
+
+// With custom headers (e.g., for authentication)
+const partyTracks = new PartyTracks({
+  prefix: "https://api.example.com/partytracks",
+  headers: new Headers({
+    "Authorization": "Bearer your-token-here",
+    "X-Custom-Header": "value"
+  })
+});
+```
+
 ### `getMic` and `getCamera`
 
 These both accept `MediaDeviceOptions`:
