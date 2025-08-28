@@ -8,6 +8,7 @@ import * as syncProtocol from "y-protocols/sync";
 import { applyUpdate, Doc as YDoc, encodeStateAsUpdate } from "yjs";
 
 import { handleChunked } from "../shared/chunking";
+import { base64ToUint8Array } from "./utils";
 
 const wsReadyStateConnecting = 0;
 const wsReadyStateOpen = 1;
@@ -81,6 +82,44 @@ class WSSharedDoc extends YDoc {
     this.awareness.on("update", awarenessChangeHandler);
     // @ts-expect-error - TODO: fix this
     this.on("update", updateHandler);
+  }
+
+  replaceDocumentState({
+    replacement,
+    rootName,
+  }: {
+    replacement: string | Uint8Array | YDoc; // string is base64 encoded YDoc
+    rootName: string;
+  }) {
+    let newDocument: YDoc | null = null;
+    if (replacement instanceof Uint8Array) {
+      const doc = new YDoc();
+      applyUpdate(doc, replacement)
+    } else if (typeof replacement === 'string') {
+      const bytes = base64ToUint8Array(replacement);
+      newDocument = new YDoc();
+      applyUpdate(newDocument, bytes)
+    }
+
+    const newFragment = newDocument?.getXmlFragment(rootName);
+    const oldFragment = this.getXmlFragment(rootName);
+
+    if (!newFragment) { 
+      return false;
+    }
+    
+    this.transact(() => {
+      // Remove existing content
+      oldFragment.delete(0, oldFragment.length);
+      // Insert all new content nodes
+      const nodes = Array.from(newFragment.toArray());
+      if (nodes.length > 0) {
+        // insert each node at the corresponding position
+        oldFragment.insert(0, nodes as any);
+      }
+    });
+
+    return true;
   }
 }
 
