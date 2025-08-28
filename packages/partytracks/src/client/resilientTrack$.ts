@@ -7,6 +7,7 @@ import {
   map,
   merge,
   Observable,
+  of,
   shareReplay,
   switchMap,
   throwError,
@@ -34,14 +35,18 @@ export const devices$ = defer(() =>
     fromEvent(navigator.mediaDevices, "devicechange").pipe(
       switchMap(() => navigator.mediaDevices.enumerateDevices())
     ),
-    from(navigator.permissions.query({ name: "camera" })).pipe(
-      switchMap((permissionStatus) => fromEvent(permissionStatus, "change")),
-      switchMap(() => navigator.mediaDevices.enumerateDevices())
-    ),
-    from(navigator.permissions.query({ name: "microphone" })).pipe(
-      switchMap((permissionStatus) => fromEvent(permissionStatus, "change")),
-      switchMap(() => navigator.mediaDevices.enumerateDevices())
-    )
+    navigator.permissions?.query ? 
+      from(navigator.permissions.query({ name: "camera" })).pipe(
+        switchMap((permissionStatus) => fromEvent(permissionStatus, "change")),
+        switchMap(() => navigator.mediaDevices.enumerateDevices())
+      ) : 
+      of([]),
+    navigator.permissions?.query ? 
+      from(navigator.permissions.query({ name: "microphone" })).pipe(
+        switchMap((permissionStatus) => fromEvent(permissionStatus, "change")),
+        switchMap(() => navigator.mediaDevices.enumerateDevices())
+      ) : 
+      of([])
   ).pipe(
     distinctUntilChanged(
       (prev, current) => JSON.stringify(prev) === JSON.stringify(current)
