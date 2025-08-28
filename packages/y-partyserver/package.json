@@ -40,7 +40,6 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "@types/node": "^22.13.14",
     "lib0": "^0.2.101",
     "lodash.debounce": "^4.0.8",
     "nanoid": "^5.1.5",
@@ -54,7 +53,7 @@
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20250327.0",
     "@types/lodash.debounce": "^4.0.9",
-    "partyserver": "workspace:*",
+    "partyserver": "^0.0.73",
     "ws": "^8.18.1",
     "yjs": "^13.6.24"
   }
