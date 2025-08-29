@@ -46,7 +46,7 @@ export interface PartyTracksConfig {
   /**
    * The part of the pathname in the original request URL that should be replaced.
    * For example, if your proxy path is /api/partytracks/*, the value should be "/api/partytracks"
-   * 
+   *
    * You can also provide a full URL to enable cross-domain connections:
    * For example, "https://api.example.com/partytracks" to connect to a different host.
    */
