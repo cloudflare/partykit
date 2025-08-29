@@ -1,5 +1,13 @@
 # partytracks
 
+## 0.0.51
+
+### Patch Changes
+
+- [#272](https://github.com/cloudflare/partykit/pull/272) [`93b466e`](https://github.com/cloudflare/partykit/commit/93b466e92380ff22cb67f2a231e2d2622e59f8f9) Thanks [@third774](https://github.com/third774)! - Improve docs for partytracks
+
+- [#273](https://github.com/cloudflare/partykit/pull/273) [`73d5c05`](https://github.com/cloudflare/partykit/commit/73d5c056d46b510289c9169f00ad23c36b8da3ab) Thanks [@third774](https://github.com/third774)! - Fix TypeError on older browsers by adding feature detection for navigator.permissions.query API
+
 ## 0.0.50
 
 ### Patch Changes
