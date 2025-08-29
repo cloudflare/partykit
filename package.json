@@ -6,6 +6,7 @@
   "scripts": {
     "build": "npm run build -w partyserver -w partysocket -w y-partyserver -w partysub -w partyfn -w partysync -w partywhen -w partytracks -w hono-party",
     "check": "concurrently \"npm run check:repo\" \"npm run check:format\" \"npm run check:lint\" \"npm run check:type\" \"npm run check:test\" --kill-others-on-fail",
+    "format": "prettier . --write --ignore-unknown",
     "check:format": "prettier . --check --ignore-unknown",
     "check:lint": "biome check",
     "check:repo": "manypkg check",
