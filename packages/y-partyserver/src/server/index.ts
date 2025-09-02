@@ -5,12 +5,27 @@ import type { Connection, ConnectionContext, WSMessage } from "partyserver";
 import { Server } from "partyserver";
 import * as awarenessProtocol from "y-protocols/awareness";
 import * as syncProtocol from "y-protocols/sync";
-import { applyUpdate, Doc as YDoc, encodeStateAsUpdate, encodeStateVector, UndoManager, XmlText, XmlElement, XmlFragment } from "yjs";
+import {
+  applyUpdate,
+  Doc as YDoc,
+  encodeStateAsUpdate,
+  encodeStateVector,
+  UndoManager,
+  XmlText,
+  XmlElement,
+  XmlFragment
+} from "yjs";
 
 import { handleChunked } from "../shared/chunking";
 
-const snapshotOrigin = Symbol('snapshot-origin');
-type YjsRootType = 'Text' | 'Map' | 'Array' | 'XmlText' | 'XmlElement' | 'XmlFragment';
+const snapshotOrigin = Symbol("snapshot-origin");
+type YjsRootType =
+  | "Text"
+  | "Map"
+  | "Array"
+  | "XmlText"
+  | "XmlElement"
+  | "XmlFragment";
 
 const wsReadyStateConnecting = 0;
 const wsReadyStateOpen = 1;
@@ -173,61 +188,63 @@ export class YServer<Env = unknown> extends Server<Env> {
 
   /**
    * Replaces the document with a different state using Yjs UndoManager key remapping.
-   * 
+   *
    * @param snapshotUpdate - The snapshot update to replace the document with.
    * @param getMetadata (optional) - A function that returns the type of the root for a given key.
    */
   unstable_replaceDocument(
     snapshotUpdate: Uint8Array,
-    getMetadata: (key: string) => YjsRootType = () => 'Map'
+    getMetadata: (key: string) => YjsRootType = () => "Map"
   ): void {
     try {
       const doc = this.document;
       const snapshotDoc = new YDoc();
       applyUpdate(snapshotDoc, snapshotUpdate, snapshotOrigin);
-      
+
       const currentStateVector = encodeStateVector(doc);
       const snapshotStateVector = encodeStateVector(snapshotDoc);
-      
+
       const changesSinceSnapshotUpdate = encodeStateAsUpdate(
         doc,
         snapshotStateVector
       );
-      
+
       const undoManager = new UndoManager(
-        [...snapshotDoc.share.keys()].map(key => {
+        [...snapshotDoc.share.keys()].map((key) => {
           const type = getMetadata(key);
-          if (type === 'Text') {
+          if (type === "Text") {
             return snapshotDoc.getText(key);
-          } else if (type === 'Map') {
+          } else if (type === "Map") {
             return snapshotDoc.getMap(key);
-          } else if (type === 'Array') {
+          } else if (type === "Array") {
             return snapshotDoc.getArray(key);
-          } else if (type === 'XmlText') {
+          } else if (type === "XmlText") {
             return snapshotDoc.get(key, XmlText);
-          } else if (type === 'XmlElement') {
+          } else if (type === "XmlElement") {
             return snapshotDoc.get(key, XmlElement);
-          } else if (type === 'XmlFragment') {
+          } else if (type === "XmlFragment") {
             return snapshotDoc.get(key, XmlFragment);
           }
           throw new Error(`Unknown root type: ${type} for key: ${key}`);
         }),
         {
-          trackedOrigins: new Set([snapshotOrigin]),
+          trackedOrigins: new Set([snapshotOrigin])
         }
       );
-      
+
       applyUpdate(snapshotDoc, changesSinceSnapshotUpdate, snapshotOrigin);
       undoManager.undo();
-      
+
       const documentChangesSinceSnapshotUpdate = encodeStateAsUpdate(
         snapshotDoc,
         currentStateVector
       );
-      
+
       applyUpdate(this.document, documentChangesSinceSnapshotUpdate);
     } catch (error) {
-      throw new Error(`Failed to replace document: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(
+        `Failed to replace document: ${error instanceof Error ? error.message : "Unknown error"}`
+      );
     }
   }
 
