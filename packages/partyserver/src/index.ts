@@ -402,7 +402,7 @@ Did you try connecting directly to this Durable Object? Try using getServerByNam
   async webSocketMessage(ws: WebSocket, message: WSMessage): Promise<void> {
     const connection = createLazyConnection(ws);
 
-    // rehydrate the server name if it's wiken up
+    // rehydrate the server name if it's woken up
     await this.setName(connection.server);
     // TODO: ^ this shouldn't be async
 
@@ -423,7 +423,7 @@ Did you try connecting directly to this Durable Object? Try using getServerByNam
   ): Promise<void> {
     const connection = createLazyConnection(ws);
 
-    // rehydrate the server name if it's wiken up
+    // rehydrate the server name if it's woken up
     await this.setName(connection.server);
     // TODO: ^ this shouldn't be async
 
@@ -438,7 +438,7 @@ Did you try connecting directly to this Durable Object? Try using getServerByNam
   async webSocketError(ws: WebSocket, error: unknown): Promise<void> {
     const connection = createLazyConnection(ws);
 
-    // rehydrate the server name if it's wiken up
+    // rehydrate the server name if it's woken up
     await this.setName(connection.server);
     // TODO: ^ this shouldn't be async
 
