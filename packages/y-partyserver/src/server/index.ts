@@ -175,7 +175,7 @@ export class YServer<Env = unknown> extends Server<Env> {
   static callbackOptions: CallbackOptions = {};
 
   #ParentClass: typeof YServer = Object.getPrototypeOf(this).constructor;
-  document: WSSharedDoc = new WSSharedDoc();
+  readonly document: WSSharedDoc = new WSSharedDoc();
 
   async onLoad(): Promise<void> {
     // to be implemented by the user
