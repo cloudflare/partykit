@@ -177,7 +177,7 @@ export class YServer<Env = unknown> extends Server<Env> {
    * @param snapshotUpdate - The snapshot update to replace the document with.
    * @param getMetadata (optional) - A function that returns the type of the root for a given key.
    */
-  replaceDocument(
+  unstable_replaceDocument(
     snapshotUpdate: Uint8Array,
     getMetadata: (key: string) => YjsRootType = () => 'Map'
   ): void {
