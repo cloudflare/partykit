@@ -1,6 +1,6 @@
 {
   "name": "@partyserver/fixture-tiptap-yjs",
-  "version": "0.0.11",
+  "version": "0.0.12",
   "private": true,
   "type": "module",
   "scripts": {
@@ -15,7 +15,7 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "tailwindcss": "^4.0.17",
-    "y-partyserver": "^0.0.47"
+    "y-partyserver": "^0.0.48"
   },
   "devDependencies": {
     "@types/react": "^19.0.12",
