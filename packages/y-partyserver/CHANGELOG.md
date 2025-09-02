@@ -1,5 +1,11 @@
 # y-partyserver
 
+## 0.0.48
+
+### Patch Changes
+
+- [#271](https://github.com/cloudflare/partykit/pull/271) [`22c26fa`](https://github.com/cloudflare/partykit/commit/22c26fa94a4719458ee7389df5b7484709bb3faf) Thanks [@abhi-arya1](https://github.com/abhi-arya1)! - Add Document State Replacement for document-versioning based applications
+
 ## 0.0.47
 
 ### Patch Changes
