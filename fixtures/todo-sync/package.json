@@ -1,7 +1,7 @@
 {
   "name": "@partyserver/fixture-todo-sync",
   "private": true,
-  "version": "0.0.9",
+  "version": "0.0.10",
   "type": "module",
   "scripts": {
     "start": "vite dev"
@@ -10,7 +10,7 @@
     "@types/react": "^19.0.12",
     "@types/react-dom": "^19.0.4",
     "nanoid": "^5.1.5",
-    "partyserver": "^0.0.73",
+    "partyserver": "^0.0.74",
     "partysocket": "^1.1.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
