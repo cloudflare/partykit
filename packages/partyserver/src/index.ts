@@ -66,9 +66,13 @@ export async function getServerByName<
   }
 
   // unfortunately we have to await this
-  await stub.fetch(req).catch((e) => {
-    console.error("Could not set server name:", e);
-  });
+  await stub
+    .fetch(req)
+    // drain body
+    .then((res) => res.text())
+    .catch((e) => {
+      console.error("Could not set server name:", e);
+    });
 
   return stub;
 }
