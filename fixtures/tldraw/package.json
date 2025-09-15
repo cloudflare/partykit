@@ -1,13 +1,13 @@
 {
   "name": "@partyserver/fixture-tldraw",
-  "version": "0.0.9",
+  "version": "0.0.10",
   "private": true,
   "type": "module",
   "scripts": {
     "start": "vite dev"
   },
   "dependencies": {
-    "partyserver": "^0.0.73",
+    "partyserver": "^0.0.74",
     "partysocket": "^1.1.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

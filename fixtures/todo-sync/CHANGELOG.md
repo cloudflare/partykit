@@ -1,5 +1,12 @@
 # @partyserver/fixture-todo-sync
 
+## 0.0.10
+
+### Patch Changes
+
+- Updated dependencies [[`537714c`](https://github.com/cloudflare/partykit/commit/537714c8a6d70abcac13710e357ce9a953c7d0d3)]:
+  - partyserver@0.0.74
+
 ## 0.0.9
 
 ### Patch Changes

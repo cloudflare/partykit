@@ -1,5 +1,11 @@
 # partyflare
 
+## 0.0.74
+
+### Patch Changes
+
+- [`537714c`](https://github.com/cloudflare/partykit/commit/537714c8a6d70abcac13710e357ce9a953c7d0d3) Thanks [@threepointone](https://github.com/threepointone)! - drain body on /set-name
+
 ## 0.0.73
 
 ### Patch Changes
