@@ -26,7 +26,7 @@ export type WSMessage = ArrayBuffer | ArrayBufferView | string;
 // Let's cache the server namespace map
 // so we don't call it on every request
 const serverMapCache = new WeakMap<
-  Record<string, unknown>,
+  object,
   Record<string, DurableObjectNamespace>
 >();
 
@@ -116,17 +116,14 @@ export interface PartyServerOptions<Env, Props = Record<string, unknown>> {
     | void
     | Promise<Response | Request | undefined | void>;
 }
+
 /**
  * A utility function for PartyKit style routing.
  */
-export async function routePartykitRequest<
-  Env = unknown,
-  T extends Server<Env> = Server<Env>,
-  Props extends Record<string, unknown> = Record<string, unknown>
->(
+export async function routePartykitRequest<Env extends object>(
   req: Request,
-  env: Record<string, unknown>,
-  options?: PartyServerOptions<typeof env, Props>
+  env: Env,
+  options?: PartyServerOptions<Env>
 ): Promise<Response | null> {
   if (!serverMapCache.has(env)) {
     serverMapCache.set(
@@ -145,10 +142,7 @@ export async function routePartykitRequest<
       }, {})
     );
   }
-  const map = serverMapCache.get(env) as unknown as Record<
-    string,
-    DurableObjectNamespace<T>
-  >;
+  const map = serverMapCache.get(env)!;
 
   const prefix = options?.prefix || "parties";
   const prefixParts = prefix.split("/");
@@ -206,7 +200,7 @@ Did you forget to add a durable object binding to the class in your wrangler.tom
     if (req.headers.get("Upgrade")?.toLowerCase() === "websocket") {
       if (options?.onBeforeConnect) {
         const reqOrRes = await options.onBeforeConnect(req, {
-          party: namespace,
+          party: namespace as keyof Env,
           name
         });
         if (reqOrRes instanceof Request) {
@@ -218,7 +212,7 @@ Did you forget to add a durable object binding to the class in your wrangler.tom
     } else {
       if (options?.onBeforeRequest) {
         const reqOrRes = await options.onBeforeRequest(req, {
-          party: namespace,
+          party: namespace as keyof Env,
           name
         });
         if (reqOrRes instanceof Request) {
