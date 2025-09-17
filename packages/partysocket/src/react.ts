@@ -45,7 +45,7 @@ export default function usePartySocket(options: UsePartySocketOptions) {
       ])
   });
 
-  useAttachWebSocketEventHandlers(socket, options);
+  useAttachWebSocketEventHandlers(socket!, options);
 
   return socket;
 }

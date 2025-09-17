@@ -11,7 +11,7 @@ export type EventHandlerOptions = {
 
 /** Attaches event handlers to a WebSocket in a React Lifecycle-friendly way */
 export const useAttachWebSocketEventHandlers = (
-  socket: WebSocket,
+  socket: WebSocket | null,
   options: EventHandlerOptions
 ) => {
   const handlersRef = useRef(options);
@@ -27,16 +27,16 @@ export const useAttachWebSocketEventHandlers = (
     const onError: EventHandlerOptions["onError"] = (event) =>
       handlersRef.current?.onError?.(event);
 
-    socket.addEventListener("open", onOpen);
-    socket.addEventListener("close", onClose);
-    socket.addEventListener("error", onError);
-    socket.addEventListener("message", onMessage);
+    socket?.addEventListener("open", onOpen);
+    socket?.addEventListener("close", onClose);
+    socket?.addEventListener("error", onError);
+    socket?.addEventListener("message", onMessage);
 
     return () => {
-      socket.removeEventListener("open", onOpen);
-      socket.removeEventListener("close", onClose);
-      socket.removeEventListener("error", onError);
-      socket.removeEventListener("message", onMessage);
+      socket?.removeEventListener("open", onOpen);
+      socket?.removeEventListener("close", onClose);
+      socket?.removeEventListener("error", onError);
+      socket?.removeEventListener("message", onMessage);
     };
   }, [socket]);
 };
