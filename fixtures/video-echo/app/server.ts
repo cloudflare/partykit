@@ -25,7 +25,7 @@ const handleRemixRequest = createRequestHandler(build);
 
 // TODO: test the expiration stuff
 export class MyPartyServer<Env> extends Server<Env> {
-  async fetch(request: Request) {
+  async fetch(_request: Request) {
     return new Response("Hello from the party server");
   }
 }

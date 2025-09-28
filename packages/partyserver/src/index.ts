@@ -138,6 +138,7 @@ export async function routePartykitRequest<
           "idFromName" in v &&
           typeof v.idFromName === "function"
         ) {
+          // biome-ignore lint/performance/noAccumulatingSpread: dumb rule
           Object.assign(acc, { [camelCaseToKebabCase(k)]: v });
           return acc;
         }
@@ -278,17 +279,9 @@ export class Server<
     }
   }
 
-  // biome-ignore lint/complexity/noUselessConstructor: <explanation>
+  // biome-ignore lint/complexity/noUselessConstructor: it's fine
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
-
-    // this.ctx
-    //   .blockConcurrencyWhile(async () => {
-    //     await this.#initialize();
-    //   })
-    //   .catch((e) => {
-    //     console.error(`Error while initilaizing ${this.#ParentClass.name}:`, e);
-    //   });
 
     // TODO: throw error if any of
     // broadcast/getConnection/getConnections/getConnectionTags
@@ -574,7 +567,9 @@ Did you try connecting directly to this Durable Object? Try using getServerByNam
    * Each connection supports up to 9 tags, each tag max length is 256 characters.
    */
   getConnectionTags(
+    // biome-ignore lint/correctness/noUnusedFunctionParameters: for autocomplete
     connection: Connection,
+    // biome-ignore lint/correctness/noUnusedFunctionParameters: for autocomplete
     context: ConnectionContext
   ): string[] | Promise<string[]> {
     return [];
@@ -587,6 +582,7 @@ Did you try connecting directly to this Durable Object? Try using getServerByNam
   /**
    * Called when the server is started for the first time.
    */
+  // biome-ignore lint/correctness/noUnusedFunctionParameters: for autocomplete
   onStart(props?: Props): void | Promise<void> {}
 
   /**
@@ -594,6 +590,7 @@ Did you try connecting directly to this Durable Object? Try using getServerByNam
    */
   onConnect(
     connection: Connection,
+    // biome-ignore lint/correctness/noUnusedFunctionParameters: for autocomplete
     ctx: ConnectionContext
   ): void | Promise<void> {
     console.log(
@@ -607,6 +604,7 @@ Did you try connecting directly to this Durable Object? Try using getServerByNam
   /**
    * Called when a message is received from a connection.
    */
+  // biome-ignore lint/correctness/noUnusedFunctionParameters: for autocomplete
   onMessage(connection: Connection, message: WSMessage): void | Promise<void> {
     console.log(
       `Received message on connection ${this.#ParentClass.name}:${connection.id}`
@@ -620,9 +618,13 @@ Did you try connecting directly to this Durable Object? Try using getServerByNam
    * Called when a connection is closed.
    */
   onClose(
+    // biome-ignore lint/correctness/noUnusedFunctionParameters: for autocomplete
     connection: Connection,
+    // biome-ignore lint/correctness/noUnusedFunctionParameters: for autocomplete
     code: number,
+    // biome-ignore lint/correctness/noUnusedFunctionParameters: for autocomplete
     reason: string,
+    // biome-ignore lint/correctness/noUnusedFunctionParameters: for autocomplete
     wasClean: boolean
   ): void | Promise<void> {}
 

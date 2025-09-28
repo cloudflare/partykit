@@ -4,8 +4,10 @@ import { MonacoBinding } from "y-monaco";
 import YProvider from "y-partyserver/provider";
 import * as Y from "yjs";
 
+// @ts-expect-error I don't know typescript
 window.MonacoEnvironment = {
-  getWorkerUrl: (moduleId, label) => {
+  // @ts-expect-error I don't know typescript
+  getWorkerUrl: (_moduleId, label) => {
     if (label === "json") {
       // return "/dist/json.worker.bundle.js";
       return "/dist/monaco-editor/esm/vs/language/json/json.js";

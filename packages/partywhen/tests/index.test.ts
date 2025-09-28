@@ -67,7 +67,7 @@ describe("Hello World worker", () => {
     expect(debug.result).toHaveLength(1);
 
     const {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      // biome-ignore lint/correctness/noUnusedVariables: it's fine
       created_at,
       ...rest
     } = (debug.result || [])[0];
@@ -103,9 +103,7 @@ describe("Hello World worker", () => {
       delayInSeconds
     });
 
-    const timestamp = Math.floor(
-      (new Date().getTime() + delayInSeconds * 1000) / 1000
-    );
+    const timestamp = Math.floor((Date.now() + delayInSeconds * 1000) / 1000);
 
     // pull out the time from the task
     const { time: taskTime } = task;
@@ -135,7 +133,7 @@ describe("Hello World worker", () => {
     expect(debug.result).toHaveLength(1);
 
     const {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      // biome-ignore lint/correctness/noUnusedVariables: it's fine
       created_at,
       ...rest
     } = (debug.result || [])[0];
@@ -194,7 +192,7 @@ describe("Hello World worker", () => {
     expect(debug.result).toHaveLength(1);
 
     const {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      // biome-ignore lint/correctness/noUnusedVariables: it's fine
       created_at,
       ...rest
     } = (debug.result || [])[0];
@@ -255,7 +253,7 @@ describe("Hello World worker", () => {
     expect(debug.result).toHaveLength(1);
 
     const {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      // biome-ignore lint/correctness/noUnusedVariables: it's fine
       created_at,
       ...rest
     } = (debug.result || [])[0];

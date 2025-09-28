@@ -38,13 +38,13 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "nanoid": "^5.1.5"
+    "nanoid": "^5.1.6"
   },
   "peerDependencies": {
     "@cloudflare/workers-types": "^4.20240729.0"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20250327.0",
-    "ws": "^8.18.1"
+    "@cloudflare/workers-types": "^4.20250924.0",
+    "ws": "^8.18.3"
   }
 }

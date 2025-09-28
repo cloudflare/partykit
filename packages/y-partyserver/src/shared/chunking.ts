@@ -126,7 +126,6 @@ export const handleChunked = (
             // validate data as read matches expected
             assertEquality(marker.count, batch.length, "received batch count");
             assertEquality(marker.size, bytesWritten, "client size");
-            // @ts-ignore typescript hell
             receive(connection, bytes);
           } catch (e) {
             console.error(e);
@@ -138,10 +137,10 @@ export const handleChunked = (
         }
       }
     } else if (batch) {
-      // @ts-ignore typescript hell
+      // @ts-expect-error typescript hell
       batch.push(message);
     } else {
-      // @ts-ignore typescript hell
+      // @ts-expect-error typescript hell
       receive(connection, new Uint8Array(message));
     }
   };

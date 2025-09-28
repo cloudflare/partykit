@@ -27,7 +27,9 @@ export class SyncServer<
   };
 
   onAction<Channel extends keyof TChannels>(
+    // biome-ignore lint/correctness/noUnusedFunctionParameters: for autocomplete
     channel: Channel,
+    // biome-ignore lint/correctness/noUnusedFunctionParameters: for autocomplete
     action: TChannels[typeof channel]["action"]
   ): TChannels[Channel]["record"][] | Promise<TChannels[Channel]["record"][]> {
     throw new Error(

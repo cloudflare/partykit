@@ -174,7 +174,9 @@ export function useSyncStore({
     unsubs.push(() => socket.removeEventListener("close", handleClose));
 
     return () => {
-      unsubs.forEach((fn) => fn());
+      unsubs.forEach((fn) => {
+        fn();
+      });
       unsubs.length = 0;
       socket.close();
     };

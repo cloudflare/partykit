@@ -49,7 +49,9 @@ export const createAudioSink = ({
   };
 
   const cleanup = () => {
-    subs.forEach((s) => s.unsubscribe());
+    subs.forEach((s) => {
+      s.unsubscribe();
+    });
     audioElement.srcObject = null;
   };
 

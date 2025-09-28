@@ -242,7 +242,9 @@ pulledScreenshareVideoTrack$.subscribe((track) => {
 });
 
 const audioSink = createAudioSink({ audioElement: audio });
+// biome-ignore lint/correctness/noUnusedVariables: it's fine
 const pulledTrackSinkSubscription = audioSink.attach(pulledAudioTrack$);
+// biome-ignore lint/correctness/noUnusedVariables: it's fine
 const pulledScreenshareAudioTrackSinkSubscription = audioSink.attach(
   pulledScreenshareAudioTrack$
 );

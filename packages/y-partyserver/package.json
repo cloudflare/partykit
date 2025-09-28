@@ -40,9 +40,9 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "lib0": "^0.2.101",
+    "lib0": "^0.2.114",
     "lodash.debounce": "^4.0.8",
-    "nanoid": "^5.1.5",
+    "nanoid": "^5.1.6",
     "y-protocols": "^1.0.6"
   },
   "peerDependencies": {
@@ -51,10 +51,10 @@
     "yjs": "^13.6.14"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20250327.0",
+    "@cloudflare/workers-types": "^4.20250924.0",
     "@types/lodash.debounce": "^4.0.9",
     "partyserver": "^0.0.74",
-    "ws": "^8.18.1",
-    "yjs": "^13.6.24"
+    "ws": "^8.18.3",
+    "yjs": "^13.6.27"
   }
 }

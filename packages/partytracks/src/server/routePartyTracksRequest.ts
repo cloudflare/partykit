@@ -178,7 +178,7 @@ export const routePartyTracksRequest = async ({
       new TextEncoder().encode(token)
     );
     invariant(result.payload.sessionId === sessionId);
-  } catch (e) {
+  } catch (_e) {
     return unauthorizedResponse();
   }
   return fetch(realtimeUrl, realtimeInit);

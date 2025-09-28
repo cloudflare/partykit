@@ -29,19 +29,24 @@ type YjsRootType =
 
 const wsReadyStateConnecting = 0;
 const wsReadyStateOpen = 1;
+// biome-ignore lint/correctness/noUnusedVariables: it's fine
 const wsReadyStateClosing = 2;
+// biome-ignore lint/correctness/noUnusedVariables: it's fine
 const wsReadyStateClosed = 3;
 
 const messageSync = 0;
 const messageAwareness = 1;
+// biome-ignore lint/correctness/noUnusedVariables: it's fine
 const messageAuth = 2;
 
-function updateHandler(update: Uint8Array, origin: unknown, doc: WSSharedDoc) {
+function updateHandler(update: Uint8Array, _origin: unknown, doc: WSSharedDoc) {
   const encoder = encoding.createEncoder();
   encoding.writeVarUint(encoder, messageSync);
   syncProtocol.writeUpdate(encoder, update);
   const message = encoding.toUint8Array(encoder);
-  doc.conns.forEach((_, conn) => send(doc, conn, message));
+  doc.conns.forEach((_, conn) => {
+    send(doc, conn, message);
+  });
 }
 
 class WSSharedDoc extends YDoc {
@@ -160,7 +165,7 @@ function send(doc: WSSharedDoc, conn: Connection, m: Uint8Array) {
   }
   try {
     conn.send(m);
-  } catch (e) {
+  } catch (_e) {
     closeConn(doc, conn);
   }
 }
@@ -278,12 +283,12 @@ export class YServer<Env = unknown> extends Server<Env> {
     );
   }
 
+  // biome-ignore lint/correctness/noUnusedFunctionParameters: so autocomplete works
   isReadOnly(connection: Connection): boolean {
     // to be implemented by the user
     return false;
   }
 
-  // @ts-ignore something something typescript
   handleMessage(connection: Connection, message: WSMessage) {
     if (typeof message === "string") {
       console.warn(

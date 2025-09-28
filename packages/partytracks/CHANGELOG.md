@@ -90,7 +90,6 @@
 - [#216](https://github.com/cloudflare/partykit/pull/216) [`964a1c4`](https://github.com/cloudflare/partykit/commit/964a1c491b3206bf82dcd63f12a328477baa9896) Thanks [@third774](https://github.com/third774)! - Change useOnEmit to useObservable, and allow for error and complete callbacks
 
 - [#216](https://github.com/cloudflare/partykit/pull/216) [`fb6adc2`](https://github.com/cloudflare/partykit/commit/fb6adc2af78b3d1027e3c145f41c9ab916b92013) Thanks [@third774](https://github.com/third774)! - - Add getMic, getCamera, and createAudioSink utils.
-
   - Lock sessions to their initiator via a cookie w/ JWT.
   - Fixed a bug where toggling a device off and on rapidly could leave it in a "stuck on" state.
 
@@ -162,7 +161,6 @@
 ### Patch Changes
 
 - [#186](https://github.com/threepointone/partyserver/pull/186) [`bdfcdce`](https://github.com/threepointone/partyserver/commit/bdfcdce562f84a94ceb4bc03be133a82d8969839) Thanks [@third774](https://github.com/third774)! - - Enable sending simulcast via sendEncodings
-
   - Change encodings$ when pushing a track to not be an observable (changing requires renegotiation anyways)
 
 - [#186](https://github.com/threepointone/partyserver/pull/186) [`e5045fd`](https://github.com/threepointone/partyserver/commit/e5045fd052bdb8369b6cfaf54d4c619d3ac32a81) Thanks [@third774](https://github.com/third774)! - Enable pulling simulcast tracks with preferredRid

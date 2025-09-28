@@ -7,7 +7,7 @@ type Env = { Chat: DurableObjectNamespace<Chat> };
 export class Chat extends Server {
   static options = { hibernate: true };
 
-  onMessage(connection: Connection, message: WSMessage) {
+  onMessage(_connection: Connection, message: WSMessage) {
     console.log("Received a message:", message);
     this.broadcast(message);
   }

@@ -44,7 +44,7 @@ export class ToDos extends SyncServer<
     )`);
   }
 
-  async onAction(channel: "todos", action: TodoAction): Promise<TodoRecord[]> {
+  async onAction(_channel: "todos", action: TodoAction): Promise<TodoRecord[]> {
     // uncomment this if you want to run actions sequentially
     // return this.ctx.blockConcurrencyWhile(async () => {
     await sleep(Math.random() * 2000);
