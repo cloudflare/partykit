@@ -1,5 +1,15 @@
 # partysub
 
+## 0.0.33
+
+### Patch Changes
+
+- [#280](https://github.com/cloudflare/partykit/pull/280) [`501370d`](https://github.com/cloudflare/partykit/commit/501370d4ed5976a073aa96f9eaeea23224053093) Thanks [@threepointone](https://github.com/threepointone)! - update dependencies
+
+- Updated dependencies [[`501370d`](https://github.com/cloudflare/partykit/commit/501370d4ed5976a073aa96f9eaeea23224053093)]:
+  - partyserver@0.0.75
+  - partysocket@1.1.6
+
 ## 0.0.32
 
 ### Patch Changes

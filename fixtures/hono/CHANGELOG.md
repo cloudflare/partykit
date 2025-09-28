@@ -1,5 +1,14 @@
 # @partyserver/fixture-hono
 
+## 0.0.12
+
+### Patch Changes
+
+- Updated dependencies [[`501370d`](https://github.com/cloudflare/partykit/commit/501370d4ed5976a073aa96f9eaeea23224053093)]:
+  - partyserver@0.0.75
+  - partysocket@1.1.6
+  - hono-party@0.0.17
+
 ## 0.0.11
 
 ### Patch Changes
