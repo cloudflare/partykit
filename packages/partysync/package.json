@@ -1,6 +1,6 @@
 {
   "name": "partysync",
-  "version": "0.0.28",
+  "version": "0.0.29",
   "repository": {
     "type": "git",
     "url": "git://github.com/cloudflare/partykit.git"
@@ -60,10 +60,10 @@
   },
   "peerDependencies": {
     "@cloudflare/workers-types": "^4.20240729.0",
-    "partyserver": "^0.0.74"
+    "partyserver": "^0.0.75"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20250924.0",
-    "partyserver": "^0.0.74"
+    "partyserver": "^0.0.75"
   }
 }
