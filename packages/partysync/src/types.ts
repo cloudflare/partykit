@@ -11,7 +11,7 @@ export type BroadcastMessage<T> =
       type: "delete-all";
     };
 
-export type SyncRequest<T> = {
+export type SyncRequest<_T> = {
   channel: string;
   sync: true;
   from: number | null;

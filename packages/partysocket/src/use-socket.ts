@@ -33,7 +33,6 @@ export function useStableSocket<T extends WebSocket, TOpts extends Options>({
 }) {
   // ensure we only reconnect when necessary
   const shouldReconnect = createOptionsMemoKey(options);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
   const socketOptions = useMemo(() => {
     return options;
   }, [shouldReconnect]);

@@ -38,16 +38,12 @@ export type PartyFetchOptions = {
 
 function generateUUID(): string {
   // Public Domain/MIT
-  if (typeof crypto !== "undefined" && crypto.randomUUID) {
+  if (crypto?.randomUUID) {
     return crypto.randomUUID();
   }
-  let d = new Date().getTime(); //Timestamp
-  let d2 =
-    (typeof performance !== "undefined" &&
-      performance.now &&
-      performance.now() * 1000) ||
-    0; //Time in microseconds since page-load or 0 if unsupported
-  // biome-ignore lint/complexity/useArrowFunction: <explanation>
+  let d = Date.now(); //Timestamp
+  let d2 = (performance?.now && performance.now() * 1000) || 0; //Time in microseconds since page-load or 0 if unsupported
+  // biome-ignore lint/complexity/useArrowFunction: it's fine
   return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (c) {
     let r = Math.random() * 16; //random number between 0 and 16
     if (d > 0) {

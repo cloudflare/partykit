@@ -43,7 +43,7 @@ export class Globe extends Server {
             } satisfies OutgoingMessage)
           );
         }
-      } catch (err) {
+      } catch (_err) {
         this.onCloseOrError(conn);
       }
     }

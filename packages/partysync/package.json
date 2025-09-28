@@ -55,15 +55,15 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "idb": "^8.0.2",
-    "nanoid": "^5.1.5"
+    "idb": "^8.0.3",
+    "nanoid": "^5.1.6"
   },
   "peerDependencies": {
     "@cloudflare/workers-types": "^4.20240729.0",
     "partyserver": "^0.0.74"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20250327.0",
+    "@cloudflare/workers-types": "^4.20250924.0",
     "partyserver": "^0.0.74"
   }
 }

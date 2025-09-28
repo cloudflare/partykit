@@ -12,14 +12,11 @@ import {
   test,
   vitest
 } from "vitest";
-import NodeWebSocket from "ws";
+import { type WebSocket as NodeWebSocket, WebSocketServer } from "ws";
 
 import ReconnectingWebSocket from "../ws";
 
 import type { ErrorEvent } from "../ws";
-
-// @ts-expect-error ws types are weird
-const WebSocketServer = NodeWebSocket.Server;
 
 const PORT = 50123;
 const URL = `ws://localhost:${PORT}/`;
@@ -80,7 +77,7 @@ afterAll(() => {
 
 test("throws if not created with `new`", () => {
   expect(() => {
-    // @ts-ignore
+    // @ts-expect-error
     ReconnectingWebSocket(URL, undefined);
   }).toThrow(TypeError);
 });
@@ -102,10 +99,9 @@ function testDone(
 }
 
 testDone("global WebSocket is used if available", (done) => {
-  // @ts-ignore
   const ws = new ReconnectingWebSocket(ERROR_URL, undefined, { maxRetries: 0 });
   ws.onerror = () => {
-    // @ts-ignore
+    // @ts-expect-error
     expect(ws._ws instanceof WebSocket).toBeTruthy();
     done();
   };
@@ -158,7 +154,7 @@ testDone("debug off", (done) => {
 //     maxRetries: 0,
 //   });
 //   ws.onerror = () => {
-//     // @ts-ignore - accessing private property
+//     // @ts-expect-error - accessing private property
 //     expect(ws._ws instanceof WebSocket).toBe(true);
 //     done();
 //   };
@@ -168,19 +164,19 @@ test("URL provider", async () => {
   const url = "example.com";
   const ws = new ReconnectingWebSocket(URL, undefined, { maxRetries: 0 });
 
-  // @ts-ignore - accessing private property
+  // @ts-expect-error - accessing private property
   expect(await ws._getNextUrl(url)).toBe(url);
 
-  // @ts-ignore - accessing private property
+  // @ts-expect-error - accessing private property
   expect(await ws._getNextUrl(() => url)).toBe(url);
 
-  // @ts-ignore - accessing private property
+  // @ts-expect-error - accessing private property
   expect(await ws._getNextUrl(() => Promise.resolve(url))).toBe(url);
 
-  // @ts-ignore - accessing private property
+  // @ts-expect-error - accessing private property
   expect(() => ws._getNextUrl(123)).toThrow();
 
-  // @ts-ignore - accessing private property
+  // @ts-expect-error - accessing private property
   expect(() => ws._getNextUrl(() => 123)).toThrow();
 });
 
@@ -214,7 +210,6 @@ testDone("undefined websocket protocol", (done) => {
 });
 
 testDone("null websocket protocol", (done) => {
-  // @ts-ignore - null is not allowed but could be passed in vanilla js
   const ws = new ReconnectingWebSocket(URL, null, {});
   ws.addEventListener("open", () => {
     expect(ws.url).toBe(URL);
@@ -230,7 +225,7 @@ testDone("null websocket protocol", (done) => {
 test("websocket invalid protocolsProvider", () => {
   const ws = new ReconnectingWebSocket("ws://example.com", "foo", {});
 
-  // @ts-ignore - accessing private property
+  // @ts-expect-error - accessing private property
   expect(() => ws._getNextProtocols(() => /Hahaha/)).toThrow();
 });
 
@@ -342,12 +337,12 @@ testDone("level2 event listeners", (done) => {
   const fail = () => {
     throw Error("fail");
   };
-  // @ts-ignore
+
   ws.addEventListener("unknown1", fail);
   ws.addEventListener("open", fail);
   ws.addEventListener("open", fail);
   ws.removeEventListener("open", fail);
-  // @ts-ignore
+
   ws.removeEventListener("unknown2", fail);
 });
 
@@ -357,7 +352,6 @@ testDone("level2 event listeners using object with handleEvent", (done) => {
   const ws = new ReconnectingWebSocket(URL, anyProtocol, {});
 
   ws.addEventListener("open", {
-    // @ts-ignore
     handleEvent: () => {
       expect(ws.protocol).toBe(anyProtocol);
       expect(ws.extensions).toBe("");
@@ -372,15 +366,11 @@ testDone("level2 event listeners using object with handleEvent", (done) => {
       throw Error("fail");
     }
   };
-  // @ts-ignore
+
   ws.addEventListener("unknown1", fail);
-  // @ts-ignore
   ws.addEventListener("open", fail);
-  // @ts-ignore
   ws.addEventListener("open", fail);
-  // @ts-ignore
   ws.removeEventListener("open", fail);
-  // @ts-ignore
   ws.removeEventListener("unknown2", fail);
 });
 
@@ -440,7 +430,6 @@ testDone("binaryType", (done) => {
   ws.binaryType = "arraybuffer";
   ws.addEventListener("open", () => {
     expect(ws.binaryType).toBe("arraybuffer");
-    // @ts-ignore
     ws.binaryType = "blob";
     expect(ws.binaryType).toBe("blob");
     ws.close();
@@ -741,8 +730,10 @@ testDone(
 
     const messages = ["message1", "message2", "message3"];
 
-    messages.forEach((m) => ws.send(m));
-    // @ts-ignore - accessing private field
+    messages.forEach((m) => {
+      ws.send(m);
+    });
+    // @ts-expect-error - accessing private field
     expect(ws._messageQueue.length).toBe(messages.length);
 
     expect(ws.bufferedAmount).toBe(messages.reduce((a, m) => a + m.length, 0));
@@ -854,12 +845,12 @@ testDone("reconnection delay grow factor", (done) => {
     maxReconnectionDelay: 500,
     reconnectionDelayGrowFactor: 2
   });
-  // @ts-ignore - accessing private field
+  // @ts-expect-error - accessing private field
   expect(ws._getNextDelay()).toBe(0);
   const expected = [50, 100, 200, 400, 500, 500];
   let retry = 0;
   ws.addEventListener("error", () => {
-    // @ts-ignore - accessing private field
+    // @ts-expect-error - accessing private field
     expect(ws._getNextDelay()).toBe(expected[retry]);
     retry++;
     if (retry >= expected.length) {
@@ -904,9 +895,9 @@ testDone("minUptime", (done) => {
   let closeCount = 0;
   ws.addEventListener("close", () => {
     if (closeCount < expectedDelays.length) {
-      // @ts-ignore - accessing private field
+      // @ts-expect-error - accessing private field
       expect(ws._getNextDelay()).toBe(expectedDelays[closeCount]);
-      // @ts-ignore - accessing private field
+      // @ts-expect-error - accessing private field
       expect(ws._retryCount).toBe(expectedRetryCount[closeCount]);
       closeCount++;
     }

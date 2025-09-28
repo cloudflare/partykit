@@ -528,7 +528,6 @@ export class WebsocketProvider extends Observable<string> {
 }
 
 function assertType(value: unknown, label: string, type: string) {
-  // biome-ignore lint/suspicious/useValidTypeof: <explanation>
   if (typeof value !== type) {
     throw new Error(
       `Invalid "${label}" parameter provided to YProvider. Expected: ${type}, received: ${value as string}`

@@ -177,14 +177,12 @@
 ### Patch Changes
 
 - [`528adea`](https://github.com/threepointone/partyserver/commit/528adeaced6dce6e888d2f54cc75c3569bf2c277) Thanks [@threepointone](https://github.com/threepointone)! - some fixes and tweaks
-
   - getServerByName was throwing on all requests
   - `Env` is now an optional arg when defining `Server`
   - `y-partyserver/provider` can now take an optional `prefix` arg to use a custom url to connect
   - `routePartyKitRequest`/`getServerByName` now accepts `jurisdiction`
 
   bonus:
-
   - added a bunch of fixtures
   - added stubs for docs
 
@@ -320,7 +318,6 @@
 ### Patch Changes
 
 - [`4010235`](https://github.com/threepointone/partyflare/commit/4010235412711aa08511f7115611544a62a737c0) Thanks [@threepointone](https://github.com/threepointone)! - rename a bunch of things
-
   - Party -> Server
   - .room -> .name
   - withRoom -> withName

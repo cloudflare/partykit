@@ -383,7 +383,6 @@ export class PartyTracks {
         const cleanedTrackData = { ...trackData };
         // explicitly remove mid since it
         // cannot be used by anyone else
-        // biome-ignore lint/performance/noDelete: <explanation>
         delete cleanedTrackData.mid;
         return cleanedTrackData;
       }),
@@ -668,6 +667,7 @@ function waitForTransceiverToSendData(
   onDataSent: () => void
 ): () => void {
   let delay = 1; // Start at 5ms
+  // biome-ignore lint/correctness/noUnusedVariables: why is this unused?
   let checks = 0;
   const maxDelay = 100; // Max delay of 100ms
   let timeoutId: number | undefined;
@@ -692,7 +692,7 @@ function waitForTransceiverToSendData(
       } else if (dataFound) {
         return;
       }
-    } catch (error) {
+    } catch (_error) {
       // Stats might not be available yet, continue checking
     }
 

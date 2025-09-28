@@ -4,7 +4,7 @@ import { getServerByName } from "partyserver";
 import { SyncServer } from "../server/index.ts";
 
 import type { BroadcastMessage, SyncRequest, SyncResponse } from "../types";
-import type { RpcAction, RpcException, RpcResponse } from "partyfn";
+import type { RpcException, RpcResponse } from "partyfn";
 import type { WebSocket as PSWebSocket } from "partysocket";
 
 export class Agent<
@@ -43,7 +43,7 @@ export class Agent<
   }
 
   onAction(
-    channel: keyof Channels,
+    _channel: keyof Channels,
     action: Channels[keyof Channels]["action"]
   ):
     | Channels[keyof Channels]["record"][]

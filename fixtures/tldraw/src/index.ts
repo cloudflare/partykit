@@ -74,7 +74,7 @@ export class Tldraw extends Server {
           this.broadcast(message, [sender.id]);
           // and update the storage layer
           await this.persist();
-        } catch (err) {
+        } catch (_err) {
           // If we have a problem merging the update, we need to send a snapshot
           // of the current state to the client so they can get back in sync.
           sender.send(

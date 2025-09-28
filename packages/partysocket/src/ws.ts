@@ -36,7 +36,6 @@ export class CloseEvent extends Event {
   public code: number;
   public reason: string;
   public wasClean = true;
-  // biome-ignore lint/style/useDefaultParameterLast: legacy
   // biome-ignore lint/suspicious/noExplicitAny: legacy
   constructor(code = 1000, reason = "", target: any) {
     super("close", target);
@@ -426,7 +425,7 @@ export default class ReconnectingWebSocket extends (EventTarget as TypedEventTar
         return Promise.resolve(url);
       }
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore
+      // @ts-expect-error
       if (url.then) {
         return url;
       }
@@ -530,7 +529,7 @@ const partysocket = new PartySocket({
         this._ws.close(code, reason);
       }
       this._handleClose(new Events.CloseEvent(code, reason, this));
-    } catch (error) {
+    } catch (_error) {
       // ignore
     }
   }
@@ -552,7 +551,9 @@ const partysocket = new PartySocket({
     this._ws.binaryType = this._binaryType;
 
     // send enqueued messages (messages sent before websocket open event)
-    this._messageQueue.forEach((message) => this._ws?.send(message));
+    this._messageQueue.forEach((message) => {
+      this._ws?.send(message);
+    });
     this._messageQueue = [];
 
     if (this.onopen) {

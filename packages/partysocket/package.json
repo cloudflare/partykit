@@ -66,6 +66,6 @@
     "event-target-polyfill": "^0.0.4"
   },
   "devDependencies": {
-    "@types/ws": "^8.18.0"
+    "@types/ws": "^8.18.1"
   }
 }

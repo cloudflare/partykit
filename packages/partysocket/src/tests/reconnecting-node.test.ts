@@ -91,7 +91,6 @@ afterAll(() => {
 // });
 
 testDone("pass WebSocket via options", (done) => {
-  // biome-ignore lint/performance/noDelete: legacy
   // biome-ignore lint/suspicious/noExplicitAny: legacy
   delete (global as any).WebSocket;
   const ws = new ReconnectingWebSocket(URL, undefined, {
@@ -100,7 +99,7 @@ testDone("pass WebSocket via options", (done) => {
   });
   ws.reconnect();
   ws.addEventListener("open", () => {
-    // @ts-ignore - accessing private property
+    // @ts-expect-error - accessing private property
     expect(ws._ws instanceof NodeWebSocket).toBe(true);
     ws.close();
     done();
