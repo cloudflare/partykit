@@ -49,13 +49,13 @@ export class MyServer extends Server {
 
 export default {
   // Set up your fetch handler to use configured Servers
-  fetch(request, env) {
+  async fetch(request: Request, env: Env): Promise<Response> {
     return (
-      routePartykitRequest(request, env) ||
+      (await routePartykitRequest(request, env)) ||
       new Response("Not Found", { status: 404 })
     );
   }
-};
+} satisfies ExportedHandler<Env>;
 ```
 
 And configure your `wrangler.toml`:
