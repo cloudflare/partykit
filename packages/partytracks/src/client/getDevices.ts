@@ -81,6 +81,9 @@ const getDevice = ({
         deprioritizeDevice(device);
         if (onDeviceFailure) onDeviceFailure(device);
       },
+      onUnconstrainedDeviceSelection: (device) => {
+        deviceManagerPublicApi.setPreferredDevice(device);
+      },
       ...resilientTrackOptions
     }).pipe(
       tap((track) =>

@@ -83,13 +83,20 @@ export interface ResilientTrackOptions {
   for optionally deprioritizing the device in the future.
   */
   onDeviceFailure?: (device: MediaDeviceInfo) => void;
+  /**
+  A callback to be notified when a device was selected that was unconstrained.
+  This should really only happen when the user is granting permission for the
+  first time and the browser showed them a device selector.
+  */
+  onUnconstrainedDeviceSelection?: (device: MediaDeviceInfo) => void;
 }
 
 export const resilientTrack$ = ({
   kind,
   constraints = {},
   devicePriority$ = devices$,
-  onDeviceFailure = () => {}
+  onDeviceFailure = () => {},
+  onUnconstrainedDeviceSelection = () => {}
 }: ResilientTrackOptions): Observable<MediaStreamTrack> =>
   devicePriority$
     .pipe(
@@ -105,7 +112,13 @@ export const resilientTrack$ = ({
           ...deviceList.map(
             (device) =>
               new Observable<MediaStreamTrack>((subscriber) => {
-                acquireTrack(subscriber, device, constraints, onDeviceFailure);
+                acquireTrack(
+                  subscriber,
+                  device,
+                  constraints,
+                  onDeviceFailure,
+                  onUnconstrainedDeviceSelection
+                );
               })
           ),
           throwError(() => new DevicesExhaustedError())
@@ -123,17 +136,30 @@ export const resilientTrack$ = ({
 
 function acquireTrack(
   subscriber: Subscriber<MediaStreamTrack>,
-  device: MediaDeviceInfo,
+  device: Partial<MediaDeviceInfo>,
   constraints: MediaTrackConstraints,
-  onDeviceFailure: (device: MediaDeviceInfo) => void
+  onDeviceFailure: (device: MediaDeviceInfo) => void,
+  onUnconstrainedDeviceSelection: (device: MediaDeviceInfo) => void = () => {}
 ) {
   const { deviceId, groupId, label } = device;
   logger.log(`🙏🏻 Requesting ${label}`);
   navigator.mediaDevices
     .getUserMedia(
       device.kind === "videoinput"
-        ? { video: { ...constraints, deviceId, groupId } }
-        : { audio: { ...constraints, deviceId, groupId } }
+        ? {
+            video: {
+              ...constraints,
+              deviceId: deviceId ? { exact: deviceId } : undefined,
+              groupId: groupId ? { exact: groupId } : undefined
+            }
+          }
+        : {
+            audio: {
+              ...constraints,
+              deviceId: deviceId ? { exact: deviceId } : undefined,
+              groupId: groupId ? { exact: groupId } : undefined
+            }
+          }
     )
     .then(async (mediaStream) => {
       const track =
@@ -152,14 +178,39 @@ function acquireTrack(
           if (await trackIsHealthy(track)) return;
           logger.log("Reacquiring track");
           cleanup();
-          acquireTrack(subscriber, device, constraints, onDeviceFailure);
+          acquireTrack(
+            subscriber,
+            device,
+            constraints,
+            onDeviceFailure,
+            onUnconstrainedDeviceSelection
+          );
         };
         document.addEventListener("visibilitychange", onVisibleHandler);
         subscriber.add(cleanup);
         subscriber.next(track);
+        // request was unconstrained
+        if (!deviceId && !groupId) {
+          const trackSettings = track.getSettings();
+          const foundDevice = await navigator.mediaDevices
+            .enumerateDevices()
+            .then((devices) =>
+              devices.find(
+                (d) =>
+                  d.deviceId === trackSettings.deviceId &&
+                  d.groupId === trackSettings.groupId
+              )
+            )
+            .catch(() => undefined);
+          if (foundDevice) {
+            onUnconstrainedDeviceSelection(foundDevice);
+          }
+        }
       } else {
         logger.log("☠️ track is not healthy, stopping");
-        onDeviceFailure(device);
+        if (device instanceof MediaDeviceInfo) {
+          onDeviceFailure(device);
+        }
         track.stop();
         subscriber.complete();
       }
