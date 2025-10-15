@@ -1,5 +1,20 @@
 # partytracks
 
+## 0.0.53
+
+### Patch Changes
+
+- [#285](https://github.com/cloudflare/partykit/pull/285) [`9a62501`](https://github.com/cloudflare/partykit/commit/9a625016f51ba3f016e002f546a2a31e139a20db) Thanks [@third774](https://github.com/third774)! - Fix Safari compatibility by adding setSinkId feature detection to createAudioSink
+
+  The createAudioSink utility now gracefully handles browsers that don't support the setSinkId API (primarily Safari on mobile and desktop).
+  - Added checkSinkIdSupport helper to detect setSinkId availability
+  - Added isSinkIdSupported property to SinkApi interface
+  - Wrapped setSinkId calls with feature detection to prevent crashes
+  - Audio now plays through default output on unsupported browsers with a helpful console warning
+  - Applications can check audioSink.isSinkIdSupported to conditionally render device selection UI
+
+  This is a backward-compatible change that fixes crashes reported in #276.
+
 ## 0.0.52
 
 ### Patch Changes
