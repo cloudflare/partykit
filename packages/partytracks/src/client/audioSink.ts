@@ -7,18 +7,28 @@ export interface CreateSinkOptions {
   sinkId?: string;
 }
 
+const checkSinkIdSupport = (element: HTMLAudioElement): boolean => {
+  return "setSinkId" in element && typeof element.setSinkId === "function";
+};
+
 export interface SinkApi {
   attach: (pulledAudioTrack$: Observable<MediaStreamTrack>) => Subscription;
   setSinkId: (sinkId: string) => void;
   devices$: Observable<MediaDeviceInfo[]>;
   cleanup: () => void;
+  isSinkIdSupported: boolean;
 }
 
 export const createAudioSink = ({
   audioElement,
   sinkId = "default"
 }: CreateSinkOptions): SinkApi => {
-  audioElement.setSinkId(sinkId);
+  const isSinkIdSupported = checkSinkIdSupport(audioElement);
+
+  if (isSinkIdSupported) {
+    audioElement.setSinkId(sinkId);
+  }
+
   const sinkId$ = new BehaviorSubject(sinkId);
   const mediaStream = new MediaStream();
   audioElement.srcObject = mediaStream;
@@ -44,8 +54,14 @@ export const createAudioSink = ({
   };
 
   const setSinkId = (sinkId: string) => {
-    audioElement.setSinkId(sinkId);
-    sinkId$.next(sinkId);
+    if (isSinkIdSupported) {
+      audioElement.setSinkId(sinkId);
+      sinkId$.next(sinkId);
+    } else {
+      console.warn(
+        "setSinkId is not supported on this browser. Audio will play through the default output device."
+      );
+    }
   };
 
   const cleanup = () => {
@@ -59,6 +75,7 @@ export const createAudioSink = ({
     devices$: devices$.pipe(
       map((devices) => devices.filter((d) => d.kind === "audiooutput"))
     ),
-    cleanup
+    cleanup,
+    isSinkIdSupported
   };
 };
