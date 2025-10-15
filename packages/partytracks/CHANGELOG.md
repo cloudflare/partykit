@@ -1,5 +1,12 @@
 # partytracks
 
+## 0.0.54
+
+### Patch Changes
+
+- [#287](https://github.com/cloudflare/partykit/pull/287) [`692da7f`](https://github.com/cloudflare/partykit/commit/692da7f855757501efec5e4a97ae812272dcce5f) Thanks [@third774](https://github.com/third774)! - - Specify exact deviceId when requesting media
+  - Handle when permission has not been granted yet so that the user's selection is persisted
+
 ## 0.0.53
 
 ### Patch Changes
