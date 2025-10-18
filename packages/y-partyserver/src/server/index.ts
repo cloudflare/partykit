@@ -335,9 +335,13 @@ export class YServer<Env = unknown> extends Server<Env> {
     }
   }
 
-  onMessage = handleChunked((conn, message) =>
+  private handleChunkedMessage = handleChunked((conn, message) =>
     this.handleMessage(conn, message)
   );
+
+  onMessage(conn: Connection, message: WSMessage): void {
+    this.handleChunkedMessage(conn, message);
+  }
 
   onClose(
     connection: Connection<unknown>,
