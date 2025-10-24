@@ -143,7 +143,11 @@ function setupWS(provider: WebsocketProvider) {
 
     websocket.addEventListener("message", (event) => {
       if (typeof event.data === "string") {
-        // ignore text messages
+        // Handle custom messages with __YPS: prefix
+        if (event.data.startsWith("__YPS:")) {
+          const customMessage = event.data.slice(6); // Remove __YPS: prefix
+          provider.emit("custom-message", [customMessage]);
+        }
         return;
       }
       provider.wsLastMessageReceived = time.getUnixTime();
@@ -632,5 +636,9 @@ export default class YProvider extends WebsocketProvider {
       console.error("Failed to open connecton to PartyServer", err);
       throw err;
     }
+  }
+
+  sendMessage(message: string) {
+    this.ws?.send(`__YPS:${message}`);
   }
 }
