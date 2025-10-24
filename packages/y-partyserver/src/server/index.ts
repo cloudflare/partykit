@@ -289,10 +289,80 @@ export class YServer<Env = unknown> extends Server<Env> {
     return false;
   }
 
+  /**
+   * Handle custom string messages from the client.
+   * Override this method to implement custom message handling.
+   * @param connection - The connection that sent the message
+   * @param message - The custom message string (without the __YPS: prefix)
+   */
+  // biome-ignore lint/correctness/noUnusedFunctionParameters: so autocomplete works
+  onCustomMessage(connection: Connection, message: string): void {
+    // to be implemented by the user
+    console.warn(
+      `Received custom message but onCustomMessage is not implemented in ${this.#ParentClass.name}:`,
+      message
+    );
+  }
+
+  /**
+   * Send a custom string message to a specific connection.
+   * @param connection - The connection to send the message to
+   * @param message - The custom message string to send
+   */
+  sendCustomMessage(connection: Connection, message: string): void {
+    if (
+      connection.readyState !== undefined &&
+      connection.readyState !== wsReadyStateConnecting &&
+      connection.readyState !== wsReadyStateOpen
+    ) {
+      return;
+    }
+    try {
+      connection.send(`__YPS:${message}`);
+    } catch (e) {
+      console.warn("Failed to send custom message", e);
+    }
+  }
+
+  /**
+   * Broadcast a custom string message to all connected clients.
+   * @param message - The custom message string to broadcast
+   * @param excludeConnection - Optional connection to exclude from the broadcast
+   */
+  broadcastCustomMessage(
+    message: string,
+    excludeConnection?: Connection
+  ): void {
+    const formattedMessage = `__YPS:${message}`;
+    this.document.conns.forEach((_, conn) => {
+      if (excludeConnection && conn === excludeConnection) {
+        return;
+      }
+      if (
+        conn.readyState !== undefined &&
+        conn.readyState !== wsReadyStateConnecting &&
+        conn.readyState !== wsReadyStateOpen
+      ) {
+        return;
+      }
+      try {
+        conn.send(formattedMessage);
+      } catch (e) {
+        console.warn("Failed to broadcast custom message", e);
+      }
+    });
+  }
+
   handleMessage(connection: Connection, message: WSMessage) {
     if (typeof message === "string") {
+      // Handle custom messages with __YPS: prefix
+      if (message.startsWith("__YPS:")) {
+        const customMessage = message.slice(6); // Remove __YPS: prefix
+        this.onCustomMessage(connection, customMessage);
+        return;
+      }
       console.warn(
-        `Received non-binary message. Override onMessage on ${this.#ParentClass.name} to handle string messages if required`
+        `Received non-prefixed string message. Custom messages should be sent using sendMessage() on the provider.`
       );
       return;
     }

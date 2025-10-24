@@ -1,4 +1,5 @@
 import { routePartykitRequest } from "partyserver";
+import type { Connection } from "partyserver";
 import { YServer } from "y-partyserver";
 import * as Y from "yjs";
 
@@ -50,6 +51,29 @@ export class Document extends YServer<Env> {
       this.name,
       update
     );
+  }
+
+  // Handle custom messages - example ping/pong
+  onCustomMessage(connection: Connection, message: string): void {
+    try {
+      const data = JSON.parse(message);
+
+      if (data.action === "ping") {
+        // Reply to the sender
+        this.sendCustomMessage(
+          connection,
+          JSON.stringify({ action: "pong", timestamp: Date.now() })
+        );
+
+        // Broadcast to everyone else
+        this.broadcastCustomMessage(
+          JSON.stringify({ action: "notification", text: "Someone pinged!" }),
+          connection
+        );
+      }
+    } catch (error) {
+      console.error("Failed to handle custom message:", error);
+    }
   }
 }
 

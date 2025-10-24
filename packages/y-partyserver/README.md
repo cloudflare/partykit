@@ -145,6 +145,79 @@ export class MyDocument extends YServer {
 
 `onSave` is called periodically after the document has been edited, and when the room is emptied. It should be used to save the document state to a database or some other external storage.
 
+## Custom Messages
+
+In addition to Yjs synchronization, you can send custom string messages over the same WebSocket connection. This is useful for implementing custom function calling, chat features, or other real-time communication patterns.
+
+### Sending custom messages from the client
+
+```ts
+// client.ts
+import YProvider from "y-partyserver/provider";
+import * as Y from "yjs";
+
+const yDoc = new Y.Doc();
+const provider = new YProvider("localhost:8787", "my-document-name", yDoc);
+
+// Send a custom message to the server
+provider.sendMessage(JSON.stringify({ action: "ping", data: "hello" }));
+
+// Listen for custom messages from the server
+provider.on("custom-message", (message: string) => {
+  const data = JSON.parse(message);
+  console.log("Received custom message:", data);
+});
+```
+
+### Handling custom messages on the server
+
+```ts
+// server.ts
+import { YServer } from "y-partyserver";
+import type { Connection } from "partyserver";
+
+export class MyDocument extends YServer {
+  // Override onCustomMessage to handle incoming custom messages
+  onCustomMessage(connection: Connection, message: string): void {
+    const data = JSON.parse(message);
+
+    if (data.action === "ping") {
+      // Send a response back to the specific connection
+      this.sendCustomMessage(
+        connection,
+        JSON.stringify({
+          action: "pong",
+          data: "world"
+        })
+      );
+
+      // Or broadcast to all connections
+      this.broadcastCustomMessage(
+        JSON.stringify({
+          action: "notification",
+          data: "Someone pinged!"
+        })
+      );
+    }
+  }
+}
+```
+
+### Custom message API
+
+**Client (YProvider):**
+
+- `provider.sendMessage(message: string)` - Send a custom message to the server
+- `provider.on("custom-message", (message: string) => {})` - Listen for custom messages from the server
+
+**Server (YServer):**
+
+- `onCustomMessage(connection: Connection, message: string)` - Override to handle incoming custom messages
+- `sendCustomMessage(connection: Connection, message: string)` - Send a custom message to a specific connection
+- `broadcastCustomMessage(message: string, excludeConnection?: Connection)` - Broadcast a custom message to all connections
+
+Custom messages are sent as strings. We recommend using JSON for structured data.
+
 ## Learn more
 
 For more information, refer to the [official Yjs documentation](https://docs.yjs.dev/ecosystem/editor-bindings). Examples provided in the Yjs documentation should work seamlessly with `y-partyserver` (ensure to replace `y-websocket` with `y-partyserver/provider`).
