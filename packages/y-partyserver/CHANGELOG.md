@@ -1,5 +1,11 @@
 # y-partyserver
 
+## 0.0.51
+
+### Patch Changes
+
+- [#290](https://github.com/cloudflare/partykit/pull/290) [`10e36c2`](https://github.com/cloudflare/partykit/commit/10e36c21d9bd691891468f25500785bee444f18c) Thanks [@threepointone](https://github.com/threepointone)! - y-partyserver: ability to send/recieve custom messages on the same websocket
+
 ## 0.0.50
 
 ### Patch Changes
