@@ -98,7 +98,14 @@ const isNode =
   typeof process.versions?.node !== "undefined" &&
   typeof document === "undefined";
 
-const cloneEvent = isNode ? cloneEventNode : cloneEventBrowser;
+// React Native has process and document polyfilled but not process.versions.node
+// It needs Node-style event cloning because browser-style cloning produces
+// events that fail instanceof Event checks in event-target-polyfill
+// See: https://github.com/cloudflare/partykit/issues/257
+const isReactNative =
+  typeof navigator !== "undefined" && navigator.product === "ReactNative";
+
+const cloneEvent = isNode || isReactNative ? cloneEventNode : cloneEventBrowser;
 
 export type Options = {
   // biome-ignore lint/suspicious/noExplicitAny: legacy
