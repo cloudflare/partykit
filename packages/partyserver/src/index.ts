@@ -694,7 +694,9 @@ Did you try connecting directly to this Durable Object? Try using getServerByNam
     let timeoutId: ReturnType<typeof setTimeout>;
     const timeoutPromise = new Promise<never>((_, reject) => {
       timeoutId = setTimeout(() => {
-        reject(new Error(`experimental_waitUntil timed out after ${timeoutMs}ms`));
+        reject(
+          new Error(`experimental_waitUntil timed out after ${timeoutMs}ms`)
+        );
       }, timeoutMs);
     });
 
