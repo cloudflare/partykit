@@ -330,6 +330,17 @@ Did you try connecting directly to this Durable Object? Try using getServerByNam
         return Response.json({ ok: true });
       }
 
+      // Handle keep-alive WebSocket endpoint (internal use for waitUntil)
+      if (url.pathname === "/cdn-cgi/partyserver/keep-alive/") {
+        if (request.headers.get("Upgrade")?.toLowerCase() === "websocket") {
+          const { 0: client, 1: server } = new WebSocketPair();
+          // Always use hibernation API for keep-alive (efficient, internal-only)
+          this.ctx.acceptWebSocket(server, ["partyserver-keepalive"]);
+          return new Response(null, { status: 101, webSocket: client });
+        }
+        return new Response("WebSocket required", { status: 426 });
+      }
+
       if (request.headers.get("Upgrade")?.toLowerCase() !== "websocket") {
         return await this.onRequest(request);
       } else {
@@ -397,6 +408,15 @@ Did you try connecting directly to this Durable Object? Try using getServerByNam
   }
 
   async webSocketMessage(ws: WebSocket, message: WSMessage): Promise<void> {
+    // Handle keep-alive pings first (internal waitUntil mechanism)
+    const tags = this.ctx.getTags(ws);
+    if (tags.includes("partyserver-keepalive")) {
+      if (message === "ping") {
+        ws.send("pong");
+      }
+      return;
+    }
+
     const connection = createLazyConnection(ws);
 
     // rehydrate the server name if it's woken up
@@ -418,6 +438,12 @@ Did you try connecting directly to this Durable Object? Try using getServerByNam
     reason: string,
     wasClean: boolean
   ): Promise<void> {
+    // Ignore keep-alive socket closes (internal waitUntil mechanism)
+    const tags = this.ctx.getTags(ws);
+    if (tags.includes("partyserver-keepalive")) {
+      return;
+    }
+
     const connection = createLazyConnection(ws);
 
     // rehydrate the server name if it's woken up
@@ -433,6 +459,12 @@ Did you try connecting directly to this Durable Object? Try using getServerByNam
   }
 
   async webSocketError(ws: WebSocket, error: unknown): Promise<void> {
+    // Ignore keep-alive socket errors (internal waitUntil mechanism)
+    const tags = this.ctx.getTags(ws);
+    if (tags.includes("partyserver-keepalive")) {
+      return;
+    }
+
     const connection = createLazyConnection(ws);
 
     // rehydrate the server name if it's woken up
@@ -573,6 +605,118 @@ Did you try connecting directly to this Durable Object? Try using getServerByNam
     context: ConnectionContext
   ): string[] | Promise<string[]> {
     return [];
+  }
+
+  /**
+   * Execute a long-running async function while keeping the Durable Object alive.
+   *
+   * Durable Objects normally terminate 70-140s after the last network request.
+   * This method keeps the DO alive by establishing a WebSocket connection to itself
+   * and sending periodic ping messages.
+   *
+   * @experimental This API is experimental and may change in future versions.
+   *
+   * @param fn - The async function to execute
+   * @param timeoutMs - Maximum time to keep the DO alive (default: 30 minutes)
+   * @returns The result of the async function
+   *
+   * @remarks
+   * Requires the `enable_ctx_exports` compatibility flag in wrangler.jsonc:
+   * ```json
+   * {
+   *   "compatibility_flags": ["enable_ctx_exports"]
+   * }
+   * ```
+   *
+   * @example
+   * ```typescript
+   * const result = await this.experimental_waitUntil(async () => {
+   *   // Long-running operation
+   *   await processLargeDataset();
+   *   return { success: true };
+   * }, 60 * 60 * 1000); // 1 hour timeout
+   * ```
+   */
+  async experimental_waitUntil<T>(
+    fn: () => Promise<T>,
+    timeoutMs: number = 30 * 60 * 1000 // 30 minutes default
+  ): Promise<T> {
+    // Get namespace from ctx.exports (requires enable_ctx_exports compatibility flag)
+    const exports = (
+      this.ctx as DurableObjectState & { exports?: Record<string, unknown> }
+    ).exports;
+    if (!exports) {
+      throw new Error(
+        "waitUntil requires the 'enable_ctx_exports' compatibility flag. " +
+          'Add it to your wrangler.jsonc: { "compatibility_flags": ["enable_ctx_exports"] }'
+      );
+    }
+
+    const namespace = exports[this.#ParentClass.name] as
+      | DurableObjectNamespace
+      | undefined;
+    if (!namespace) {
+      throw new Error(
+        `Could not find namespace for ${this.#ParentClass.name} in ctx.exports. ` +
+          "Make sure the class name matches your Durable Object binding."
+      );
+    }
+
+    const stub = namespace.get(this.ctx.id);
+
+    // Connect to self via WebSocket for keep-alive
+    const response = await stub.fetch(
+      "http://dummy-example.cloudflare.com/cdn-cgi/partyserver/keep-alive/",
+      {
+        headers: {
+          Upgrade: "websocket",
+          "x-partykit-room": this.name
+        }
+      }
+    );
+
+    const ws = response.webSocket;
+    if (!ws) {
+      throw new Error("Failed to establish keep-alive WebSocket connection");
+    }
+    ws.accept();
+
+    // Set up ping interval (every 10 seconds)
+    const pingInterval = setInterval(() => {
+      try {
+        ws.send("ping");
+      } catch {
+        // WebSocket may have closed, ignore
+      }
+    }, 10_000);
+
+    // Track if we've timed out
+    let timedOut = false;
+    const timeoutId = setTimeout(() => {
+      timedOut = true;
+      clearInterval(pingInterval);
+      try {
+        ws.close(1000, "Timeout");
+      } catch {
+        // Ignore close errors
+      }
+    }, timeoutMs);
+
+    try {
+      const result = await fn();
+      if (timedOut) {
+        throw new Error(`waitUntil timed out after ${timeoutMs}ms`);
+      }
+      return result;
+    } finally {
+      clearTimeout(timeoutId);
+      clearInterval(pingInterval);
+      try {
+        ws.close(1000, "Complete");
+      } catch {
+        // Ignore close errors
+      }
+    }
   }
 
   #_props?: Props;
