@@ -690,26 +690,20 @@ Did you try connecting directly to this Durable Object? Try using getServerByNam
       }
     }, 10_000);
 
-    // Track if we've timed out
-    let timedOut = false;
-    const timeoutId = setTimeout(() => {
-      timedOut = true;
-      clearInterval(pingInterval);
-      try {
-        ws.close(1000, "Timeout");
-      } catch {
-        // Ignore close errors
-      }
-    }, timeoutMs);
+    // Create a timeout promise that rejects after timeoutMs
+    let timeoutId: ReturnType<typeof setTimeout>;
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      timeoutId = setTimeout(() => {
+        reject(new Error(`experimental_waitUntil timed out after ${timeoutMs}ms`));
+      }, timeoutMs);
+    });
 
     try {
-      const result = await fn();
-      if (timedOut) {
-        throw new Error(`waitUntil timed out after ${timeoutMs}ms`);
-      }
+      // Race the function against the timeout
+      const result = await Promise.race([fn(), timeoutPromise]);
       return result;
     } finally {
-      clearTimeout(timeoutId);
+      clearTimeout(timeoutId!);
       clearInterval(pingInterval);
       try {
         ws.close(1000, "Complete");
