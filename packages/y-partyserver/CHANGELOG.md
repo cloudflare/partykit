@@ -1,5 +1,12 @@
 # y-partyserver
 
+## 0.0.52
+
+### Patch Changes
+
+- Updated dependencies [[`3a48ec9`](https://github.com/cloudflare/partykit/commit/3a48ec97f64885fcd8860b1d9f228bb250789862)]:
+  - partyserver@0.0.76
+
 ## 0.0.51
 
 ### Patch Changes

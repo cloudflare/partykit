@@ -11,11 +11,11 @@
     "@tiptap/extension-collaboration-cursor": "^2.11.5",
     "@tiptap/react": "^2.11.5",
     "@tiptap/starter-kit": "^2.11.5",
-    "partyserver": "^0.0.75",
+    "partyserver": "^0.0.76",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "tailwindcss": "^4.1.13",
-    "y-partyserver": "^0.0.51"
+    "y-partyserver": "^0.0.52"
   },
   "devDependencies": {
     "@types/react": "^19.1.13",
