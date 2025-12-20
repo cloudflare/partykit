@@ -1,5 +1,11 @@
 # partytracks
 
+## 0.0.55
+
+### Patch Changes
+
+- [#298](https://github.com/cloudflare/partykit/pull/298) [`43bd6cc`](https://github.com/cloudflare/partykit/commit/43bd6ccbf7a94484b1f377c3df0cf26ce8792669) Thanks [@threepointone](https://github.com/threepointone)! - update deps
+
 ## 0.0.54
 
 ### Patch Changes

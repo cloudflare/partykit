@@ -8,7 +8,7 @@
     "start": "vite dev "
   },
   "dependencies": {
-    "partytracks": "^0.0.54",
+    "partytracks": "^0.0.55",
     "react": "^19.2.3",
     "react-dom": "^19.2.3"
   },
