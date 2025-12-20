@@ -1,5 +1,11 @@
 # partysocket
 
+## 1.1.9
+
+### Patch Changes
+
+- [`760d338`](https://github.com/cloudflare/partykit/commit/760d3380e3416a628bcd38e6c1aa953ca554f20f) Thanks [@threepointone](https://github.com/threepointone)! - fix build
+
 ## 1.1.8
 
 ### Patch Changes
