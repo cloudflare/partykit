@@ -5,7 +5,7 @@
   "homepage": "https://docs.partykit.io/reference/partysocket-api",
   "bugs": "https://github.com/cloudflare/partykit/issues",
   "main": "./dist/index.js",
-  "module": "./dist/index.mjs",
+  "module": "./dist/index.js",
   "type": "module",
   "exports": {
     ".": {
@@ -14,7 +14,7 @@
         "require": "./index.d.cts",
         "default": "./index.d.ts"
       },
-      "import": "./dist/index.mjs",
+      "import": "./dist/index.js",
       "require": "./dist/index.cjs"
     },
     "./ws": {
@@ -23,7 +23,7 @@
         "require": "./ws.d.cts",
         "default": "./ws.d.ts"
       },
-      "import": "./dist/ws.mjs",
+      "import": "./dist/ws.js",
       "require": "./dist/ws.cjs"
     },
     "./react": {
@@ -32,7 +32,7 @@
         "require": "./react.d.cts",
         "default": "./react.d.ts"
       },
-      "import": "./dist/react.mjs",
+      "import": "./dist/react.js",
       "require": "./dist/react.cjs"
     },
     "./use-ws": {
@@ -41,7 +41,7 @@
         "require": "./use-ws.d.cts",
         "default": "./use-ws.d.ts"
       },
-      "import": "./dist/use-ws.mjs",
+      "import": "./dist/use-ws.js",
       "require": "./dist/use-ws.cjs"
     },
     "./event-target-polyfill": {
@@ -50,7 +50,7 @@
         "require": "./event-target-polyfill.d.cts",
         "default": "./event-target-polyfill.d.ts"
       },
-      "import": "./dist/event-target-polyfill.mjs",
+      "import": "./dist/event-target-polyfill.js",
       "require": "./dist/event-target-polyfill.cjs"
     }
   },
