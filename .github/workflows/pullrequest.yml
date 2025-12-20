@@ -20,6 +20,6 @@ jobs:
 
       - uses: actions/setup-node@v4
 
-      - run: npm install
+      - run: npm ci
       - run: npm run build
       - run: npm run check
