@@ -1,0 +1,22 @@
+{
+  "name": "partyserver-fixture-tldraw",
+  "main": "src/index.ts",
+  "compatibility_date": "2025-12-17",
+  "assets": {
+    "directory": "./public"
+  },
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "Tldraw",
+        "class_name": "Tldraw"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1", // Should be unique for each entry
+      "new_classes": ["Tldraw"]
+    }
+  ]
+}

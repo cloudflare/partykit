@@ -1,0 +1,25 @@
+{
+  "name": "partyserver-fixture-monaco-yjs",
+  "main": "src/server/index.ts",
+  "compatibility_date": "2025-12-17",
+  "assets": {
+    "directory": "./public"
+  },
+  "build": {
+    "command": "npx tsx scripts/build.ts"
+  },
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "Monaco",
+        "class_name": "MonacoServer"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_classes": ["MonacoServer"]
+    }
+  ]
+}

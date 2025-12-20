@@ -60,18 +60,26 @@ export default {
 };
 ```
 
-And setup your wrangler.toml:
+And setup your wrangler.jsonc:
 
-```toml
-# ...
-[[durable_objects.bindings]]
-name = "PubSub" # This MUST match the binding name in the PubSubServer config
-class_name = "PubSubServer"
-
-[[migrations]]
-tag = "v1"
-new_classes = ["PubSubServer"]
-# ...
+```jsonc
+{
+  // ...
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "PubSub",
+        "class_name": "PubSubServer"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_classes": ["PubSubServer"]
+    }
+  ]
+}
 ```
 
 In your application, use PartySocket to connect to the server:

@@ -13,12 +13,27 @@ The killer app: This will be particularly useful when wired up with an LLM agent
 import { Scheduler } from "partywhen";
 
 export { Scheduler };
-// also setup wrangler.toml to create a durable object binding
+// also setup wrangler.jsonc to create a durable object binding
 // let's say you've done it this way:
-
-// [[durable_objects.bindings]]
-// name = "SCHEDULER"
-// class_name = "Scheduler"
+/**
+  {
+    // ...
+    "durable_objects": {
+      "bindings": [
+        {
+          "name": "SCHEDULER",
+          "class_name": "Scheduler"
+        }
+      ]
+    },
+    "migrations": [
+      {
+        "tag": "v1",
+        "new_classes": ["Scheduler"]
+      }
+    ]
+  }
+*/
 
 export default {
   fetch(request: Request, env: Env, ctx: ExecutionContext) {

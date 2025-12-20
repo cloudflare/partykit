@@ -19,7 +19,7 @@ type Channels = {
 };
 
 export class SyncServer<
-  Env,
+  Env extends Cloudflare.Env = Cloudflare.Env,
   TChannels extends Channels = Channels
 > extends Server<Env> {
   static options = {

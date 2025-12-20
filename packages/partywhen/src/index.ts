@@ -76,7 +76,9 @@ type Callback =
       function: string;
     };
 
-export class Scheduler<Env> extends Server<Env> {
+export class Scheduler<
+  Env extends Cloudflare.Env = Cloudflare.Env
+> extends Server<Env> {
   constructor(state: DurableObjectState, env: Env) {
     super(state, env);
     void this.ctx.blockConcurrencyWhile(async () => {
@@ -374,12 +376,12 @@ export class Scheduler<Env> extends Server<Env> {
       } else if (type === "durable-object") {
         //@ts-expect-error yeah whatever
         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-        const id = this.env[task.callback.namespace].idFromName(
+        const id = this.env[task.callback.namespace as keyof Env].idFromName(
           task.callback.name
         );
         //@ts-expect-error yeah whatever
         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-        const stub = this.env[task.callback.namespace].get(id);
+        const stub = this.env[task.callback.namespace as keyof Env].get(id);
 
         // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
         stub[task.callback.function](task).catch((e: unknown) => {
@@ -388,7 +390,9 @@ export class Scheduler<Env> extends Server<Env> {
       } else if (type === "service") {
         //@ts-expect-error  yeah whatever
         // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-        this.env[task.callback.service][task.callback.function](task);
+        this.env[task.callback.service as keyof Env][task.callback.function](
+          task
+        );
       } else if (type === "self") {
         //@ts-expect-error  yeah whatever
         // eslint-disable-next-line @typescript-eslint/no-unsafe-call

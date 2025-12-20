@@ -2,7 +2,7 @@
 // rethink oBC/oBR
 // push for durable.setState (in addition to connection.setState)
 
-import { DurableObject } from "cloudflare:workers";
+import { DurableObject, env as defaultEnv } from "cloudflare:workers";
 import { nanoid } from "nanoid";
 
 import {
@@ -26,7 +26,7 @@ export type WSMessage = ArrayBuffer | ArrayBufferView | string;
 // Let's cache the server namespace map
 // so we don't call it on every request
 const serverMapCache = new WeakMap<
-  Record<string, unknown>,
+  object,
   Record<string, DurableObjectNamespace>
 >();
 
@@ -34,8 +34,8 @@ const serverMapCache = new WeakMap<
  * For a given server namespace, create a server with a name.
  */
 export async function getServerByName<
-  Env,
-  T extends Server<Env>,
+  Env extends Cloudflare.Env = Cloudflare.Env,
+  T extends Server<Env> = Server<Env>,
   Props extends Record<string, unknown> = Record<string, unknown>
 >(
   serverNamespace: DurableObjectNamespace<T>,
@@ -92,7 +92,11 @@ function camelCaseToKebabCase(str: string): string {
   // Convert any remaining underscores to hyphens and remove trailing -'s
   return kebabified.replace(/_/g, "-").replace(/-$/, "");
 }
-export interface PartyServerOptions<Env, Props = Record<string, unknown>> {
+export interface PartyServerOptions<
+  // biome-ignore lint/correctness/noUnusedVariables: it's ok, we'll remove this in the next major
+  Env = Cloudflare.Env,
+  Props = Record<string, unknown>
+> {
   prefix?: string;
   jurisdiction?: DurableObjectJurisdiction;
   locationHint?: DurableObjectLocationHint;
@@ -100,14 +104,14 @@ export interface PartyServerOptions<Env, Props = Record<string, unknown>> {
   onBeforeConnect?: (
     req: Request,
     lobby: {
-      party: keyof Env;
+      party: string;
       name: string;
     }
   ) => Response | Request | void | Promise<Response | Request | void>;
   onBeforeRequest?: (
     req: Request,
     lobby: {
-      party: keyof Env;
+      party: string;
       name: string;
     }
   ) =>
@@ -120,13 +124,13 @@ export interface PartyServerOptions<Env, Props = Record<string, unknown>> {
  * A utility function for PartyKit style routing.
  */
 export async function routePartykitRequest<
-  Env = unknown,
+  Env extends Cloudflare.Env = Cloudflare.Env,
   T extends Server<Env> = Server<Env>,
   Props extends Record<string, unknown> = Record<string, unknown>
 >(
   req: Request,
-  env: Record<string, unknown>,
-  options?: PartyServerOptions<typeof env, Props>
+  env: Env = defaultEnv as Env,
+  options?: PartyServerOptions<Env, Props>
 ): Promise<Response | null> {
   if (!serverMapCache.has(env)) {
     serverMapCache.set(
@@ -177,7 +181,7 @@ export async function routePartykitRequest<
 party: "${camelCaseToKebabCase(Object.keys(map)[0])}"`);
       } else {
         console.error(`The url ${req.url} does not match any server namespace. 
-Did you forget to add a durable object binding to the class in your wrangler.toml?`);
+Did you forget to add a durable object binding to the class in your wrangler.jsonc?`);
       }
     }
 
@@ -236,7 +240,7 @@ Did you forget to add a durable object binding to the class in your wrangler.tom
 }
 
 export class Server<
-  Env = unknown,
+  Env extends Cloudflare.Env = Cloudflare.Env,
   Props extends Record<string, unknown> = Record<string, unknown>
 > extends DurableObject<Env> {
   static options = {

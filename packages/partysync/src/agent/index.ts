@@ -8,7 +8,7 @@ import type { RpcException, RpcResponse } from "partyfn";
 import type { WebSocket as PSWebSocket } from "partysocket";
 
 export class Agent<
-  Env extends Record<string, DurableObjectNamespace>,
+  Env extends Cloudflare.Env = Cloudflare.Env,
   Channels extends {
     [Channel: string]: {
       record: unknown[];
@@ -57,7 +57,7 @@ export class Agent<
 
   async connect(namespace: string, room: string) {
     const stub = await getServerByName(
-      this.env[namespace] as unknown as DurableObjectNamespace<
+      this.env[namespace as keyof Env] as DurableObjectNamespace<
         SyncServer<Env, Channels>
       >,
       room

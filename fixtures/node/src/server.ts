@@ -1,10 +1,6 @@
 import { routePartykitRequest, Server } from "partyserver";
-
+import { env } from "cloudflare:workers";
 import type { Connection, ConnectionContext } from "partyserver";
-
-type Env = {
-  MyServer: DurableObjectNamespace<MyServer>;
-};
 
 export class MyServer extends Server {
   onConnect(conn: Connection, ctx: ConnectionContext) {
@@ -33,7 +29,7 @@ export class MyServer extends Server {
 }
 
 export default {
-  async fetch(request: Request, env: Env) {
+  async fetch(request: Request): Promise<Response> {
     return (
       (await routePartykitRequest(request, env)) ||
       new Response("Not Found", { status: 404 })

@@ -4,20 +4,20 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "start": "vite dev"
+    "start": "vite dev",
+    "types": "wrangler types env.d.ts --include-runtime false"
   },
   "dependencies": {
-    "@tailwindcss/vite": "^4.1.18",
     "nanoid": "^5.1.6",
     "partyserver": "^0.0.78",
     "partysocket": "^1.1.9",
     "react": "^19.2.3",
-    "react-dom": "^19.2.3",
-    "tailwindcss": "^4.1.18",
-    "valibot": "^1.2.0"
+    "react-dom": "^19.2.3"
   },
   "devDependencies": {
+    "@tailwindcss/vite": "^4.1.18",
     "@types/react": "^19.2.7",
-    "@types/react-dom": "^19.2.3"
+    "@types/react-dom": "^19.2.3",
+    "tailwindcss": "^4.1.18"
   }
 }

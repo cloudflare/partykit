@@ -1,5 +1,0 @@
-name = "partyserver-fixture-partytracks"
-main = "src/server/index.ts"
-compatibility_date = "2024-04-19"
-
-assets = {directory = "./public"}

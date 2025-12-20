@@ -1,10 +1,7 @@
 import { getServerByName, Server } from "partyserver";
+import { env } from "cloudflare:workers";
 
-type Env = {
-  MyServer: DurableObjectNamespace<MyServer>;
-};
-
-export class MyServer extends Server<Env> {
+export class MyServer extends Server {
   async testMethod() {
     return this.name;
   }
@@ -20,7 +17,7 @@ export class MyServer extends Server<Env> {
 const SESSION_ID = "session-id";
 
 export default {
-  async fetch(request: Request, env: Env, _ctx: ExecutionContext) {
+  async fetch(request: Request) {
     const url = new URL(request.url);
     const stub = await getServerByName(env.MyServer, SESSION_ID);
 

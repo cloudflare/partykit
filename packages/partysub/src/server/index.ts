@@ -1,3 +1,5 @@
+import { env as defaultEnv } from "cloudflare:workers";
+
 import { routePartykitRequest, Server } from "partyserver";
 
 import {
@@ -21,7 +23,9 @@ function camelCaseToKebabCase(str: string): string {
   return kebabified.replace(/-$/, "");
 }
 
-export function createPubSubServer<Env = unknown>(options: {
+export function createPubSubServer<
+  Env extends Cloudflare.Env = Cloudflare.Env
+>(options: {
   binding: string;
   nodes?: number;
   locations?: Partial<Record<DurableObjectLocationHint, number>>;
@@ -137,7 +141,10 @@ export function createPubSubServer<Env = unknown>(options: {
     }
   }
 
-  async function routePubSubRequest(request: Request, env: Env) {
+  async function routePubSubRequest(
+    request: Request,
+    env: Env = defaultEnv as Env
+  ) {
     // the request will come tp /parties/:party/:room
     // and we should rewrite it to /parties/:party/:room-${id}
     // where id = Math.floor(Math.random() * nodes)
@@ -188,7 +195,6 @@ export function createPubSubServer<Env = unknown>(options: {
     const newPath = `/parties/${party}/${room}-${nodeIDs[foundLocation][id]}`;
     url.pathname = newPath;
     const newRequest = new Request(url.toString(), request);
-    // @ts-expect-error I don't know typescript
     return routePartykitRequest(newRequest, env, {
       locationHint: foundLocation
     });

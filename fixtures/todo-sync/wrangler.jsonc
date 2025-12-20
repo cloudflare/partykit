@@ -1,0 +1,22 @@
+{
+  "name": "partyserver-fixture-todo-sync",
+  "main": "src/server.ts",
+  "compatibility_date": "2025-12-17",
+  "assets": {
+    "directory": "./public"
+  },
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "Todos",
+        "class_name": "ToDos"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1", // Should be unique for each entry
+      "new_sqlite_classes": ["ToDos"]
+    }
+  ]
+}
