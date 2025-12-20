@@ -24,6 +24,7 @@
       "!**/coverage",
       "!**/*.d.ts",
       "!**/*.d.mts",
+      "!**/*.d.cts",
       "!packages/partysocket/event-target-polyfill.*",
       "!tsconfig.base.json",
       "!**/.wrangler",

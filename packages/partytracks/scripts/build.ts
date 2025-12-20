@@ -1,14 +1,14 @@
-import { build } from "tsup";
+import { build } from "tsdown";
 
 await build({
   entry: ["src/client/index.ts", "src/react/index.ts", "src/server/index.ts"],
-  splitting: true,
+  external: ["cloudflare:workers"],
   sourcemap: true,
   clean: true,
-  noExternal: ["cookie", "jose", "tiny-invariant"],
-  external: ["react"],
   format: "esm",
-  dts: true
+  dts: true,
+  skipNodeModulesBundle: true,
+  fixedExtension: false
 });
 
 process.exit(0);

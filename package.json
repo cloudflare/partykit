@@ -9,7 +9,7 @@
     "format": "prettier . --write --ignore-unknown",
     "check:format": "prettier . --check --ignore-unknown",
     "check:lint": "biome check",
-    "check:repo": "sherif check",
+    "check:repo": "sherif",
     "check:test": "npm run check:test -w partyserver -w partysocket -w partysub -w partywhen -w partytracks",
     "check:type": "tsx scripts/typecheck.ts",
     "all": "tsx i && npm run build && npm run check"
@@ -21,7 +21,6 @@
     "fixtures/*"
   ],
   "devDependencies": {
-    "@arethetypeswrong/cli": "^0.18.2",
     "@biomejs/biome": "^2.3.10",
     "@changesets/changelog-github": "^0.5.2",
     "@changesets/cli": "^2.29.8",
@@ -38,7 +37,7 @@
     "prettier": "^3.7.4",
     "sherif": "^1.9.0",
     "shx": "^0.4.0",
-    "tsup": "^8.5.1",
+    "tsdown": "^0.18.1",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
     "vite": "^7.3.0",
