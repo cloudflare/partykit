@@ -6,41 +6,63 @@
   "bugs": "https://github.com/threepointone/partyserver/issues",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
+  "type": "module",
   "exports": {
     ".": {
-      "types": "./index.d.ts",
+      "types": {
+        "import": "./index.d.ts",
+        "require": "./index.d.cts",
+        "default": "./index.d.ts"
+      },
       "import": "./dist/index.mjs",
-      "require": "./dist/index.js"
+      "require": "./dist/index.cjs"
     },
     "./ws": {
-      "types": "./ws.d.ts",
+      "types": {
+        "import": "./ws.d.ts",
+        "require": "./ws.d.cts",
+        "default": "./ws.d.ts"
+      },
       "import": "./dist/ws.mjs",
-      "require": "./dist/ws.js"
+      "require": "./dist/ws.cjs"
     },
     "./react": {
-      "types": "./react.d.ts",
+      "types": {
+        "import": "./react.d.ts",
+        "require": "./react.d.cts",
+        "default": "./react.d.ts"
+      },
       "import": "./dist/react.mjs",
-      "require": "./dist/react.js"
+      "require": "./dist/react.cjs"
     },
     "./use-ws": {
-      "types": "./use-ws.d.ts",
+      "types": {
+        "import": "./use-ws.d.ts",
+        "require": "./use-ws.d.cts",
+        "default": "./use-ws.d.ts"
+      },
       "import": "./dist/use-ws.mjs",
-      "require": "./dist/use-ws.js"
+      "require": "./dist/use-ws.cjs"
     },
     "./event-target-polyfill": {
-      "types": "./event-target-polyfill.d.ts",
+      "types": {
+        "import": "./event-target-polyfill.d.ts",
+        "require": "./event-target-polyfill.d.cts",
+        "default": "./event-target-polyfill.d.ts"
+      },
       "import": "./dist/event-target-polyfill.mjs",
-      "require": "./dist/event-target-polyfill.js"
+      "require": "./dist/event-target-polyfill.cjs"
     }
   },
   "scripts": {
-    "clean": "shx rm -rf dist *.d.ts *.d.mts event-target-polyfill.*",
-    "post-build": "shx mv dist/*.d.ts dist/*.d.mts* . && shx mv dist/event-target-polyfill.* .",
-    "build": "npm run clean && npx tsx scripts/build.mts && npm run post-build",
+    "clean": "shx rm -rf dist *.d.ts *.d.cts event-target-polyfill.*",
+    "post-build": "shx mv dist/*.d.cts dist/*.d.ts* . && shx mv dist/event-target-polyfill.* .",
+    "build": "npm run clean && npx tsx scripts/build.ts && npm run post-build",
     "check:test": "vitest --no-watch"
   },
   "files": [
     "dist",
+    "*.d.cts",
     "*.d.ts",
     "event-target-polyfill.*"
   ],
