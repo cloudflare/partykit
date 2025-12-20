@@ -156,9 +156,9 @@ export const createLazyConnection = (
   return connection;
 };
 
-class HibernatingConnectionIterator<T>
-  implements IterableIterator<Connection<T>>
-{
+class HibernatingConnectionIterator<T> implements IterableIterator<
+  Connection<T>
+> {
   private index = 0;
   private sockets: WebSocket[] | undefined;
   constructor(

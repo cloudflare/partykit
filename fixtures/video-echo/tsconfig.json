@@ -2,11 +2,6 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "lib": ["DOM", "DOM.Iterable", "ES2022"],
-    "types": ["@remix-run/cloudflare", "@cloudflare/workers-types"],
-    "baseUrl": ".",
-    "paths": {
-      "~/*": ["./app/*"]
-    }
-  },
-  "exclude": ["src/tests/**/*.ts"]
+    "types": ["@cloudflare/workers-types"]
+  }
 }

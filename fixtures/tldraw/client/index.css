@@ -10,7 +10,6 @@ body {
   min-height: 100vh;
   font-size: 16px;
   /* mobile viewport bug fix */
-  /* biome-ignore lint/suspicious/noDuplicateProperties: on purpose */
   min-height: -webkit-fill-available;
   height: 100%;
 }

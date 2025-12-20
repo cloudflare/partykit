@@ -402,7 +402,7 @@ export class Scheduler<Env> extends Server<Env> {
   }
 
   private getNextCronTime(cronExpression: string): Date {
-    const interval = cronParser.parseExpression(cronExpression);
+    const interval = cronParser.parse(cronExpression);
     return interval.next().toDate();
   }
 

@@ -39,14 +39,13 @@
   "author": "Sunil Pai <spai@cloudflare.com>",
   "license": "ISC",
   "description": "",
-  "dependencies": {},
   "peerDependencies": {
     "@cloudflare/workers-types": "^4.20240729.0",
     "partyserver": "^0.0.76",
     "partysocket": "^1.1.6"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20250924.0",
+    "@cloudflare/workers-types": "^4.20251218.0",
     "partyserver": "^0.0.76",
     "partysocket": "^1.1.6"
   }

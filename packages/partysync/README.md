@@ -35,8 +35,10 @@ export type TodoRecord = [
   0 | 1, // completed
   number, // created_at
   number, // updated_at
-  // NOTE: _always_ add deleted_at
-  number | null // deleted_at
+  (
+    // NOTE: _always_ add deleted_at
+    number | null
+  ) // deleted_at
 ];
 
 // define your actions

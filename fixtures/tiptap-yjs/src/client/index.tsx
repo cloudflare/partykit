@@ -1,7 +1,7 @@
 import { createRoot } from "react-dom/client";
 import { useEffect, useState } from "react";
 import Collaboration from "@tiptap/extension-collaboration";
-import CollaborationCursor from "@tiptap/extension-collaboration-cursor";
+// import CollaborationCursor from "@tiptap/extension-collaboration-cursor";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import useYProvider from "y-partyserver/react";
@@ -9,11 +9,11 @@ import useYProvider from "y-partyserver/react";
 import "./styles.css";
 
 // 5 pastel colors
-const colours = ["#FFC0CB", "#FFD700", "#98FB98", "#87CEFA", "#FFA07A"];
+// const colours = ["#FFC0CB", "#FFD700", "#98FB98", "#87CEFA", "#FFA07A"];
 
 // Pick a random color from the list
 // This is just for demonstration purposes
-const MY_COLOR = colours[Math.floor(Math.random() * colours.length)];
+// const MY_COLOR = colours[Math.floor(Math.random() * colours.length)];
 
 function Tiptap() {
   const provider = useYProvider({
@@ -57,19 +57,19 @@ function Tiptap() {
     extensions: [
       StarterKit.configure({
         // The Collaboration extension comes with its own history handling
-        history: false
+        // history: false
       }),
       Collaboration.configure({
         document: provider.doc
-      }),
-      // Register the collaboration cursor extension
-      CollaborationCursor.configure({
-        provider: provider,
-        user: {
-          name: provider.id,
-          color: MY_COLOR
-        }
       })
+      // Register the collaboration cursor extension
+      // CollaborationCursor.configure({
+      //   provider: provider,
+      //   user: {
+      //     name: provider.id,
+      //     color: MY_COLOR
+      //   }
+      // })
     ]
   });
 

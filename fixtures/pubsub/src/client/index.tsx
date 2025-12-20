@@ -59,7 +59,6 @@ function App() {
     <div>
       Messages:
       {messages.map((message, i) => (
-        // biome-ignore lint/suspicious/noArrayIndexKey: it's fine
         <div key={i}>{JSON.stringify(message)}</div>
       ))}
     </div>
