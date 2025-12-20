@@ -21,7 +21,7 @@ PartyServer enhances Durable Objects with the following features:
 
 - Decouples the idea of a URL from the server name. This is useful when you want to associate a server with some other identifier like a session ID, etc. You can still use `routePartykitRequest()` to get PartyKit-style route matching.
 - Doesn't include bindings for other services like AI, static assets, etc. Instead, use wrangler's built-in support for those services.
-- Doesn't have PartyKit's auto-inferred declaration for Durable Object bindings and migrations, so you have to manually specify these in `wrangler.toml`. We may add this in the future.
+- Doesn't have PartyKit's auto-inferred declaration for Durable Object bindings and migrations, so you have to manually specify these in `wrangler.jsonc`. We may add this in the future.
 
 ## Usage
 
@@ -58,19 +58,27 @@ export default {
 } satisfies ExportedHandler<Env>;
 ```
 
-And configure your `wrangler.toml`:
+And configure your `wrangler.jsonc`:
 
-```toml
-name = "my-partyserver-app"
-main = "index.ts"
-
-[[durable_objects.bindings]]
-name = "MyServer"
-class_name = "MyServer"
-
-[[migrations]]
-tag = "v1" # Should be unique for each entry
-new_classes = ["MyServer"]
+```jsonc
+{
+  "name": "my-partyserver-app",
+  "main": "index.ts",
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "MyServer",
+        "class_name": "MyServer"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1", // Should be unique for each entry
+      "new_classes": ["MyServer"]
+    }
+  ]
+}
 ```
 
 You can connect to the server from a client (like a browser or a mobile app) using [`partysocket`](https://npmjs.com/package/partysocket) or any other WebSocket client.
@@ -125,7 +133,7 @@ These methods can be optionally `async`:
 
 - `.ctx` - the context object for the Durable Object, containing references to [`storage`](https://developers.cloudflare.com/durable-objects/api/transactional-storage-api/)
 
-- `.env` - the environment object for the Durable Object, defined by bindings and other configuration in your `wrangler.toml` configuration file.
+- `.env` - the environment object for the Durable Object, defined by bindings and other configuration in your `wrangler.jsonc` configuration file.
 
 ### Durable Object methods
 

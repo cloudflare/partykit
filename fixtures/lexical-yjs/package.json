@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "start": "vite dev",
-    "deploy": "wrangler deploy"
+    "deploy": "vite build && wrangler deploy",
+    "types": "wrangler types env.d.ts --include-runtime false"
   },
   "dependencies": {
     "@lexical/react": "^0.39.0",

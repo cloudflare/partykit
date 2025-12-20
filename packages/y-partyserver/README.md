@@ -16,7 +16,7 @@ Like PartyServer, `YServer` is a class that extends `DurableObject` (as well as 
 ```ts
 export { YServer as MyYServer } from "y-partyserver";
 
-// then setup wrangler.toml and a default fetch handler
+// then setup wrangler.jsonc and a default fetch handler
 // like you would for PartyServer.
 ```
 

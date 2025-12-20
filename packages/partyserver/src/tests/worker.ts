@@ -13,7 +13,7 @@ export type Env = {
   OnStartServer: DurableObjectNamespace<OnStartServer>;
 };
 
-export class Stateful extends Server<Env> {
+export class Stateful extends Server {
   static options = {
     hibernate: true
   };
@@ -38,7 +38,7 @@ export class Stateful extends Server<Env> {
   }
 }
 
-export class OnStartServer extends Server<Env> {
+export class OnStartServer extends Server {
   counter = 0;
   async onStart() {
     // this stray assert is simply to make sure .name is available

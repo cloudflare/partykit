@@ -1,0 +1,6 @@
+{
+  "name": "partysub-tests",
+  "main": "./worker.ts",
+  "compatibility_date": "2024-07-25",
+  "compatibility_flags": ["nodejs_compat"]
+}

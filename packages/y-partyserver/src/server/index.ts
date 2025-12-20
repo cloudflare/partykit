@@ -16,8 +16,6 @@ import {
   XmlFragment
 } from "yjs";
 
-import { handleChunked } from "../shared/chunking";
-
 const snapshotOrigin = Symbol("snapshot-origin");
 type YjsRootType =
   | "Text"
@@ -176,7 +174,9 @@ export interface CallbackOptions {
   timeout?: number;
 }
 
-export class YServer<Env = unknown> extends Server<Env> {
+export class YServer<
+  Env extends Cloudflare.Env = Cloudflare.Env
+> extends Server<Env> {
   static callbackOptions: CallbackOptions = {};
 
   #ParentClass: typeof YServer = Object.getPrototypeOf(this).constructor;
@@ -368,8 +368,18 @@ export class YServer<Env = unknown> extends Server<Env> {
     }
     try {
       const encoder = encoding.createEncoder();
-      // TODO: this type seems odd
-      const decoder = decoding.createDecoder(message as unknown as Uint8Array);
+      // Convert ArrayBuffer to Uint8Array if needed (ArrayBufferView like Uint8Array can be used directly)
+      const uint8Array =
+        message instanceof Uint8Array
+          ? message
+          : message instanceof ArrayBuffer
+            ? new Uint8Array(message)
+            : new Uint8Array(
+                message.buffer,
+                message.byteOffset,
+                message.byteLength
+              );
+      const decoder = decoding.createDecoder(uint8Array);
       const messageType = decoding.readVarUint(decoder);
       switch (messageType) {
         case messageSync:
@@ -405,9 +415,9 @@ export class YServer<Env = unknown> extends Server<Env> {
     }
   }
 
-  onMessage = handleChunked((conn, message) =>
-    this.handleMessage(conn, message)
-  );
+  onMessage(conn: Connection, message: WSMessage) {
+    this.handleMessage(conn, message);
+  }
 
   onClose(
     connection: Connection<unknown>,

@@ -1,0 +1,22 @@
+{
+  "name": "partyserver-fixture-lexical-yjs",
+  "main": "src/server.ts",
+  "compatibility_date": "2025-12-17",
+  "assets": {
+    "directory": "./public"
+  },
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "LexicalDocument",
+        "class_name": "LexicalDocument"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_classes": ["LexicalDocument"]
+    }
+  ]
+}

@@ -1,1 +1,1 @@
-about wrangler.toml, migrations, etc
+about wrangler.jsonc, migrations, etc

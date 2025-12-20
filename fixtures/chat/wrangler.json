@@ -1,8 +1,0 @@
-{
-  "name": "partyserver-fixture-chat",
-  "main": "src/server/index.ts",
-  "compatibility_date": "2024-04-19",
-  "assets": { "directory": "./public" },
-  "durable_objects": { "bindings": [{ "name": "Chat", "class_name": "Chat" }] },
-  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Chat"] }]
-}

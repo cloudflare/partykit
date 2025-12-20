@@ -1,6 +1,0 @@
-name = "partyserver-fixture-video-echo"
-main = "./dist/index.js"
-compatibility_date = "2024-05-30"
-
-assets = {directory = "./public"}
-

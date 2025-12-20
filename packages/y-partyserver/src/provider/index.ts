@@ -11,8 +11,6 @@ import * as awarenessProtocol from "y-protocols/awareness";
 import * as syncProtocol from "y-protocols/sync";
 import { Doc as YDoc } from "yjs";
 
-import { sendChunked } from "../shared/chunking";
-
 export const messageSync = 0;
 export const messageQueryAwareness = 3;
 export const messageAwareness = 1;
@@ -153,7 +151,7 @@ function setupWS(provider: WebsocketProvider) {
       provider.wsLastMessageReceived = time.getUnixTime();
       const encoder = readMessage(provider, new Uint8Array(event.data), true);
       if (encoding.length(encoder) > 1) {
-        sendChunked(encoding.toUint8Array(encoder), websocket);
+        websocket.send(encoding.toUint8Array(encoder));
       }
     });
     websocket.addEventListener("error", (event) => {
@@ -207,7 +205,7 @@ function setupWS(provider: WebsocketProvider) {
       const encoder = encoding.createEncoder();
       encoding.writeVarUint(encoder, messageSync);
       syncProtocol.writeSyncStep1(encoder, provider.doc);
-      sendChunked(encoding.toUint8Array(encoder), websocket);
+      websocket.send(encoding.toUint8Array(encoder));
       // broadcast local awareness state
       if (provider.awareness.getLocalState() !== null) {
         const encoderAwarenessState = encoding.createEncoder();
@@ -218,7 +216,7 @@ function setupWS(provider: WebsocketProvider) {
             provider.doc.clientID
           ])
         );
-        sendChunked(encoding.toUint8Array(encoderAwarenessState), websocket);
+        websocket.send(encoding.toUint8Array(encoderAwarenessState));
       }
     });
     provider.emit("status", [
@@ -232,7 +230,7 @@ function setupWS(provider: WebsocketProvider) {
 function broadcastMessage(provider: WebsocketProvider, buf: Uint8Array) {
   const ws = provider.ws;
   if (provider.wsconnected && ws && ws.readyState === ws.OPEN) {
-    sendChunked(buf, ws);
+    ws.send(buf);
   }
   if (provider.bcconnected) {
     bc.publish(provider.bcChannel, buf, provider);
@@ -346,7 +344,7 @@ export class WebsocketProvider extends Observable<string> {
           const encoder = encoding.createEncoder();
           encoding.writeVarUint(encoder, messageSync);
           syncProtocol.writeSyncStep1(encoder, doc);
-          sendChunked(encoding.toUint8Array(encoder), this.ws);
+          this.ws.send(encoding.toUint8Array(encoder));
         }
       }, resyncInterval);
     }

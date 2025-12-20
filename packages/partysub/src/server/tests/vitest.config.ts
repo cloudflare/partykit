@@ -6,7 +6,7 @@ export default defineWorkersConfig({
       workers: {
         isolatedStorage: false,
         wrangler: {
-          configPath: "./wrangler.toml"
+          configPath: "./wrangler.jsonc"
         }
       }
     }
