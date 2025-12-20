@@ -1,5 +1,11 @@
 # partyflare
 
+## 0.0.78
+
+### Patch Changes
+
+- [`7360225`](https://github.com/cloudflare/partykit/commit/7360225fc92978f38edce71f54afb84b25b7bdcb) Thanks [@threepointone](https://github.com/threepointone)! - fix publishes
+
 ## 0.0.77
 
 ### Patch Changes

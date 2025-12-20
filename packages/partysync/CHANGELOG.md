@@ -1,5 +1,12 @@
 # partysync
 
+## 0.0.32
+
+### Patch Changes
+
+- Updated dependencies [[`7360225`](https://github.com/cloudflare/partykit/commit/7360225fc92978f38edce71f54afb84b25b7bdcb)]:
+  - partyserver@0.0.78
+
 ## 0.0.31
 
 ### Patch Changes

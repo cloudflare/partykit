@@ -1,5 +1,15 @@
 # partysub
 
+## 0.0.36
+
+### Patch Changes
+
+- [`7360225`](https://github.com/cloudflare/partykit/commit/7360225fc92978f38edce71f54afb84b25b7bdcb) Thanks [@threepointone](https://github.com/threepointone)! - fix publishes
+
+- Updated dependencies [[`7360225`](https://github.com/cloudflare/partykit/commit/7360225fc92978f38edce71f54afb84b25b7bdcb)]:
+  - partyserver@0.0.78
+  - partysocket@1.1.8
+
 ## 0.0.35
 
 ### Patch Changes

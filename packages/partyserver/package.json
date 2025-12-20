@@ -1,6 +1,6 @@
 {
   "name": "partyserver",
-  "version": "0.0.77",
+  "version": "0.0.78",
   "repository": {
     "type": "git",
     "url": "git://github.com/cloudflare/partykit.git"
