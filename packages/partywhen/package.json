@@ -1,6 +1,6 @@
 {
   "name": "partywhen",
-  "version": "0.0.21",
+  "version": "0.0.22",
   "repository": {
     "type": "git",
     "url": "git://github.com/cloudflare/partykit.git"
@@ -29,6 +29,6 @@
   "description": "A library for scheduling and running tasks in Cloudflare Workers",
   "dependencies": {
     "cron-parser": "^5.4.0",
-    "partyserver": "^0.0.77"
+    "partyserver": "^0.0.78"
   }
 }
