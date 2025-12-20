@@ -8,8 +8,8 @@
   },
   "dependencies": {
     "hono": "^4.9.8",
-    "hono-party": "^0.0.17",
-    "partyserver": "^0.0.75",
+    "hono-party": "^0.0.18",
+    "partyserver": "^0.0.76",
     "partysocket": "^1.1.6",
     "react": "^19.1.1",
     "react-dom": "^19.1.1"
