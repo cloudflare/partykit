@@ -6,6 +6,6 @@
     "start": "wrangler dev"
   },
   "dependencies": {
-    "partysocket": "^1.1.2"
+    "partysocket": "^1.1.6"
   }
 }

@@ -28,7 +28,7 @@
   "license": "ISC",
   "description": "A library for scheduling and running tasks in Cloudflare Workers",
   "dependencies": {
-    "cron-parser": "^4.9.0",
+    "cron-parser": "^5.4.0",
     "partyserver": "^0.0.76"
   }
 }

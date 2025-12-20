@@ -138,7 +138,6 @@ export async function routePartykitRequest<
           "idFromName" in v &&
           typeof v.idFromName === "function"
         ) {
-          // biome-ignore lint/performance/noAccumulatingSpread: dumb rule
           Object.assign(acc, { [camelCaseToKebabCase(k)]: v });
           return acc;
         }

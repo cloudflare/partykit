@@ -8,11 +8,11 @@
     "dev": "vite dev"
   },
   "dependencies": {
-    "hono": "^4.9.8",
+    "hono": "^4.11.1",
     "partytracks": "^0.0.54",
     "rxjs": "^7.8.2"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20250924.0"
+    "@cloudflare/workers-types": "^4.20251218.0"
   }
 }

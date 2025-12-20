@@ -16,7 +16,11 @@ export class Document extends YServer<Env> {
     debounceMaxWait: 10000,
     timeout: 10000
   };
+  static options = {
+    hibernate: true
+  };
   async onStart() {
+    console.log("onStart");
     this.ctx.storage.sql.exec(
       "CREATE TABLE IF NOT EXISTS documents (id TEXT PRIMARY KEY, content BLOB)"
     );

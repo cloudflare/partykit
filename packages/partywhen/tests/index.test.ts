@@ -66,11 +66,7 @@ describe("Hello World worker", () => {
     const debug = await stub.getAllTasks();
     expect(debug.result).toHaveLength(1);
 
-    const {
-      // biome-ignore lint/correctness/noUnusedVariables: it's fine
-      created_at,
-      ...rest
-    } = (debug.result || [])[0];
+    const { created_at, ...rest } = (debug.result || [])[0];
 
     expect(rest).toMatchInlineSnapshot(`
       {
@@ -132,11 +128,7 @@ describe("Hello World worker", () => {
     const debug = await stub.getAllTasks();
     expect(debug.result).toHaveLength(1);
 
-    const {
-      // biome-ignore lint/correctness/noUnusedVariables: it's fine
-      created_at,
-      ...rest
-    } = (debug.result || [])[0];
+    const { created_at, ...rest } = (debug.result || [])[0];
 
     expect(rest).toMatchInlineSnapshot(`
       {
@@ -156,7 +148,7 @@ describe("Hello World worker", () => {
     const stub = getStub(env);
     const id = "cron-task-001";
     const cron = "0 0 * * 2";
-    const next = cronParser.parseExpression(cron).next();
+    const next = cronParser.parse(cron).next();
     const timestamp = Math.floor(next.toDate().getTime() / 1000);
 
     const task = await stub.scheduleTask({
@@ -191,11 +183,7 @@ describe("Hello World worker", () => {
     const debug = await stub.getAllTasks();
     expect(debug.result).toHaveLength(1);
 
-    const {
-      // biome-ignore lint/correctness/noUnusedVariables: it's fine
-      created_at,
-      ...rest
-    } = (debug.result || [])[0];
+    const { created_at, ...rest } = (debug.result || [])[0];
 
     expect(rest).toMatchInlineSnapshot(`
       {
@@ -252,11 +240,7 @@ describe("Hello World worker", () => {
     const debug = await stub.getAllTasks();
     expect(debug.result).toHaveLength(1);
 
-    const {
-      // biome-ignore lint/correctness/noUnusedVariables: it's fine
-      created_at,
-      ...rest
-    } = (debug.result || [])[0];
+    const { created_at, ...rest } = (debug.result || [])[0];
 
     expect(rest).toMatchInlineSnapshot(`
       {

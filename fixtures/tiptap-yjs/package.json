@@ -7,18 +7,17 @@
     "start": "vite dev"
   },
   "dependencies": {
-    "@tiptap/extension-collaboration": "^2.11.5",
-    "@tiptap/extension-collaboration-cursor": "^2.11.5",
-    "@tiptap/react": "^2.11.5",
-    "@tiptap/starter-kit": "^2.11.5",
+    "@tiptap/extension-collaboration": "^3.14.0",
+    "@tiptap/react": "^3.14.0",
+    "@tiptap/starter-kit": "^3.14.0",
     "partyserver": "^0.0.76",
-    "react": "^19.1.1",
-    "react-dom": "^19.1.1",
-    "tailwindcss": "^4.1.13",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3",
+    "tailwindcss": "^4.1.18",
     "y-partyserver": "^0.0.52"
   },
   "devDependencies": {
-    "@types/react": "^19.1.13",
-    "@types/react-dom": "^19.1.9"
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3"
   }
 }
