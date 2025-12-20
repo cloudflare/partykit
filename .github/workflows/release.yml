@@ -8,7 +8,9 @@ on:
 jobs:
   release:
     permissions:
+      id-token: write # Required for trusted publishing
       contents: write
+      pull-requests: write
 
     if: ${{ github.repository_owner == 'cloudflare' }}
     timeout-minutes: 5
@@ -20,6 +22,9 @@ jobs:
           fetch-depth: 1
 
       - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: "npm"
 
       - run: npm install
       - run: npm run build
@@ -27,9 +32,8 @@ jobs:
       - id: changesets
         uses: changesets/action@v1
         with:
-          version: npx tsx .github/changeset-version.ts
-          publish: npx tsx .github/changeset-publish.ts
+          version: ./.github/changeset-version.sh
+          publish: npx changeset publish
         env:
-          GITHUB_TOKEN: ${{ secrets.PARTYSERVER_GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}
-          NPM_PUBLISH_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_CONFIG_PROVENANCE: true
