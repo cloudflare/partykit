@@ -54,7 +54,7 @@ class AttachmentCache {
         this.#cache.set(ws, attachment);
       } else {
         throw new Error(
-          "Missing websocket attachment. This is most likely an issue in PartyServer, please open an issue at https://github.com/threepointone/partyserver/issues"
+          "Missing websocket attachment. This is most likely an issue in PartyServer, please open an issue at https://github.com/cloudflare/partykit/issues"
         );
       }
     }

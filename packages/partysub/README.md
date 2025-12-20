@@ -7,7 +7,7 @@ Pub-sub functionality for Durable Objects in PartyServer.
 > [!WARNING]
 > This project is experimental and is not yet recommended for production use.
 
-PubSub for Cloudflare Workers, powered by [PartyServer](https://github.com/threepointone/partyserver/).
+PubSub for Cloudflare Workers, powered by [PartyServer](https://github.com/cloudflare/partykit/).
 
 ### Installation
 
