@@ -1,10 +1,6 @@
 import { routePartykitRequest } from "partyserver";
 import { YServer } from "y-partyserver";
 
-type Env = {
-  MonacoServer: DurableObjectNamespace<YServer>;
-};
-
 export { YServer as MonacoServer };
 
 export default {

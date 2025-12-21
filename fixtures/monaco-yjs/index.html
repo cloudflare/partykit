@@ -1,9 +1,9 @@
 <!doctype html>
 <html>
   <head>
-    <meta charset="utf-8" />
-    <title>Yjs Monaco Example</title>
-    <link rel="stylesheet" href="/dist/src/client/index.css" />
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="reset.css" />
     <style>
       #monaco-editor {
         width: 100%;
@@ -31,6 +31,7 @@
       }
     </style>
   </head>
+
   <body>
     <button type="button" id="y-connect-btn">Disconnect</button>
     <p></p>
@@ -44,6 +45,6 @@
       domain.
     </p>
     <div id="monaco-editor" />
-    <script src="/dist/src/client/index.js"></script>
+    <script src="/src/client.tsx" type="module"></script>
   </body>
 </html>
