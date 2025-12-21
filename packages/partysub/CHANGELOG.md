@@ -1,5 +1,17 @@
 # partysub
 
+## 1.0.0
+
+### Minor Changes
+
+- [#302](https://github.com/cloudflare/partykit/pull/302) [`88474b1`](https://github.com/cloudflare/partykit/commit/88474b1fda322b13aebd543ea4a0638ae87aad32) Thanks [@threepointone](https://github.com/threepointone)! - change Env types to default to Cloudflare.Env
+
+### Patch Changes
+
+- Updated dependencies [[`3ec313e`](https://github.com/cloudflare/partykit/commit/3ec313ee4d737cbc33be3621178f002435f2fa2b), [`88474b1`](https://github.com/cloudflare/partykit/commit/88474b1fda322b13aebd543ea4a0638ae87aad32), [`d90b4b9`](https://github.com/cloudflare/partykit/commit/d90b4b947dc33853545f04e8ea7df7f9d59a28b2)]:
+  - partyserver@0.1.0
+  - partysocket@1.1.10
+
 ## 0.0.36
 
 ### Patch Changes

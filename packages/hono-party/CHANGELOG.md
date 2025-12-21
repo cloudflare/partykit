@@ -1,5 +1,12 @@
 # hono-party
 
+## 1.0.0
+
+### Patch Changes
+
+- Updated dependencies [[`3ec313e`](https://github.com/cloudflare/partykit/commit/3ec313ee4d737cbc33be3621178f002435f2fa2b), [`88474b1`](https://github.com/cloudflare/partykit/commit/88474b1fda322b13aebd543ea4a0638ae87aad32)]:
+  - partyserver@0.1.0
+
 ## 0.0.20
 
 ### Patch Changes

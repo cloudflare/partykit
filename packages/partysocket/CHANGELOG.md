@@ -1,5 +1,11 @@
 # partysocket
 
+## 1.1.10
+
+### Patch Changes
+
+- [`d90b4b9`](https://github.com/cloudflare/partykit/commit/d90b4b947dc33853545f04e8ea7df7f9d59a28b2) Thanks [@threepointone](https://github.com/threepointone)! - fix: invalid exports, and a script to check
+
 ## 1.1.9
 
 ### Patch Changes
