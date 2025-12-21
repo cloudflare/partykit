@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "start": "vite dev",
-    "dev": "vite dev"
+    "types": "wrangler types env.d.ts --include-runtime false"
   },
   "dependencies": {
     "hono": "^4.11.1",
