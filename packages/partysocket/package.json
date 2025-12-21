@@ -50,8 +50,8 @@
         "require": "./event-target-polyfill.d.cts",
         "default": "./event-target-polyfill.d.ts"
       },
-      "import": "./dist/event-target-polyfill.js",
-      "require": "./dist/event-target-polyfill.cjs"
+      "import": "./event-target-polyfill.js",
+      "require": "./event-target-polyfill.cjs"
     }
   },
   "scripts": {
