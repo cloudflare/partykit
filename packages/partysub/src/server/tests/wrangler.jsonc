@@ -2,5 +2,12 @@
   "name": "partysub-tests",
   "main": "./worker.ts",
   "compatibility_date": "2024-07-25",
-  "compatibility_flags": ["nodejs_compat"]
+  "compatibility_flags": [
+    "nodejs_compat",
+    // test specific flags
+    "enable_nodejs_tty_module",
+    "enable_nodejs_fs_module",
+    "enable_nodejs_http_modules",
+    "enable_nodejs_perf_hooks_module"
+  ]
 }
