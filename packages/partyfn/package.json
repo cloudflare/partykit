@@ -1,6 +1,6 @@
 {
   "name": "partyfn",
-  "version": "0.0.10",
+  "version": "0.1.0",
   "repository": {
     "type": "git",
     "url": "git://github.com/cloudflare/partykit.git"
@@ -19,7 +19,7 @@
   ],
   "dependencies": {
     "nanoid": "^5.1.6",
-    "partysocket": "^1.1.9"
+    "partysocket": "^1.1.10"
   },
   "scripts": {
     "build": "tsx scripts/build.ts"

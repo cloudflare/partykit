@@ -1,5 +1,16 @@
 # partyfn
 
+## 0.1.0
+
+### Minor Changes
+
+- [#302](https://github.com/cloudflare/partykit/pull/302) [`88474b1`](https://github.com/cloudflare/partykit/commit/88474b1fda322b13aebd543ea4a0638ae87aad32) Thanks [@threepointone](https://github.com/threepointone)! - change Env types to default to Cloudflare.Env
+
+### Patch Changes
+
+- Updated dependencies [[`d90b4b9`](https://github.com/cloudflare/partykit/commit/d90b4b947dc33853545f04e8ea7df7f9d59a28b2)]:
+  - partysocket@1.1.10
+
 ## 0.0.10
 
 ### Patch Changes

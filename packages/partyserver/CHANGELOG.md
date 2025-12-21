@@ -1,5 +1,15 @@
 # partyflare
 
+## 0.1.0
+
+### Minor Changes
+
+- [#302](https://github.com/cloudflare/partykit/pull/302) [`88474b1`](https://github.com/cloudflare/partykit/commit/88474b1fda322b13aebd543ea4a0638ae87aad32) Thanks [@threepointone](https://github.com/threepointone)! - change Env types to default to Cloudflare.Env
+
+### Patch Changes
+
+- [`3ec313e`](https://github.com/cloudflare/partykit/commit/3ec313ee4d737cbc33be3621178f002435f2fa2b) Thanks [@threepointone](https://github.com/threepointone)! - don't throw when a request doesn't match a namespace
+
 ## 0.0.78
 
 ### Patch Changes
