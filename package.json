@@ -34,6 +34,7 @@
     "concurrently": "^9.2.1",
     "cross-env": "^10.1.0",
     "jsdom": "^27.3.0",
+    "pkg-pr-new": "^0.0.62",
     "prettier": "^3.7.4",
     "sherif": "^1.9.0",
     "shx": "^0.4.0",
