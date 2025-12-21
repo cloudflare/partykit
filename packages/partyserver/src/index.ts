@@ -180,9 +180,11 @@ export async function routePartykitRequest<
         console.warn(`PartyServer doesn't have a "main" party by default. Try adding this to your PartySocket client:\n 
 party: "${camelCaseToKebabCase(Object.keys(map)[0])}"`);
       } else {
-        console.error(`The url ${req.url} does not match any server namespace. 
-Did you forget to add a durable object binding to the class in your wrangler.jsonc?`);
+        console.error(`The url ${req.url}  with namespace "${namespace}" and name "${name}" does not match any server namespace. 
+Did you forget to add a durable object binding to the class ${namespace[0].toUpperCase() + namespace.slice(1)} in your wrangler.jsonc?`);
       }
+      // we should return a response with a status code that it's an invalid request
+      return new Response("Invalid request", { status: 400 });
     }
 
     let doNamespace = map[namespace];
@@ -552,7 +554,9 @@ Did you try connecting directly to this Durable Object? Try using getServerByNam
       throw new Error("A name is required.");
     }
     if (this.#_name && this.#_name !== name) {
-      throw new Error("This server already has a name.");
+      throw new Error(
+        `This server already has a name: ${this.#_name}, attempting to set to: ${name}`
+      );
     }
     this.#_name = name;
 
