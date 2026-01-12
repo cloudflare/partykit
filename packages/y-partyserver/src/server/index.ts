@@ -118,7 +118,7 @@ class WSSharedDoc extends YDoc {
     // compatible at runtime since we only use the first 3 parameters.
     // yjs 13: on("update", (update: Uint8Array, origin: any, doc: Doc) => void)
     // yjs 14: on("update", (update: Uint8Array, origin: any, doc: Doc, transaction: Transaction) => void)
-    // @ts-ignore - Type compatibility varies between yjs versions
+    // @ts-expect-error - Type compatibility varies between yjs versions
     this.on("update", updateHandler);
   }
 }
@@ -431,7 +431,7 @@ export class YServer<
       // Note: emit() signature uses a rest parameter internally but the
       // TypeScript declaration uses a single array parameter. This is intentional and
       // works correctly at runtime for both yjs 13 and 14.
-      // @ts-ignore - Type compatibility varies between yjs versions
+      // @ts-expect-error - Type compatibility varies between yjs versions
       this.document.emit("error", [err]);
     }
   }
