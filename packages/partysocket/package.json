@@ -88,6 +88,7 @@
     "event-target-polyfill": "^0.0.4"
   },
   "devDependencies": {
+    "@testing-library/react": "^16.3.1",
     "@types/ws": "^8.18.1"
   }
 }

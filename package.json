@@ -5,7 +5,7 @@
   "description": "Everything's better with friends",
   "scripts": {
     "build": "npm run build -w partyserver -w partysocket -w y-partyserver -w partysub -w partyfn -w partysync -w partywhen -w partytracks -w hono-party && tsx scripts/check-exports.ts",
-    "check": "concurrently \"npm run check:repo\" \"npm run check:format\" \"npm run check:lint\" \"npm run check:type\" \"npm run check:test\" --kill-others-on-fail",
+    "check": "npm run check:repo && npm run check:format && npm run check:lint && npm run check:type && npm run check:test",
     "format": "prettier . --write --ignore-unknown",
     "check:format": "prettier . --check --ignore-unknown",
     "check:lint": "biome check",
@@ -31,7 +31,6 @@
     "@vitejs/plugin-react": "^5.1.2",
     "@vitest/runner": "3.2.4",
     "@vitest/snapshot": "3.2.4",
-    "concurrently": "^9.2.1",
     "cross-env": "^10.1.0",
     "jsdom": "^27.3.0",
     "pkg-pr-new": "^0.0.62",

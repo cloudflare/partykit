@@ -3,6 +3,5 @@
   "compilerOptions": {
     "lib": ["ESNext", "DOM"],
     "types": ["@cloudflare/workers-types", "node"]
-  },
-  "exclude": ["tests"]
+  }
 }
