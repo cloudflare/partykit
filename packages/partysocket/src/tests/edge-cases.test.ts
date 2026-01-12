@@ -3,7 +3,7 @@
  * Tests for rarely-hit code paths and boundary conditions
  */
 
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { WebSocketServer } from "ws";
 import PartySocket from "../index";
 import ReconnectingWebSocket from "../ws";
