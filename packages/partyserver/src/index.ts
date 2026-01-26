@@ -8,7 +8,8 @@ import { nanoid } from "nanoid";
 import {
   createLazyConnection,
   HibernatingConnectionManager,
-  InMemoryConnectionManager
+  InMemoryConnectionManager,
+  isPartyServerWebSocket
 } from "./connection";
 
 import type { ConnectionManager } from "./connection";
@@ -422,6 +423,13 @@ Did you try connecting directly to this Durable Object? Try using getServerByNam
       return;
     }
 
+    // Ignore websockets accepted outside PartyServer (e.g. via
+    // `state.acceptWebSocket()` in user code). These sockets won't have the
+    // `__pk` attachment namespace required to rehydrate a Connection.
+    if (!isPartyServerWebSocket(ws)) {
+      return;
+    }
+
     const connection = createLazyConnection(ws);
 
     // rehydrate the server name if it's woken up
@@ -449,6 +457,10 @@ Did you try connecting directly to this Durable Object? Try using getServerByNam
       return;
     }
 
+    if (!isPartyServerWebSocket(ws)) {
+      return;
+    }
+
     const connection = createLazyConnection(ws);
 
     // rehydrate the server name if it's woken up
@@ -467,6 +479,10 @@ Did you try connecting directly to this Durable Object? Try using getServerByNam
     // Ignore keep-alive socket errors (internal waitUntil mechanism)
     const tags = this.ctx.getTags(ws);
     if (tags.includes("partyserver-keepalive")) {
+      return;
+    }
+
+    if (!isPartyServerWebSocket(ws)) {
       return;
     }
 

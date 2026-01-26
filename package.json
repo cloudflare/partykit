@@ -27,6 +27,7 @@
     "@cloudflare/vite-plugin": "^1.19.0",
     "@cloudflare/vitest-pool-workers": "^0.10.4",
     "@ianvs/prettier-plugin-sort-imports": "^4.7.0",
+    "@rolldown/binding-darwin-arm64": "^1.0.0-beta.55",
     "@types/node": "25.0.3",
     "@vitejs/plugin-react": "^5.1.2",
     "@vitest/runner": "3.2.4",

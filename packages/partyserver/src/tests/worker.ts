@@ -11,6 +11,7 @@ function assert(condition: unknown, message: string): asserts condition {
 export type Env = {
   Stateful: DurableObjectNamespace<Stateful>;
   OnStartServer: DurableObjectNamespace<OnStartServer>;
+  Mixed: DurableObjectNamespace<Mixed>;
 };
 
 export class Stateful extends Server {
@@ -58,6 +59,37 @@ export class OnStartServer extends Server {
     _request: Request<unknown, CfProperties<unknown>>
   ): Response | Promise<Response> {
     return new Response(this.counter.toString());
+  }
+}
+
+export class Mixed extends Server {
+  static options = {
+    hibernate: true
+  };
+
+  async fetch(request: Request): Promise<Response> {
+    const url = new URL(request.url);
+    if (url.pathname.endsWith("/foreign")) {
+      const room = request.headers.get("x-partykit-room");
+      if (room) {
+        await this.setName(room);
+      }
+
+      const pair = new WebSocketPair();
+      const [client, server] = Object.values(pair);
+      // Accept a hibernated websocket that PartyServer does not manage. This is
+      // equivalent to user code calling `this.ctx.acceptWebSocket()` directly.
+      this.ctx.acceptWebSocket(server, ["foreign"]);
+      return new Response(null, { status: 101, webSocket: client });
+    }
+
+    return super.fetch(request);
+  }
+
+  onConnect(connection: Connection): void {
+    // Trigger a broadcast while a foreign hibernated socket exists.
+    this.broadcast("hello");
+    connection.send("connected");
   }
 }
 

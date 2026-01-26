@@ -149,6 +149,47 @@ describe("Server", () => {
     expect(response.headers.get("Location")).toBe("https://example3.com");
   });
 
+  it("ignores foreign hibernated websockets when broadcasting", async () => {
+    const ctx = createExecutionContext();
+
+    // Create a websocket that is accepted via the DO hibernation API directly
+    // (no PartyServer `__pk` attachment).
+    const foreignReq = new Request(
+      "http://example.com/parties/mixed/room/foreign",
+      {
+        headers: { Upgrade: "websocket" }
+      }
+    );
+    const foreignRes = await worker.fetch(foreignReq, env, ctx);
+    const foreignWs = foreignRes.webSocket!;
+    foreignWs.accept();
+
+    // Now connect via PartyServer. onConnect() will call broadcast(), which must
+    // not crash due to the foreign socket.
+    const req = new Request("http://example.com/parties/mixed/room", {
+      headers: { Upgrade: "websocket" }
+    });
+    const res = await worker.fetch(req, env, ctx);
+    const ws = res.webSocket!;
+    ws.accept();
+
+    const { promise, resolve, reject } = Promise.withResolvers<void>();
+    ws.addEventListener("message", (message) => {
+      try {
+        // We should receive at least one message from the server.
+        expect(["hello", "connected"]).toContain(message.data);
+        resolve();
+      } catch (e) {
+        reject(e);
+      } finally {
+        ws.close();
+        foreignWs.close();
+      }
+    });
+
+    return promise;
+  });
+
   // it("can be connected with a query parameter");
   // it("can be connected with a header");
 
