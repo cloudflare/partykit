@@ -306,7 +306,6 @@ export class HibernatingConnectionManager<TState> implements ConnectionManager {
     // exist on the same Durable Object via `state.acceptWebSocket()`.
     let count = 0;
     for (const ws of this.controller.getWebSockets()) {
-      // if (ws.readyState !== WebSocket.READY_STATE_OPEN) continue;
       if (isPartyServerWebSocket(ws)) count++;
     }
     return count;
@@ -316,7 +315,6 @@ export class HibernatingConnectionManager<TState> implements ConnectionManager {
     // TODO: Should we cache the connections?
     const sockets = this.controller.getWebSockets(id);
     const matching = sockets.filter((ws) => {
-      // if (ws.readyState !== WebSocket.READY_STATE_OPEN) return false;
       return tryGetPartyServerMeta(ws)?.id === id;
     });
 
