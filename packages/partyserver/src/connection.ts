@@ -38,6 +38,39 @@ type ConnectionAttachments = {
   __user?: unknown;
 };
 
+function tryGetPartyServerMeta(
+  ws: WebSocket
+): ConnectionAttachments["__pk"] | null {
+  try {
+    // Avoid AttachmentCache.get() here: hibernated sockets accepted outside
+    // PartyServer can have an attachment without a __pk namespace.
+    const attachment = WebSocket.prototype.deserializeAttachment.call(
+      ws
+    ) as unknown;
+    if (!attachment || typeof attachment !== "object") {
+      return null;
+    }
+    if (!("__pk" in attachment)) {
+      return null;
+    }
+    const pk = (attachment as ConnectionAttachments).__pk as unknown;
+    if (!pk || typeof pk !== "object") {
+      return null;
+    }
+    const { id, server } = pk as { id?: unknown; server?: unknown };
+    if (typeof id !== "string" || typeof server !== "string") {
+      return null;
+    }
+    return pk as ConnectionAttachments["__pk"];
+  } catch {
+    return null;
+  }
+}
+
+export function isPartyServerWebSocket(ws: WebSocket): boolean {
+  return tryGetPartyServerMeta(ws) !== null;
+}
+
 /**
  * Cache websocket attachments to avoid having to rehydrate them on every property access.
  */
@@ -180,6 +213,12 @@ class HibernatingConnectionIterator<T> implements IterableIterator<
     while ((socket = sockets[this.index++])) {
       // only yield open sockets to match non-hibernating behaviour
       if (socket.readyState === WebSocket.READY_STATE_OPEN) {
+        // Durable Objects hibernation APIs allow storing arbitrary sockets via
+        // `state.acceptWebSocket()`. Those sockets won't have PartyServer's
+        // `__pk` attachment namespace and must be ignored.
+        if (!isPartyServerWebSocket(socket)) {
+          continue;
+        }
         const value = createLazyConnection(socket) as Connection<T>;
         return { done: false, value };
       }
@@ -263,15 +302,27 @@ export class HibernatingConnectionManager<TState> implements ConnectionManager {
   constructor(private controller: DurableObjectState) {}
 
   getCount() {
-    return Number(this.controller.getWebSockets().length);
+    // Only count sockets managed by PartyServer. Other hibernated sockets may
+    // exist on the same Durable Object via `state.acceptWebSocket()`.
+    let count = 0;
+    for (const ws of this.controller.getWebSockets()) {
+      // if (ws.readyState !== WebSocket.READY_STATE_OPEN) continue;
+      if (isPartyServerWebSocket(ws)) count++;
+    }
+    return count;
   }
 
   getConnection<T = TState>(id: string) {
     // TODO: Should we cache the connections?
     const sockets = this.controller.getWebSockets(id);
-    if (sockets.length === 0) return undefined;
-    if (sockets.length === 1)
-      return createLazyConnection(sockets[0]) as Connection<T>;
+    const matching = sockets.filter((ws) => {
+      // if (ws.readyState !== WebSocket.READY_STATE_OPEN) return false;
+      return tryGetPartyServerMeta(ws)?.id === id;
+    });
+
+    if (matching.length === 0) return undefined;
+    if (matching.length === 1)
+      return createLazyConnection(matching[0]) as Connection<T>;
 
     throw new Error(
       `More than one connection found for id ${id}. Did you mean to use getConnections(tag) instead?`

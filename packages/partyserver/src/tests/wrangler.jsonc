@@ -18,13 +18,17 @@
       {
         "name": "OnStartServer",
         "class_name": "OnStartServer"
+      },
+      {
+        "name": "Mixed",
+        "class_name": "Mixed"
       }
     ]
   },
   "migrations": [
     {
       "tag": "v1", // Should be unique for each entry
-      "new_classes": ["Stateful", "OnStartServer"]
+      "new_classes": ["Stateful", "OnStartServer", "Mixed"]
     }
   ]
 }
