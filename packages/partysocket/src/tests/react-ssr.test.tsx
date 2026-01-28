@@ -3,7 +3,7 @@
  */
 import { renderToString } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { WebSocketServer } from "ws";
+import { type WebSocket as NodeWebSocket, WebSocketServer } from "ws";
 import { usePartySocket, useWebSocket } from "../react";
 
 const PORT = 50135;
@@ -25,9 +25,16 @@ describe("SSR/Node.js Environment - usePartySocket", () => {
   });
 
   afterEach(() => {
-    wss.close();
-    global.window = originalWindow;
-    global.document = originalDocument;
+    return new Promise<void>((resolve) => {
+      wss.clients.forEach((client: NodeWebSocket) => {
+        client.terminate();
+      });
+      wss.close(() => {
+        global.window = originalWindow;
+        global.document = originalDocument;
+        resolve();
+      });
+    });
   });
 
   it("should use default host when window is not available", () => {
@@ -151,7 +158,7 @@ describe("SSR/Node.js Environment - usePartySocket", () => {
 
   it("should handle query params in SSR", () => {
     function TestComponent() {
-      const socket = usePartySocket({
+      const _socket = usePartySocket({
         host: "example.com",
         room: "test-room",
         query: { token: "abc123" },
@@ -167,7 +174,7 @@ describe("SSR/Node.js Environment - usePartySocket", () => {
 
   it("should handle async query params in SSR", () => {
     function TestComponent() {
-      const socket = usePartySocket({
+      const _socket = usePartySocket({
         host: "example.com",
         room: "test-room",
         query: async () => ({ token: "abc123" }),
@@ -219,9 +226,16 @@ describe("SSR/Node.js Environment - useWebSocket", () => {
   });
 
   afterEach(() => {
-    wss.close();
-    global.window = originalWindow;
-    global.document = originalDocument;
+    return new Promise<void>((resolve) => {
+      wss.clients.forEach((client: NodeWebSocket) => {
+        client.terminate();
+      });
+      wss.close(() => {
+        global.window = originalWindow;
+        global.document = originalDocument;
+        resolve();
+      });
+    });
   });
 
   it("should render with string URL in SSR", () => {
@@ -273,7 +287,7 @@ describe("SSR/Node.js Environment - useWebSocket", () => {
 
   it("should handle protocols array in SSR", () => {
     function TestComponent() {
-      const socket = useWebSocket(
+      const _socket = useWebSocket(
         `ws://localhost:${PORT + 1}`,
         ["protocol1", "protocol2"],
         {
@@ -290,7 +304,7 @@ describe("SSR/Node.js Environment - useWebSocket", () => {
 
   it("should handle protocol function in SSR", () => {
     function TestComponent() {
-      const socket = useWebSocket(
+      const _socket = useWebSocket(
         `ws://localhost:${PORT + 1}`,
         () => "protocol1",
         {
@@ -307,7 +321,7 @@ describe("SSR/Node.js Environment - useWebSocket", () => {
 
   it("should handle async protocol in SSR", () => {
     function TestComponent() {
-      const socket = useWebSocket(
+      const _socket = useWebSocket(
         `ws://localhost:${PORT + 1}`,
         async () => "protocol1",
         {

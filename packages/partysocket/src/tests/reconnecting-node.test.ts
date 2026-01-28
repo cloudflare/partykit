@@ -56,7 +56,7 @@ afterEach(() => {
 
 afterAll(() => {
   return new Promise<void>((resolve) => {
-    wss.clients.forEach((client) => {
+    wss.clients.forEach((client: NodeWebSocket) => {
       client.terminate();
     });
     wss.close(() => {
