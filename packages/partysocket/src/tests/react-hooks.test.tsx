@@ -9,7 +9,7 @@ import { WebSocketServer } from "ws";
 import usePartySocket, { useWebSocket } from "../react";
 
 const PORT = 50128;
-const URL = `ws://localhost:${PORT}`;
+//  const URL = `ws://localhost:${PORT}`;
 
 describe("usePartySocket", () => {
   let wss: WebSocketServer;
@@ -313,24 +313,39 @@ describe("usePartySocket", () => {
   test("attaches onOpen event handler", async () => {
     const onOpen = vitest.fn();
 
-    wss.once("connection", (ws) => {
+    wss.once("connection", (_ws) => {
       // Connection established
     });
 
+    // Start with socket closed to ensure handler is attached before connection
     const { result } = renderHook(() =>
       usePartySocket({
         host: `localhost:${PORT}`,
         room: "test-room",
-        onOpen
+        onOpen,
+        startClosed: true
       })
     );
 
+    // Verify socket starts closed
+    expect(result.current.readyState).toBe(WebSocket.CLOSED);
+
+    // Give useEffect time to attach event handlers
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    // Manually trigger reconnection - handler should be attached by now
+    result.current.reconnect();
+
+    // Wait for connection to be established
     await waitFor(
       () => {
-        expect(onOpen).toHaveBeenCalled();
+        expect(result.current.readyState).toBe(WebSocket.OPEN);
       },
       { timeout: 3000 }
     );
+
+    // Verify onOpen was called
+    expect(onOpen).toHaveBeenCalled();
 
     result.current.close();
   });
@@ -340,7 +355,10 @@ describe("usePartySocket", () => {
     const testMessage = "hello from server";
 
     wss.once("connection", (ws) => {
-      ws.send(testMessage);
+      // Wait for connection to be fully established before sending
+      setTimeout(() => {
+        ws.send(testMessage);
+      }, 100);
     });
 
     const { result } = renderHook(() =>
@@ -351,6 +369,15 @@ describe("usePartySocket", () => {
       })
     );
 
+    // Wait for connection to be established first
+    await waitFor(
+      () => {
+        expect(result.current.readyState).toBe(WebSocket.OPEN);
+      },
+      { timeout: 3000 }
+    );
+
+    // Then wait for message
     await waitFor(
       () => {
         expect(onMessage).toHaveBeenCalled();
@@ -367,7 +394,8 @@ describe("usePartySocket", () => {
     const onClose = vitest.fn();
 
     wss.once("connection", (ws) => {
-      setTimeout(() => ws.close(), 50);
+      // Wait for connection to be fully established before closing
+      setTimeout(() => ws.close(), 100);
     });
 
     const { result } = renderHook(() =>
@@ -378,14 +406,21 @@ describe("usePartySocket", () => {
       })
     );
 
+    // Wait for connection to be established first
+    await waitFor(
+      () => {
+        expect(result.current.readyState).toBe(WebSocket.OPEN);
+      },
+      { timeout: 3000 }
+    );
+
+    // Then wait for close event
     await waitFor(
       () => {
         expect(onClose).toHaveBeenCalled();
       },
       { timeout: 3000 }
     );
-
-    result.current.close();
   });
 
   test("attaches onError event handler", async () => {
@@ -415,8 +450,9 @@ describe("usePartySocket", () => {
     const onMessage2 = vitest.fn();
 
     wss.once("connection", (ws) => {
-      setTimeout(() => ws.send("message1"), 50);
-      setTimeout(() => ws.send("message2"), 100);
+      // Wait for connection to be fully established before sending messages
+      setTimeout(() => ws.send("message1"), 100);
+      setTimeout(() => ws.send("message2"), 200);
     });
 
     const { result, rerender } = renderHook(
@@ -430,6 +466,14 @@ describe("usePartySocket", () => {
     );
 
     const firstSocket = result.current;
+
+    // Wait for connection to be established first
+    await waitFor(
+      () => {
+        expect(result.current.readyState).toBe(WebSocket.OPEN);
+      },
+      { timeout: 3000 }
+    );
 
     // Wait for first message
     await waitFor(
@@ -485,7 +529,7 @@ describe("usePartySocket", () => {
   });
 
   test("connects automatically when startClosed is false", async () => {
-    wss.once("connection", (ws) => {
+    wss.once("connection", (_ws) => {
       // Connection established
     });
 

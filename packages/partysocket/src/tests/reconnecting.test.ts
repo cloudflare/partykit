@@ -41,7 +41,7 @@ afterEach(() => {
 
 afterAll(() => {
   return new Promise<void>((resolve) => {
-    wss.clients.forEach((client) => {
+    wss.clients.forEach((client: NodeWebSocket) => {
       client.terminate();
     });
     wss.close(() => {
@@ -475,13 +475,13 @@ testDone("start closed", (done, fail) => {
   const anyMessageText = "hello";
   const anyProtocol = "foobar";
 
-  wss.once("connection", (ws) => {
-    void ws.once("message", (msg) => {
+  wss.once("connection", (ws: NodeWebSocket) => {
+    void ws.once("message", (msg: Buffer) => {
       ws.send(msg);
     });
   });
 
-  wss.once("error", (e) => {
+  wss.once("error", (e: Error) => {
     fail(e);
   });
 
@@ -526,13 +526,13 @@ testDone("connect, send, receive, close", (done, fail) => {
   const anyMessageText = "hello";
   const anyProtocol = "foobar";
 
-  wss.once("connection", (ws) => {
-    void ws.once("message", (msg) => {
+  wss.once("connection", (ws: NodeWebSocket) => {
+    void ws.once("message", (msg: Buffer) => {
       ws.send(msg);
     });
   });
 
-  wss.on("error", (e) => {
+  wss.on("error", (e: Error) => {
     fail(e);
   });
 
@@ -739,8 +739,8 @@ testDone(
     expect(ws.bufferedAmount).toBe(messages.reduce((a, m) => a + m.length, 0));
 
     let i = 0;
-    wss.once("connection", (client) => {
-      client.on("message", (data) => {
+    wss.once("connection", (client: NodeWebSocket) => {
+      client.on("message", (data: Buffer) => {
         // eslint-disable-next-line @typescript-eslint/no-base-to-string
         if (data.toString() === "ok") {
           expect(i).toBe(messages.length);

@@ -163,7 +163,7 @@ describe("Integration - Full Lifecycle", () => {
               for (let i = 0; i < messageCount; i++) {
                 expect(receivedMessages[i]).toBe(`message-${i}`);
               }
-            } catch (e) {
+            } catch (_e) {
               // If we still have Blobs, messages aren't fully processed yet
               return;
             }
