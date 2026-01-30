@@ -31,10 +31,12 @@ const me =
 
 function App() {
   const [messages, setMessages] = useState<Array<ChatMessage>>([]);
+  const [connected, setConnected] = useState(true);
   const inputRef = useRef<HTMLInputElement>(null);
   const socket = usePartySocket({
     room: "abc",
     party: "chat",
+    enabled: connected,
     onOpen() {
       console.log("Connected to the party!");
     },
@@ -48,6 +50,13 @@ function App() {
     <>
       <h2 style={{ marginBottom: 10 }}>
         <b>Hi {me}!</b>
+        <button
+          type="button"
+          onClick={() => setConnected((c) => !c)}
+          style={{ marginLeft: 10 }}
+        >
+          {connected ? "Disconnect" : "Connect"}
+        </button>
       </h2>
       <div>
         {messages.map((message) => (

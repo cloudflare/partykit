@@ -1,5 +1,61 @@
-@import "tailwindcss";
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
 
-/* @import "tailwindcss/base";
-@import "tailwindcss/components";
-@import "tailwindcss/utilities"; */
+body {
+  font-family: system-ui, -apple-system, sans-serif;
+  background: #fff;
+  color: #111;
+  padding: 20px;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+h2 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid #ddd;
+  margin-bottom: 15px;
+}
+
+button {
+  background: #111;
+  color: #fff;
+  border: none;
+  padding: 6px 12px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+button:hover {
+  background: #333;
+}
+
+.message {
+  padding: 8px 0;
+  border-bottom: 1px solid #eee;
+}
+
+.user {
+  color: #555;
+}
+
+form {
+  margin-top: 20px;
+}
+
+input[type="text"] {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ccc;
+  font-size: 16px;
+}
+
+input[type="text"]:focus {
+  outline: none;
+  border-color: #111;
+}
