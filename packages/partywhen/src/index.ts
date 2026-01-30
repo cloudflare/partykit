@@ -63,6 +63,7 @@ type Callback =
   | {
       type: "webhook";
       url: string;
+      headers?: Record<string, string>;
     }
   | {
       type: "durable-object";
@@ -361,6 +362,7 @@ export class Scheduler<
           method: "POST",
           body: JSON.stringify(task),
           headers: {
+            ...(task.callback.headers || {}),
             "Content-Type": "application/json"
           }
         });
