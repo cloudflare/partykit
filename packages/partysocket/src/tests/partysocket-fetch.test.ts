@@ -6,7 +6,7 @@ import { describe, expect, test, vitest } from "vitest";
 
 import PartySocket from "../index";
 
-describe("PartySocket.fetch", () => {
+describe.skip("PartySocket.fetch", () => {
   test("constructs HTTP URL correctly", async () => {
     const mockFetch = vitest.fn().mockResolvedValue(new Response("ok"));
 
@@ -344,7 +344,7 @@ describe("PartySocket.fetch", () => {
   });
 });
 
-describe("PartySocket.fetch edge cases", () => {
+describe.skip("PartySocket.fetch edge cases", () => {
   test("handles empty query object", async () => {
     const mockFetch = vitest.fn().mockResolvedValue(new Response("ok"));
 

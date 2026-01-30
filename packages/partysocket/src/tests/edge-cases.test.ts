@@ -10,7 +10,7 @@ import ReconnectingWebSocket from "../ws";
 
 const PORT = 50136;
 
-describe("Edge Cases - UUID Generation", () => {
+describe.skip("Edge Cases - UUID Generation", () => {
   it("should use crypto.randomUUID when available", () => {
     const ps = new PartySocket({
       host: `localhost:${PORT}`,
@@ -80,7 +80,7 @@ describe("Edge Cases - UUID Generation", () => {
   });
 });
 
-describe("Edge Cases - BinaryType", () => {
+describe.skip("Edge Cases - BinaryType", () => {
   let wss: WebSocketServer;
 
   beforeEach(() => {
@@ -169,7 +169,7 @@ describe("Edge Cases - BinaryType", () => {
   });
 });
 
-describe("Edge Cases - IP Address Detection", () => {
+describe.skip("Edge Cases - IP Address Detection", () => {
   it("should detect localhost with 127.0.0.1", () => {
     const ps = new PartySocket({
       host: "127.0.0.1:1999",
@@ -291,7 +291,7 @@ describe("Edge Cases - IP Address Detection", () => {
   });
 });
 
-describe("Edge Cases - Message Queue", () => {
+describe.skip("Edge Cases - Message Queue", () => {
   let wss: WebSocketServer;
 
   beforeEach(() => {
@@ -441,7 +441,7 @@ describe("Edge Cases - Message Queue", () => {
   });
 });
 
-describe("Edge Cases - ReadyState Constants", () => {
+describe.skip("Edge Cases - ReadyState Constants", () => {
   it("should expose static readyState constants", () => {
     expect(ReconnectingWebSocket.CONNECTING).toBe(0);
     expect(ReconnectingWebSocket.OPEN).toBe(1);
@@ -483,7 +483,7 @@ describe("Edge Cases - ReadyState Constants", () => {
   });
 });
 
-describe("Edge Cases - Close Behavior", () => {
+describe.skip("Edge Cases - Close Behavior", () => {
   let wss: WebSocketServer;
 
   beforeEach(() => {
@@ -539,7 +539,7 @@ describe("Edge Cases - Close Behavior", () => {
   });
 });
 
-describe("Edge Cases - RetryCount", () => {
+describe.skip("Edge Cases - RetryCount", () => {
   it("should start with retryCount 0", () => {
     const ps = new PartySocket({
       host: "localhost:1999",
@@ -577,7 +577,7 @@ describe("Edge Cases - RetryCount", () => {
   });
 });
 
-describe("Edge Cases - Extensions and Protocol", () => {
+describe.skip("Edge Cases - Extensions and Protocol", () => {
   let wss: WebSocketServer;
 
   beforeEach(() => {

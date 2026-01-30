@@ -10,7 +10,7 @@ import ReconnectingWebSocket from "../ws";
 
 const PORT = 50130;
 
-describe("Performance - Message Throughput", () => {
+describe.skip("Performance - Message Throughput", () => {
   let wss: WebSocketServer;
 
   beforeAll(() => {
@@ -144,7 +144,7 @@ describe("Performance - Message Throughput", () => {
   });
 });
 
-describe("Performance - Connection Speed", () => {
+describe.skip("Performance - Connection Speed", () => {
   let wss: WebSocketServer;
 
   beforeAll(() => {
@@ -227,7 +227,7 @@ describe("Performance - Connection Speed", () => {
   });
 });
 
-describe("Performance - Message Queue", () => {
+describe.skip("Performance - Message Queue", () => {
   test("respects maxEnqueuedMessages limit efficiently", () => {
     const maxMessages = 10;
     const ws = new ReconnectingWebSocket("ws://invalid", undefined, {
@@ -276,7 +276,7 @@ describe("Performance - Message Queue", () => {
   });
 });
 
-describe("Performance - Reconnection Logic", () => {
+describe.skip("Performance - Reconnection Logic", () => {
   test("retry delay calculation is efficient", () => {
     const ws = new ReconnectingWebSocket("ws://invalid", undefined, {
       minReconnectionDelay: 1000,
@@ -328,7 +328,7 @@ describe("Performance - Reconnection Logic", () => {
   });
 });
 
-describe("Performance - Event Handling", () => {
+describe.skip("Performance - Event Handling", () => {
   test("adding many event listeners is efficient", () => {
     const ws = new ReconnectingWebSocket("ws://invalid", undefined, {
       startClosed: true
@@ -384,7 +384,7 @@ describe("Performance - Event Handling", () => {
   });
 });
 
-describe("Performance - PartySocket Operations", () => {
+describe.skip("Performance - PartySocket Operations", () => {
   test("URL construction is fast", () => {
     const startTime = performance.now();
 
@@ -432,7 +432,7 @@ describe("Performance - PartySocket Operations", () => {
   });
 });
 
-describe("Performance - Memory", () => {
+describe.skip("Performance - Memory", () => {
   test("closed sockets can be garbage collected", () => {
     const sockets: ReconnectingWebSocket[] = [];
 

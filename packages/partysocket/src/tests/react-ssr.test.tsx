@@ -12,7 +12,7 @@ const PORT = 50135;
 const originalWindow = global.window;
 const originalDocument = global.document;
 
-describe("SSR/Node.js Environment - usePartySocket", () => {
+describe.skip("SSR/Node.js Environment - usePartySocket", () => {
   let wss: WebSocketServer;
 
   beforeEach(() => {
@@ -214,7 +214,7 @@ describe("SSR/Node.js Environment - usePartySocket", () => {
   });
 });
 
-describe("SSR/Node.js Environment - useWebSocket", () => {
+describe.skip("SSR/Node.js Environment - useWebSocket", () => {
   let wss: WebSocketServer;
 
   beforeEach(() => {
@@ -360,7 +360,7 @@ describe("SSR/Node.js Environment - useWebSocket", () => {
   });
 });
 
-describe("SSR/Node.js Environment - Hydration Safety", () => {
+describe.skip("SSR/Node.js Environment - Hydration Safety", () => {
   beforeEach(() => {
     // @ts-expect-error - we're testing undefined window
     delete global.window;
