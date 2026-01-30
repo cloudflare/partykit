@@ -7,9 +7,11 @@ import {
 
 import type { PartySocketOptions } from "./index";
 import type { EventHandlerOptions } from "./use-handlers";
+import type { SocketOptions } from "./use-socket";
 
 type UsePartySocketOptions = Omit<PartySocketOptions, "host"> &
-  EventHandlerOptions & {
+  EventHandlerOptions &
+  Pick<SocketOptions, "enabled"> & {
     host?: string | undefined;
   };
 

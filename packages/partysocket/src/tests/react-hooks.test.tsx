@@ -11,7 +11,7 @@ import usePartySocket, { useWebSocket } from "../react";
 const PORT = 50128;
 //  const URL = `ws://localhost:${PORT}`;
 
-describe.skip("usePartySocket", () => {
+describe("usePartySocket", () => {
   let wss: WebSocketServer;
 
   beforeAll(() => {
@@ -653,9 +653,145 @@ describe.skip("usePartySocket", () => {
 
     result.current.close();
   });
+
+  test("does not connect when enabled is false", () => {
+    const { result } = renderHook(() =>
+      usePartySocket({
+        host: `localhost:${PORT}`,
+        room: "test-room",
+        enabled: false
+      })
+    );
+
+    expect(result.current).toBeDefined();
+    expect(result.current.readyState).toBe(WebSocket.CLOSED);
+  });
+
+  test("connects when enabled is true (default)", async () => {
+    wss.once("connection", (ws) => {
+      ws.close();
+    });
+
+    const { result } = renderHook(() =>
+      usePartySocket({
+        host: `localhost:${PORT}`,
+        room: "test-room",
+        enabled: true
+      })
+    );
+
+    await waitFor(
+      () => {
+        expect(result.current.readyState).toBe(WebSocket.OPEN);
+      },
+      { timeout: 3000 }
+    );
+
+    result.current.close();
+  });
+
+  test("disconnects when enabled changes from true to false", async () => {
+    wss.once("connection", (ws) => {
+      // Keep connection open
+    });
+
+    const { result, rerender } = renderHook(
+      ({ enabled }) =>
+        usePartySocket({
+          host: `localhost:${PORT}`,
+          room: "test-room",
+          enabled
+        }),
+      { initialProps: { enabled: true } }
+    );
+
+    await waitFor(
+      () => {
+        expect(result.current.readyState).toBe(WebSocket.OPEN);
+      },
+      { timeout: 3000 }
+    );
+
+    rerender({ enabled: false });
+
+    await waitFor(
+      () => {
+        expect(result.current.readyState).toBe(WebSocket.CLOSED);
+      },
+      { timeout: 3000 }
+    );
+  });
+
+  test("reconnects when enabled changes from false to true", async () => {
+    wss.once("connection", (ws) => {
+      // Keep connection open
+    });
+
+    const { result, rerender } = renderHook(
+      ({ enabled }) =>
+        usePartySocket({
+          host: `localhost:${PORT}`,
+          room: "test-room",
+          enabled
+        }),
+      { initialProps: { enabled: false } }
+    );
+
+    expect(result.current.readyState).toBe(WebSocket.CLOSED);
+
+    rerender({ enabled: true });
+
+    await waitFor(
+      () => {
+        expect(result.current.readyState).toBe(WebSocket.OPEN);
+      },
+      { timeout: 3000 }
+    );
+
+    result.current.close();
+  });
+
+  test("keeps the same socket instance when enabled toggles", async () => {
+    wss.once("connection", () => {
+      // Keep connection open
+    });
+
+    const { result, rerender } = renderHook(
+      ({ enabled }) =>
+        usePartySocket({
+          host: `localhost:${PORT}`,
+          room: "test-room",
+          enabled
+        }),
+      { initialProps: { enabled: true } }
+    );
+
+    await waitFor(
+      () => {
+        expect(result.current.readyState).toBe(WebSocket.OPEN);
+      },
+      { timeout: 3000 }
+    );
+
+    const socketInstance = result.current;
+
+    rerender({ enabled: false });
+
+    await waitFor(
+      () => {
+        expect(result.current.readyState).toBe(WebSocket.CLOSED);
+      },
+      { timeout: 3000 }
+    );
+
+    // Same socket instance should be reused
+    expect(result.current).toBe(socketInstance);
+
+    result.current.close();
+  });
 });
 
-describe.skip("useWebSocket", () => {
+describe("useWebSocket", () => {
   let wss: WebSocketServer;
 
   beforeAll(() => {
@@ -832,6 +968,132 @@ describe.skip("useWebSocket", () => {
 
     expect(result.current.send).toBeDefined();
     expect(typeof result.current.send).toBe("function");
+
+    result.current.close();
+  });
+
+  test("does not connect when enabled is false", () => {
+    const { result } = renderHook(() =>
+      useWebSocket(`ws://localhost:${PORT + 1}`, undefined, {
+        enabled: false
+      })
+    );
+
+    expect(result.current).toBeDefined();
+    expect(result.current.readyState).toBe(WebSocket.CLOSED);
+  });
+
+  test("connects when enabled is true (default)", async () => {
+    wss.once("connection", (ws) => {
+      ws.close();
+    });
+
+    const { result } = renderHook(() =>
+      useWebSocket(`ws://localhost:${PORT + 1}`, undefined, {
+        enabled: true
+      })
+    );
+
+    await waitFor(
+      () => {
+        expect(result.current.readyState).toBe(WebSocket.OPEN);
+      },
+      { timeout: 3000 }
+    );
+
+    result.current.close();
+  });
+
+  test("disconnects when enabled changes from true to false", async () => {
+    wss.once("connection", () => {
+      // Keep connection open
+    });
+
+    const { result, rerender } = renderHook(
+      ({ enabled }) =>
+        useWebSocket(`ws://localhost:${PORT + 1}`, undefined, {
+          enabled
+        }),
+      { initialProps: { enabled: true } }
+    );
+
+    await waitFor(
+      () => {
+        expect(result.current.readyState).toBe(WebSocket.OPEN);
+      },
+      { timeout: 3000 }
+    );
+
+    rerender({ enabled: false });
+
+    await waitFor(
+      () => {
+        expect(result.current.readyState).toBe(WebSocket.CLOSED);
+      },
+      { timeout: 3000 }
+    );
+  });
+
+  test("reconnects when enabled changes from false to true", async () => {
+    wss.once("connection", () => {
+      // Keep connection open
+    });
+
+    const { result, rerender } = renderHook(
+      ({ enabled }) =>
+        useWebSocket(`ws://localhost:${PORT + 1}`, undefined, {
+          enabled
+        }),
+      { initialProps: { enabled: false } }
+    );
+
+    expect(result.current.readyState).toBe(WebSocket.CLOSED);
+
+    rerender({ enabled: true });
+
+    await waitFor(
+      () => {
+        expect(result.current.readyState).toBe(WebSocket.OPEN);
+      },
+      { timeout: 3000 }
+    );
+
+    result.current.close();
+  });
+
+  test("keeps the same socket instance when enabled toggles", async () => {
+    wss.once("connection", () => {
+      // Keep connection open
+    });
+
+    const { result, rerender } = renderHook(
+      ({ enabled }) =>
+        useWebSocket(`ws://localhost:${PORT + 1}`, undefined, {
+          enabled
+        }),
+      { initialProps: { enabled: true } }
+    );
+
+    await waitFor(
+      () => {
+        expect(result.current.readyState).toBe(WebSocket.OPEN);
+      },
+      { timeout: 3000 }
+    );
+
+    const socketInstance = result.current;
+
+    rerender({ enabled: false });
+
+    await waitFor(
+      () => {
+        expect(result.current.readyState).toBe(WebSocket.CLOSED);
+      },
+      { timeout: 3000 }
+    );
+
+    // Same socket instance should be reused
+    expect(result.current).toBe(socketInstance);
 
     result.current.close();
   });
