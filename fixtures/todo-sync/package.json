@@ -9,8 +9,8 @@
   },
   "dependencies": {
     "nanoid": "^5.1.6",
-    "partyserver": "^0.1.0",
-    "partysocket": "^1.1.10",
+    "partyserver": "^0.1.1",
+    "partysocket": "^1.1.11",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
     "valibot": "^1.2.0"

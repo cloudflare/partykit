@@ -11,7 +11,7 @@
     "@tiptap/extension-collaboration": "^3.14.0",
     "@tiptap/react": "^3.14.0",
     "@tiptap/starter-kit": "^3.14.0",
-    "partyserver": "^0.1.0",
+    "partyserver": "^0.1.1",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
     "tailwindcss": "^4.1.18",
