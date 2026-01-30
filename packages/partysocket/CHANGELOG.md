@@ -1,5 +1,17 @@
 # partysocket
 
+## 1.1.11
+
+### Patch Changes
+
+- [#315](https://github.com/cloudflare/partykit/pull/315) [`2a2928b`](https://github.com/cloudflare/partykit/commit/2a2928b016c01dbcd6a2eb76b973d41bdd0ad1fc) Thanks [@threepointone](https://github.com/threepointone)! - Add `enabled` prop to `usePartySocket` and `useWebSocket` hooks for conditional connection control
+
+- [#294](https://github.com/cloudflare/partykit/pull/294) [`8237982`](https://github.com/cloudflare/partykit/commit/8237982c1ed97b20b98c73d288ab62a927a83b0b) Thanks [@amondnet](https://github.com/amondnet)! - Fix React Native/Expo `dispatchEvent` TypeError
+
+  Added React Native environment detection to use Node-style event cloning. React Native/Expo environments have both `process` and `document` polyfilled but not `process.versions.node`, which caused browser-style event cloning to be selected incorrectly. Browser-style cloning produces events that fail `instanceof Event` checks in `event-target-polyfill`.
+
+  Fixes #257
+
 ## 1.1.10
 
 ### Patch Changes

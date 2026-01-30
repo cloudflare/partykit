@@ -1,5 +1,11 @@
 # partyflare
 
+## 0.1.1
+
+### Patch Changes
+
+- [#312](https://github.com/cloudflare/partykit/pull/312) [`a936079`](https://github.com/cloudflare/partykit/commit/a936079c1fc045301d55061b872236ed8189506d) Thanks [@francescov1](https://github.com/francescov1)! - Check for hibernated websocket connections
+
 ## 0.1.0
 
 ### Minor Changes
