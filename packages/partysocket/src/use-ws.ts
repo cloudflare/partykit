@@ -6,9 +6,10 @@ import {
 import WebSocket from "./ws";
 
 import type { EventHandlerOptions } from "./use-handlers";
-import type { Options, ProtocolsProvider, UrlProvider } from "./ws";
+import type { SocketOptions } from "./use-socket";
+import type { ProtocolsProvider, UrlProvider } from "./ws";
 
-type UseWebSocketOptions = Options & EventHandlerOptions;
+type UseWebSocketOptions = SocketOptions & EventHandlerOptions;
 
 // A React hook that wraps PartySocket
 export default function useWebSocket(
