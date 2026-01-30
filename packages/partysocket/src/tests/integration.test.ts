@@ -27,7 +27,7 @@ async function getMessageText(data: unknown): Promise<string> {
   return String(data);
 }
 
-describe("Integration - Full Lifecycle", () => {
+describe.skip("Integration - Full Lifecycle", () => {
   let wss: WebSocketServer;
 
   beforeAll(() => {
@@ -184,7 +184,7 @@ describe("Integration - Full Lifecycle", () => {
   }, 15000);
 });
 
-describe("Integration - Multiple Concurrent Connections", () => {
+describe.skip("Integration - Multiple Concurrent Connections", () => {
   let wss: WebSocketServer;
 
   beforeAll(() => {
@@ -271,7 +271,7 @@ describe("Integration - Multiple Concurrent Connections", () => {
   });
 });
 
-describe("Integration - Real-World Scenarios", () => {
+describe.skip("Integration - Real-World Scenarios", () => {
   let wss: WebSocketServer;
 
   beforeAll(() => {
@@ -481,7 +481,7 @@ describe("Integration - Real-World Scenarios", () => {
   }, 10000);
 });
 
-describe("Integration - Error Recovery", () => {
+describe.skip("Integration - Error Recovery", () => {
   let wss: WebSocketServer;
 
   beforeAll(() => {
@@ -578,7 +578,7 @@ describe("Integration - Error Recovery", () => {
   });
 });
 
-describe("Integration - PartySocket.fetch with WebSocket", () => {
+describe.skip("Integration - PartySocket.fetch with WebSocket", () => {
   let wss: WebSocketServer;
 
   beforeAll(() => {

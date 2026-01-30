@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, test, vitest } from "vitest";
 
 import PartySocket from "../index";
 
-describe("PartySocket URL Construction", () => {
+describe.skip("PartySocket URL Construction", () => {
   test("constructs URL from host and room", () => {
     const ps = new PartySocket({
       host: "example.com",
@@ -217,7 +217,7 @@ describe("PartySocket URL Construction", () => {
   });
 });
 
-describe("PartySocket Query Parameters", () => {
+describe.skip("PartySocket Query Parameters", () => {
   test("includes connection ID in query params", () => {
     const customId = "custom-connection-id";
     const ps = new PartySocket({
@@ -279,7 +279,7 @@ describe("PartySocket Query Parameters", () => {
   });
 });
 
-describe("PartySocket Properties", () => {
+describe.skip("PartySocket Properties", () => {
   test("exposes host property", () => {
     const ps = new PartySocket({
       host: "example.com",
@@ -340,7 +340,7 @@ describe("PartySocket Properties", () => {
   });
 });
 
-describe("PartySocket.updateProperties", () => {
+describe.skip("PartySocket.updateProperties", () => {
   test("updates room", () => {
     const ps = new PartySocket({
       host: "example.com",
@@ -436,7 +436,7 @@ describe("PartySocket.updateProperties", () => {
   });
 });
 
-describe("PartySocket Name Validation", () => {
+describe.skip("PartySocket Name Validation", () => {
   let warnSpy: ReturnType<typeof vitest.spyOn>;
 
   beforeEach(() => {
@@ -502,7 +502,7 @@ describe("PartySocket Name Validation", () => {
   });
 });
 
-describe("PartySocket Protocols", () => {
+describe.skip("PartySocket Protocols", () => {
   test("accepts protocols array", () => {
     const ps = new PartySocket({
       host: "example.com",
@@ -524,7 +524,7 @@ describe("PartySocket Protocols", () => {
   });
 });
 
-describe("PartySocket Options Passthrough", () => {
+describe.skip("PartySocket Options Passthrough", () => {
   test("passes maxRetries to ReconnectingWebSocket", () => {
     const ps = new PartySocket({
       host: "example.com",

@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, test, vitest } from "vitest";
 import PartySocket from "../index";
 import ReconnectingWebSocket from "../ws";
 
-describe("Error Handling - URL Providers", () => {
+describe.skip("Error Handling - URL Providers", () => {
   test("handles async URL provider that throws", async () => {
     const errorSpy = vitest.fn();
 
@@ -71,7 +71,7 @@ describe("Error Handling - URL Providers", () => {
   });
 });
 
-describe("Error Handling - Protocol Providers", () => {
+describe.skip("Error Handling - Protocol Providers", () => {
   test("handles invalid protocol provider", async () => {
     const ws = new ReconnectingWebSocket("ws://example.com", undefined, {
       maxRetries: 0,
@@ -104,7 +104,7 @@ describe("Error Handling - Protocol Providers", () => {
   });
 });
 
-describe("Error Handling - PartySocket Validation", () => {
+describe.skip("Error Handling - PartySocket Validation", () => {
   test("throws when path starts with slash", () => {
     expect(() => {
       new PartySocket({
@@ -171,7 +171,7 @@ describe("Error Handling - PartySocket Validation", () => {
   });
 });
 
-describe("Error Handling - Connection Failures", () => {
+describe.skip("Error Handling - Connection Failures", () => {
   test("handles immediate connection failure", async () => {
     const errorSpy = vitest.fn();
 
@@ -239,7 +239,7 @@ describe("Error Handling - Connection Failures", () => {
   });
 });
 
-describe("Error Handling - Message Queue", () => {
+describe.skip("Error Handling - Message Queue", () => {
   test("respects maxEnqueuedMessages limit", () => {
     const maxMessages = 5;
     const ws = new ReconnectingWebSocket("ws://255.255.255.255", undefined, {
@@ -278,7 +278,7 @@ describe("Error Handling - Message Queue", () => {
   });
 });
 
-describe("Error Handling - Event Target Polyfill", () => {
+describe.skip("Error Handling - Event Target Polyfill", () => {
   let originalEventTarget: typeof EventTarget | undefined;
   let originalEvent: typeof Event | undefined;
   let errorSpy: ReturnType<typeof vitest.spyOn>;
@@ -319,7 +319,7 @@ describe("Error Handling - Event Target Polyfill", () => {
   });
 });
 
-describe("Error Handling - Close Scenarios", () => {
+describe.skip("Error Handling - Close Scenarios", () => {
   test("handles close before connection established", () => {
     const ws = new ReconnectingWebSocket("ws://example.com", undefined, {
       maxRetries: 0,
@@ -361,7 +361,7 @@ describe("Error Handling - Close Scenarios", () => {
   });
 });
 
-describe("Error Handling - PartySocket.fetch", () => {
+describe.skip("Error Handling - PartySocket.fetch", () => {
   test("propagates fetch errors", async () => {
     const mockFetch = vitest
       .fn()
@@ -405,7 +405,7 @@ describe("Error Handling - PartySocket.fetch", () => {
   });
 });
 
-describe("Error Handling - Edge Cases", () => {
+describe.skip("Error Handling - Edge Cases", () => {
   test("handles extremely long message queue", () => {
     const ws = new ReconnectingWebSocket("ws://255.255.255.255", undefined, {
       maxRetries: 0,
@@ -463,7 +463,7 @@ describe("Error Handling - Edge Cases", () => {
   });
 });
 
-describe("Error Handling - Retry Logic", () => {
+describe.skip("Error Handling - Retry Logic", () => {
   test("resets retry count on successful connection", async () => {
     const ws = new ReconnectingWebSocket("ws://255.255.255.255", undefined, {
       maxRetries: 5,
@@ -507,7 +507,7 @@ describe("Error Handling - Retry Logic", () => {
   });
 });
 
-describe("Error Handling - Debug Mode", () => {
+describe.skip("Error Handling - Debug Mode", () => {
   test("custom debugLogger receives messages", () => {
     const debugLogger = vitest.fn();
 

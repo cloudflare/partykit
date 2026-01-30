@@ -12,7 +12,7 @@
     "check:repo": "sherif",
     "check:test": "npm run check:test -w partyserver -w partysocket -w partysub -w partywhen -w partytracks",
     "check:type": "tsx scripts/typecheck.ts",
-    "all": "tsx i && npm run build && npm run check"
+    "all": "npm i && npm run build && npm run check"
   },
   "author": "Sunil Pai <spai@cloudflare.com>",
   "license": "ISC",
