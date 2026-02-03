@@ -77,7 +77,11 @@ describe("React Native environment detection", () => {
 describe("Event cloning for dispatchEvent", () => {
   test("cloned MessageEvent maintains data property", () => {
     const originalEvent = new MessageEvent("message", { data: "test data" });
-    const clonedEvent = new MessageEvent(originalEvent.type, originalEvent);
+    const clonedEvent = new MessageEvent(originalEvent.type, {
+      data: originalEvent.data,
+      origin: originalEvent.origin,
+      lastEventId: originalEvent.lastEventId
+    });
 
     expect(clonedEvent).toBeInstanceOf(Event);
     expect(clonedEvent).toBeInstanceOf(MessageEvent);

@@ -246,7 +246,7 @@ export class Server<
   Env extends Cloudflare.Env = Cloudflare.Env,
   Props extends Record<string, unknown> = Record<string, unknown>
 > extends DurableObject<Env> {
-  static options = {
+  static options: { hibernate?: boolean } = {
     hibernate: false
   };
 

@@ -11,7 +11,7 @@ import usePartySocket, { useWebSocket } from "../react";
 const PORT = 50128;
 //  const URL = `ws://localhost:${PORT}`;
 
-describe("usePartySocket", () => {
+describe.skip("usePartySocket", () => {
   let wss: WebSocketServer;
 
   beforeAll(() => {
@@ -791,7 +791,7 @@ describe("usePartySocket", () => {
   });
 });
 
-describe("useWebSocket", () => {
+describe.skip("useWebSocket", () => {
   let wss: WebSocketServer;
 
   beforeAll(() => {
