@@ -1,5 +1,11 @@
 # partyflare
 
+## 0.1.2
+
+### Patch Changes
+
+- [`d73d17c`](https://github.com/cloudflare/partykit/commit/d73d17cb5d3b20f27a3d75b62760d5df08e5c3d5) Thanks [@threepointone](https://github.com/threepointone)! - make hibernate optional in options
+
 ## 0.1.1
 
 ### Patch Changes
