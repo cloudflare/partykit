@@ -432,7 +432,7 @@ describe.skip("PartySocket.updateProperties", () => {
     ps.updateProperties({ host: "", room: "" });
     expect(() => {
       ps.reconnect();
-    }).toThrow("The room and host must be set");
+    }).toThrow("The host must be set");
   });
 });
 
