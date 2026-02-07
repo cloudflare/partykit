@@ -1,3 +1,17 @@
+/**
+ * Y.js server implementation for PartyServer.
+ *
+ * This module is compatible with both yjs 13.x and yjs 14.x (beta).
+ *
+ * Key differences between versions:
+ * - yjs 14 changed AbstractType generic signature from <EventType> to <EventDelta, Self>
+ * - yjs 14 uses stricter type constraints (T extends YValue)
+ * - yjs 14 changed doc.share type from Map<string, AbstractType<YEvent<any>>> to Map<string, YType>
+ * - Event handler signatures have additional parameters in yjs 14
+ *
+ * We use permissive types (any) where necessary to maintain compatibility.
+ */
+
 import * as decoding from "lib0/decoding";
 import * as encoding from "lib0/encoding";
 import debounce from "lodash.debounce";
@@ -100,7 +114,11 @@ class WSSharedDoc extends YDoc {
       });
     };
     this.awareness.on("update", awarenessChangeHandler);
-    // @ts-expect-error - TODO: fix this
+    // Note: Event handler signature differs between yjs 13 and 14, but both are
+    // compatible at runtime since we only use the first 3 parameters.
+    // yjs 13: on("update", (update: Uint8Array, origin: any, doc: Doc) => void)
+    // yjs 14: on("update", (update: Uint8Array, origin: any, doc: Doc, transaction: Transaction) => void)
+    // @ts-expect-error - Type compatibility varies between yjs versions
     this.on("update", updateHandler);
   }
 }
@@ -410,7 +428,10 @@ export class YServer<
       }
     } catch (err) {
       console.error(err);
-      // @ts-expect-error - TODO: fix this
+      // Note: emit() signature uses a rest parameter internally but the
+      // TypeScript declaration uses a single array parameter. This is intentional and
+      // works correctly at runtime for both yjs 13 and 14.
+      // @ts-expect-error - Type compatibility varies between yjs versions
       this.document.emit("error", [err]);
     }
   }
