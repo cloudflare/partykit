@@ -141,6 +141,7 @@ export default class PartySocket extends ReconnectingWebSocket {
   room?: string;
   host!: string;
   path!: string;
+  basePath?: string;
 
   constructor(readonly partySocketOptions: PartySocketOptions) {
     const wsOptions = getWSOptions(partySocketOptions);
@@ -169,7 +170,8 @@ export default class PartySocket extends ReconnectingWebSocket {
       ...partySocketOptions,
       host: partySocketOptions.host ?? this.host,
       room: partySocketOptions.room ?? this.room,
-      path: partySocketOptions.path ?? this.path
+      path: partySocketOptions.path ?? this.path,
+      basePath: partySocketOptions.basePath ?? this.basePath
     });
 
     this._url = wsOptions.urlProvider;
@@ -180,7 +182,7 @@ export default class PartySocket extends ReconnectingWebSocket {
   }
 
   private setWSProperties(wsOptions: ReturnType<typeof getWSOptions>) {
-    const { _pk, _pkurl, name, room, host, path } = wsOptions;
+    const { _pk, _pkurl, name, room, host, path, basePath } = wsOptions;
 
     this._pk = _pk;
     this._pkurl = _pkurl;
@@ -188,15 +190,21 @@ export default class PartySocket extends ReconnectingWebSocket {
     this.room = room;
     this.host = host;
     this.path = path;
+    this.basePath = basePath;
   }
 
   public reconnect(
     code?: number | undefined,
     reason?: string | undefined
   ): void {
-    if (!this.room || !this.host) {
+    if (!this.host) {
       throw new Error(
-        "The room and host must be set before connecting, use `updateProperties` method to set them or pass them to the constructor."
+        "The host must be set before connecting, use `updateProperties` method to set it or pass it to the constructor."
+      );
+    }
+    if (!this.room && !this.basePath) {
+      throw new Error(
+        "The room (or basePath) must be set before connecting, use `updateProperties` method to set it or pass it to the constructor."
       );
     }
     super.reconnect(code, reason);
@@ -256,6 +264,7 @@ function getWSOptions(partySocketOptions: PartySocketOptions) {
     room: party.room,
     host: party.host,
     path: party.path,
+    basePath: partySocketOptions.basePath,
     protocols: protocols,
     socketOptions: socketOptions,
     urlProvider: party.urlProvider

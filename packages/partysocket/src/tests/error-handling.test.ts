@@ -126,7 +126,7 @@ describe.skip("Error Handling - PartySocket Validation", () => {
 
     expect(() => {
       ps.reconnect();
-    }).toThrow("The room and host must be set");
+    }).toThrow("The host must be set");
   });
 
   test("throws when reconnecting without room", () => {
@@ -140,7 +140,19 @@ describe.skip("Error Handling - PartySocket Validation", () => {
 
     expect(() => {
       ps.reconnect();
-    }).toThrow("The room and host must be set");
+    }).toThrow("The room (or basePath) must be set");
+  });
+
+  test("does not throw when reconnecting with basePath and no room", () => {
+    const ps = new PartySocket({
+      host: "example.com",
+      basePath: "custom/path",
+      startClosed: true
+    });
+
+    expect(() => {
+      ps.reconnect();
+    }).not.toThrow();
   });
 
   test("handles missing WebSocket constructor gracefully", async () => {
