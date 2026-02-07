@@ -1,5 +1,11 @@
 # partysocket
 
+## 1.1.12
+
+### Patch Changes
+
+- [#317](https://github.com/cloudflare/partykit/pull/317) [`e1e7b47`](https://github.com/cloudflare/partykit/commit/e1e7b47d87a5dd9cd102f995d4b58ab8d03441ba) Thanks [@threepointone](https://github.com/threepointone)! - Fix `PartySocket.reconnect()` crashing when using `basePath` without `room`. The reconnect guard now accepts either `room` or `basePath` as sufficient context to construct a connection URL.
+
 ## 1.1.11
 
 ### Patch Changes

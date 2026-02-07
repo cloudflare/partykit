@@ -11,7 +11,7 @@
     "hono": "^4.11.1",
     "hono-party": "^1.0.0",
     "partyserver": "^0.1.2",
-    "partysocket": "^1.1.11",
+    "partysocket": "^1.1.12",
     "react": "^19.2.3",
     "react-dom": "^19.2.3"
   },
