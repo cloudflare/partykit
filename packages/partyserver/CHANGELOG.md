@@ -1,5 +1,11 @@
 # partyflare
 
+## 0.1.3
+
+### Patch Changes
+
+- [#319](https://github.com/cloudflare/partykit/pull/319) [`15a4157`](https://github.com/cloudflare/partykit/commit/15a41572a778526b496de94d5ef0909226c56e72) Thanks [@threepointone](https://github.com/threepointone)! - Add `configurable: true` to the `state`, `setState`, `serializeAttachment`, and `deserializeAttachment` property descriptors on connection objects. This allows downstream consumers (like the Cloudflare Agents SDK) to redefine these properties with `Object.defineProperty` for namespacing or wrapping internal state storage. Default behavior is unchanged.
+
 ## 0.1.2
 
 ### Patch Changes
