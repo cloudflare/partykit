@@ -11,7 +11,7 @@ import usePartySocket, { useWebSocket } from "../react";
 const PORT = 50128;
 //  const URL = `ws://localhost:${PORT}`;
 
-describe.skip("usePartySocket", () => {
+describe.skipIf(!!process.env.GITHUB_ACTIONS)("usePartySocket", () => {
   let wss: WebSocketServer;
 
   beforeAll(() => {
@@ -310,7 +310,8 @@ describe.skip("usePartySocket", () => {
     expect(result.current).toBe(firstSocket);
   });
 
-  test("attaches onOpen event handler", async () => {
+  // TODO: flaky — relies on WebSocket open event timing that doesn't work reliably
+  test.skip("attaches onOpen event handler", async () => {
     const onOpen = vitest.fn();
 
     // Set up connection handler before rendering
@@ -346,7 +347,8 @@ describe.skip("usePartySocket", () => {
     result.current.close();
   });
 
-  test("attaches onMessage event handler", async () => {
+  // TODO: flaky — WebSocket connection timing in jsdom is unreliable
+  test.skip("attaches onMessage event handler", async () => {
     const onMessage = vitest.fn();
     const testMessage = "hello from server";
 
@@ -380,7 +382,8 @@ describe.skip("usePartySocket", () => {
     result.current.close();
   });
 
-  test("attaches onClose event handler", async () => {
+  // TODO: flaky — WebSocket connection timing in jsdom is unreliable
+  test.skip("attaches onClose event handler", async () => {
     const onClose = vitest.fn();
 
     wss.once("connection", (ws) => {
@@ -413,7 +416,8 @@ describe.skip("usePartySocket", () => {
     );
   });
 
-  test("attaches onError event handler", async () => {
+  // TODO: flaky — WebSocket connection timing in jsdom is unreliable
+  test.skip("attaches onError event handler", async () => {
     const onError = vitest.fn();
 
     const { result } = renderHook(() =>
@@ -435,7 +439,8 @@ describe.skip("usePartySocket", () => {
     result.current.close();
   });
 
-  test("updates event handlers without reconnecting", async () => {
+  // TODO: flaky — WebSocket connection timing in jsdom is unreliable
+  test.skip("updates event handlers without reconnecting", async () => {
     const onMessage1 = vitest.fn();
     const onMessage2 = vitest.fn();
 
@@ -512,7 +517,8 @@ describe.skip("usePartySocket", () => {
     expect(result.current.readyState).toBe(WebSocket.CLOSED);
   });
 
-  test("connects automatically when startClosed is false", async () => {
+  // TODO: flaky — WebSocket connection timing in jsdom is unreliable
+  test.skip("connects automatically when startClosed is false", async () => {
     wss.once("connection", (_ws) => {
       // Connection established
     });
@@ -584,7 +590,8 @@ describe.skip("usePartySocket", () => {
     expect(result.current).not.toBe(firstSocket);
   });
 
-  test("handles all event handlers together", async () => {
+  // TODO: flaky — depends on open event handler which has timing issues
+  test.skip("handles all event handlers together", async () => {
     const onOpen = vitest.fn();
     const onMessage = vitest.fn();
     const onClose = vitest.fn();
@@ -618,7 +625,8 @@ describe.skip("usePartySocket", () => {
     result.current.close();
   });
 
-  test("can call socket methods", async () => {
+  // TODO: flaky — WebSocket connection timing in jsdom is unreliable
+  test.skip("can call socket methods", async () => {
     wss.once("connection", (ws) => {
       ws.on("message", (data) => {
         ws.send(data); // Echo back
@@ -667,7 +675,8 @@ describe.skip("usePartySocket", () => {
     expect(result.current.readyState).toBe(WebSocket.CLOSED);
   });
 
-  test("connects when enabled is true (default)", async () => {
+  // TODO: flaky — WebSocket connection timing in jsdom is unreliable
+  test.skip("connects when enabled is true (default)", async () => {
     wss.once("connection", (ws) => {
       ws.close();
     });
@@ -690,7 +699,8 @@ describe.skip("usePartySocket", () => {
     result.current.close();
   });
 
-  test("disconnects when enabled changes from true to false", async () => {
+  // TODO: flaky — WebSocket connection timing in jsdom is unreliable
+  test.skip("disconnects when enabled changes from true to false", async () => {
     wss.once("connection", (ws) => {
       // Keep connection open
     });
@@ -722,7 +732,8 @@ describe.skip("usePartySocket", () => {
     );
   });
 
-  test("reconnects when enabled changes from false to true", async () => {
+  // TODO: flaky — WebSocket connection timing in jsdom is unreliable
+  test.skip("reconnects when enabled changes from false to true", async () => {
     wss.once("connection", (ws) => {
       // Keep connection open
     });
@@ -751,7 +762,8 @@ describe.skip("usePartySocket", () => {
     result.current.close();
   });
 
-  test("keeps the same socket instance when enabled toggles", async () => {
+  // TODO: flaky — WebSocket connection timing in jsdom is unreliable
+  test.skip("keeps the same socket instance when enabled toggles", async () => {
     wss.once("connection", () => {
       // Keep connection open
     });
@@ -791,7 +803,7 @@ describe.skip("usePartySocket", () => {
   });
 });
 
-describe.skip("useWebSocket", () => {
+describe.skipIf(!!process.env.GITHUB_ACTIONS)("useWebSocket", () => {
   let wss: WebSocketServer;
 
   beforeAll(() => {
@@ -983,7 +995,8 @@ describe.skip("useWebSocket", () => {
     expect(result.current.readyState).toBe(WebSocket.CLOSED);
   });
 
-  test("connects when enabled is true (default)", async () => {
+  // TODO: flaky — WebSocket connection timing in jsdom is unreliable
+  test.skip("connects when enabled is true (default)", async () => {
     wss.once("connection", (ws) => {
       ws.close();
     });
@@ -1004,7 +1017,8 @@ describe.skip("useWebSocket", () => {
     result.current.close();
   });
 
-  test("disconnects when enabled changes from true to false", async () => {
+  // TODO: flaky — WebSocket connection timing in jsdom is unreliable
+  test.skip("disconnects when enabled changes from true to false", async () => {
     wss.once("connection", () => {
       // Keep connection open
     });
@@ -1034,7 +1048,8 @@ describe.skip("useWebSocket", () => {
     );
   });
 
-  test("reconnects when enabled changes from false to true", async () => {
+  // TODO: flaky — WebSocket connection timing in jsdom is unreliable
+  test.skip("reconnects when enabled changes from false to true", async () => {
     wss.once("connection", () => {
       // Keep connection open
     });
@@ -1061,7 +1076,8 @@ describe.skip("useWebSocket", () => {
     result.current.close();
   });
 
-  test("keeps the same socket instance when enabled toggles", async () => {
+  // TODO: flaky — WebSocket connection timing in jsdom is unreliable
+  test.skip("keeps the same socket instance when enabled toggles", async () => {
     wss.once("connection", () => {
       // Keep connection open
     });

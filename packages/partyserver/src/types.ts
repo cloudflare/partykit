@@ -28,18 +28,46 @@ export type Connection<TState = unknown> = WebSocket & {
 
   /**
    * Arbitrary state associated with this connection.
-   * Read-only, use Connection.setState to update the state.
+   * Read-only — use {@link Connection.setState} to update.
+   *
+   * This property is configurable, meaning it can be redefined via
+   * `Object.defineProperty` by downstream consumers (e.g. the Cloudflare
+   * Agents SDK) to namespace or wrap internal state storage.
    */
   state: ConnectionState<TState>;
 
+  /**
+   * Update the state associated with this connection.
+   *
+   * Accepts either a new state value or an updater function that receives
+   * the previous state and returns the next state.
+   *
+   * This property is configurable, meaning it can be redefined via
+   * `Object.defineProperty` by downstream consumers. If you redefine
+   * `state` and `setState`, you are responsible for calling
+   * `serializeAttachment` / `deserializeAttachment` yourself if you need
+   * the state to survive hibernation.
+   */
   setState(
     state: TState | ConnectionSetStateFn<TState> | null
   ): ConnectionState<TState>;
 
-  /** @deprecated use Connection.setState instead */
+  /**
+   * @deprecated use {@link Connection.setState} instead.
+   *
+   * Low-level method to persist data in the connection's attachment storage.
+   * This property is configurable and can be redefined by downstream
+   * consumers that need to wrap or namespace the underlying storage.
+   */
   serializeAttachment<T = unknown>(attachment: T): void;
 
-  /** @deprecated use Connection.state instead */
+  /**
+   * @deprecated use {@link Connection.state} instead.
+   *
+   * Low-level method to read data from the connection's attachment storage.
+   * This property is configurable and can be redefined by downstream
+   * consumers that need to wrap or namespace the underlying storage.
+   */
   deserializeAttachment<T = unknown>(): T | null;
 
   /**

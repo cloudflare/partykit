@@ -6,7 +6,7 @@ import { describe, expect, test, vitest } from "vitest";
 
 import PartySocket from "../index";
 
-describe.skip("PartySocket.fetch", () => {
+describe.skipIf(!!process.env.GITHUB_ACTIONS)("PartySocket.fetch", () => {
   test("constructs HTTP URL correctly", async () => {
     const mockFetch = vitest.fn().mockResolvedValue(new Response("ok"));
 
@@ -344,45 +344,48 @@ describe.skip("PartySocket.fetch", () => {
   });
 });
 
-describe.skip("PartySocket.fetch edge cases", () => {
-  test("handles empty query object", async () => {
-    const mockFetch = vitest.fn().mockResolvedValue(new Response("ok"));
+describe.skipIf(!!process.env.GITHUB_ACTIONS)(
+  "PartySocket.fetch edge cases",
+  () => {
+    test("handles empty query object", async () => {
+      const mockFetch = vitest.fn().mockResolvedValue(new Response("ok"));
 
-    await PartySocket.fetch({
-      host: "example.com",
-      room: "my-room",
-      query: {},
-      fetch: mockFetch
+      await PartySocket.fetch({
+        host: "example.com",
+        room: "my-room",
+        query: {},
+        fetch: mockFetch
+      });
+
+      const calledUrl = mockFetch.mock.calls[0][0];
+      // Should still end with ? but no params
+      expect(calledUrl).toMatch(/\?$/);
     });
 
-    const calledUrl = mockFetch.mock.calls[0][0];
-    // Should still end with ? but no params
-    expect(calledUrl).toMatch(/\?$/);
-  });
+    test("handles query provider returning empty object", async () => {
+      const mockFetch = vitest.fn().mockResolvedValue(new Response("ok"));
 
-  test("handles query provider returning empty object", async () => {
-    const mockFetch = vitest.fn().mockResolvedValue(new Response("ok"));
+      await PartySocket.fetch({
+        host: "example.com",
+        room: "my-room",
+        query: () => ({}),
+        fetch: mockFetch
+      });
 
-    await PartySocket.fetch({
-      host: "example.com",
-      room: "my-room",
-      query: () => ({}),
-      fetch: mockFetch
+      expect(mockFetch).toHaveBeenCalled();
     });
 
-    expect(mockFetch).toHaveBeenCalled();
-  });
+    test("works without optional parameters", async () => {
+      const mockFetch = vitest.fn().mockResolvedValue(new Response("ok"));
 
-  test("works without optional parameters", async () => {
-    const mockFetch = vitest.fn().mockResolvedValue(new Response("ok"));
+      await PartySocket.fetch({
+        host: "example.com",
+        room: "my-room",
+        fetch: mockFetch
+      });
 
-    await PartySocket.fetch({
-      host: "example.com",
-      room: "my-room",
-      fetch: mockFetch
+      const calledUrl = mockFetch.mock.calls[0][0];
+      expect(calledUrl).toBe("https://example.com/parties/main/my-room?");
     });
-
-    const calledUrl = mockFetch.mock.calls[0][0];
-    expect(calledUrl).toBe("https://example.com/parties/main/my-room?");
-  });
-});
+  }
+);

@@ -190,6 +190,110 @@ describe("Server", () => {
     return promise;
   });
 
+  it("allows state and setState to be redefined on a connection", async () => {
+    const ctx = createExecutionContext();
+    const request = new Request(
+      "http://example.com/parties/configurable-state/room1",
+      {
+        headers: {
+          Upgrade: "websocket"
+        }
+      }
+    );
+    const response = await worker.fetch(request, env, ctx);
+    const ws = response.webSocket!;
+
+    const { promise, resolve, reject } = Promise.withResolvers<void>();
+    ws.accept();
+    ws.addEventListener("message", (message) => {
+      try {
+        // The server redefines state/setState and uses them to send back
+        // { answer: 42 }, proving that Object.defineProperty worked.
+        expect(JSON.parse(message.data as string)).toEqual({ answer: 42 });
+        resolve();
+      } catch (e) {
+        reject(e);
+      } finally {
+        ws.close();
+      }
+    });
+
+    return promise;
+  });
+
+  it("allows state and setState to be redefined on a non-hibernating connection", async () => {
+    const ctx = createExecutionContext();
+    const request = new Request(
+      "http://example.com/parties/configurable-state-in-memory/room1",
+      {
+        headers: {
+          Upgrade: "websocket"
+        }
+      }
+    );
+    const response = await worker.fetch(request, env, ctx);
+    const ws = response.webSocket!;
+
+    const { promise, resolve, reject } = Promise.withResolvers<void>();
+    ws.accept();
+    ws.addEventListener("message", (message) => {
+      try {
+        // The non-hibernating server redefines state/setState and sends back
+        // { answer: 99 }, proving Object.defineProperty works on this path too.
+        expect(JSON.parse(message.data as string)).toEqual({ answer: 99 });
+        resolve();
+      } catch (e) {
+        reject(e);
+      } finally {
+        ws.close();
+      }
+    });
+
+    return promise;
+  });
+
+  it("persists state through setState and reads it back via state getter", async () => {
+    const ctx = createExecutionContext();
+    const request = new Request(
+      "http://example.com/parties/state-round-trip/room1",
+      {
+        headers: { Upgrade: "websocket" }
+      }
+    );
+    const response = await worker.fetch(request, env, ctx);
+    const ws = response.webSocket!;
+    ws.accept();
+
+    // Collect all messages to verify the full round-trip
+    const messages: unknown[] = [];
+    const { promise, resolve, reject } = Promise.withResolvers<void>();
+
+    ws.addEventListener("message", (event) => {
+      try {
+        messages.push(JSON.parse(event.data as string));
+
+        if (messages.length === 1) {
+          // First response: "get" should return the initial state set in onConnect
+          expect(messages[0]).toEqual({ count: 1 });
+          // Now ask the server to increment using the updater function form
+          ws.send("increment");
+        } else if (messages.length === 2) {
+          // Second response: state should reflect the increment
+          expect(messages[1]).toEqual({ count: 2 });
+          resolve();
+        }
+      } catch (e) {
+        reject(e);
+      }
+    });
+
+    // Ask the server to read back the state that was set in onConnect
+    ws.send("get");
+
+    await promise;
+    ws.close();
+  });
+
   // it("can be connected with a query parameter");
   // it("can be connected with a header");
 

@@ -144,11 +144,13 @@ export const createLazyConnection = (
       }
     },
     state: {
+      configurable: true,
       get() {
         return ws.deserializeAttachment() as ConnectionState<unknown>;
       }
     },
     setState: {
+      configurable: true,
       value: function setState<T>(setState: T | ConnectionSetStateFn<T>) {
         let state: T;
         if (setState instanceof Function) {
@@ -163,6 +165,7 @@ export const createLazyConnection = (
     },
 
     deserializeAttachment: {
+      configurable: true,
       value: function deserializeAttachment<T = unknown>() {
         const attachment = attachments.get(ws);
         return (attachment.__user ?? null) as T;
@@ -170,6 +173,7 @@ export const createLazyConnection = (
     },
 
     serializeAttachment: {
+      configurable: true,
       value: function serializeAttachment<T = unknown>(attachment: T) {
         const setting = {
           ...attachments.get(ws),

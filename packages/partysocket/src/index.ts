@@ -150,6 +150,13 @@ export default class PartySocket extends ReconnectingWebSocket {
 
     this.setWSProperties(wsOptions);
 
+    if (!partySocketOptions.startClosed && !this.room && !this.basePath) {
+      this.close();
+      throw new Error(
+        "Either room or basePath must be provided to connect. Use startClosed: true to create a socket and set them via updateProperties before calling reconnect()."
+      );
+    }
+
     if (!partySocketOptions.disableNameValidation) {
       if (partySocketOptions.party?.includes("/")) {
         console.warn(
