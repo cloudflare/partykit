@@ -12,6 +12,9 @@ export type Env = {
   Stateful: DurableObjectNamespace<Stateful>;
   OnStartServer: DurableObjectNamespace<OnStartServer>;
   Mixed: DurableObjectNamespace<Mixed>;
+  ConfigurableState: DurableObjectNamespace<ConfigurableState>;
+  ConfigurableStateInMemory: DurableObjectNamespace<ConfigurableStateInMemory>;
+  StateRoundTrip: DurableObjectNamespace<StateRoundTrip>;
 };
 
 export class Stateful extends Server {
@@ -90,6 +93,99 @@ export class Mixed extends Server {
     // Trigger a broadcast while a foreign hibernated socket exists.
     this.broadcast("hello");
     connection.send("connected");
+  }
+}
+
+/**
+ * Tests that state and setState on a connection can be redefined via
+ * Object.defineProperty (configurable: true). This simulates what the
+ * Cloudflare Agents SDK does to namespace internal state keys.
+ */
+export class ConfigurableState extends Server {
+  static options = {
+    hibernate: true
+  };
+
+  onConnect(connection: Connection): void {
+    // Redefine state and setState with a custom namespace,
+    // similar to what the Agents SDK does.
+    let _customState: unknown = { custom: true };
+
+    Object.defineProperty(connection, "state", {
+      configurable: true,
+      get() {
+        return _customState;
+      }
+    });
+
+    Object.defineProperty(connection, "setState", {
+      configurable: true,
+      value(newState: unknown) {
+        _customState = newState;
+        return _customState;
+      }
+    });
+
+    // Use the redefined setState / state to verify they work
+    connection.setState({ answer: 42 });
+    connection.send(JSON.stringify(connection.state));
+  }
+}
+
+/**
+ * Tests that setState persists state and the state getter reads it back
+ * correctly through the serialization layer (hibernating path).
+ */
+export class StateRoundTrip extends Server {
+  static options = {
+    hibernate: true
+  };
+
+  onConnect(connection: Connection): void {
+    connection.setState({ count: 1 });
+  }
+
+  onMessage(connection: Connection, message: string | ArrayBuffer): void {
+    if (message === "get") {
+      connection.send(JSON.stringify(connection.state));
+    } else if (message === "increment") {
+      connection.setState((prev: { count: number } | null) => ({
+        count: (prev?.count ?? 0) + 1
+      }));
+      connection.send(JSON.stringify(connection.state));
+    }
+  }
+}
+
+/**
+ * Same as ConfigurableState but without hibernation (non-hibernating path).
+ * Verifies that the Object.assign path also allows redefinition.
+ */
+export class ConfigurableStateInMemory extends Server {
+  // no hibernate — uses the in-memory Object.assign path
+  onConnect(connection: Connection): void {
+    let _customState: unknown = { custom: true };
+
+    Object.defineProperty(connection, "state", {
+      configurable: true,
+      get() {
+        return _customState;
+      },
+      set(v: unknown) {
+        _customState = v;
+      }
+    });
+
+    Object.defineProperty(connection, "setState", {
+      configurable: true,
+      value(newState: unknown) {
+        _customState = newState;
+        return _customState;
+      }
+    });
+
+    connection.setState({ answer: 99 });
+    connection.send(JSON.stringify(connection.state));
   }
 }
 

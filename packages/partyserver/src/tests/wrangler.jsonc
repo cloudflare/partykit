@@ -22,6 +22,18 @@
       {
         "name": "Mixed",
         "class_name": "Mixed"
+      },
+      {
+        "name": "ConfigurableState",
+        "class_name": "ConfigurableState"
+      },
+      {
+        "name": "ConfigurableStateInMemory",
+        "class_name": "ConfigurableStateInMemory"
+      },
+      {
+        "name": "StateRoundTrip",
+        "class_name": "StateRoundTrip"
       }
     ]
   },
@@ -29,6 +41,14 @@
     {
       "tag": "v1", // Should be unique for each entry
       "new_classes": ["Stateful", "OnStartServer", "Mixed"]
+    },
+    {
+      "tag": "v2",
+      "new_classes": [
+        "ConfigurableState",
+        "ConfigurableStateInMemory",
+        "StateRoundTrip"
+      ]
     }
   ]
 }
