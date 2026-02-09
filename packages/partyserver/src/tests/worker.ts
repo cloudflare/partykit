@@ -353,8 +353,8 @@ export default {
 
     return (
       (await routePartykitRequest(request, env, {
-        onBeforeConnect: async (_request, { party, name }) => {
-          if (party === "on-start-server") {
+        onBeforeConnect: async (_request, { className, name }) => {
+          if (className === "OnStartServer") {
             if (name === "is-error") {
               return new Response("Error", { status: 503 });
             } else if (name === "is-redirect") {
@@ -365,16 +365,22 @@ export default {
             }
           }
         },
-        onBeforeRequest: async (_request, { party, name }) => {
-          if (party === "on-start-server") {
-            if (name === "is-error") {
+        onBeforeRequest: async (_request, lobby) => {
+          if (lobby.className === "OnStartServer") {
+            if (lobby.name === "is-error") {
               return new Response("Error", { status: 504 });
-            } else if (name === "is-redirect") {
+            } else if (lobby.name === "is-redirect") {
               return new Response("Redirect", {
                 status: 302,
                 headers: { Location: "https://example3.com" }
               });
             }
+          }
+          if (lobby.name === "lobby-info") {
+            return Response.json({
+              className: lobby.className,
+              name: lobby.name
+            });
           }
         }
       })) || new Response("Not Found", { status: 404 })
