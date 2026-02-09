@@ -42,6 +42,10 @@
       {
         "name": "CustomCorsServer",
         "class_name": "CustomCorsServer"
+      },
+      {
+        "name": "HibernatingOnStartServer",
+        "class_name": "HibernatingOnStartServer"
       }
     ]
   },
@@ -61,6 +65,10 @@
     {
       "tag": "v3",
       "new_classes": ["CorsServer", "CustomCorsServer"]
+    },
+    {
+      "tag": "v4",
+      "new_classes": ["HibernatingOnStartServer"]
     }
   ]
 }
