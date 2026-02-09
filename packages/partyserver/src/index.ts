@@ -102,6 +102,30 @@ export interface PartyServerOptions<
   jurisdiction?: DurableObjectJurisdiction;
   locationHint?: DurableObjectLocationHint;
   props?: Props;
+  /**
+   * Whether to enable CORS for matched routes.
+   *
+   * When `true`, uses default permissive CORS headers:
+   * - Access-Control-Allow-Origin: *
+   * - Access-Control-Allow-Methods: GET, POST, HEAD, OPTIONS
+   * - Access-Control-Allow-Headers: *
+   * - Access-Control-Max-Age: 86400
+   *
+   * For credentialed requests, pass explicit headers with a specific origin:
+   * ```ts
+   * cors: {
+   *   "Access-Control-Allow-Origin": "https://myapp.com",
+   *   "Access-Control-Allow-Credentials": "true",
+   *   "Access-Control-Allow-Methods": "GET, POST, HEAD, OPTIONS",
+   *   "Access-Control-Allow-Headers": "Content-Type, Authorization"
+   * }
+   * ```
+   *
+   * When set to a `HeadersInit` value, uses those as the CORS headers instead.
+   * CORS preflight (OPTIONS) requests are handled automatically for matched routes.
+   * Non-WebSocket responses on matched routes will also have the CORS headers appended.
+   */
+  cors?: boolean | HeadersInit;
   onBeforeConnect?: (
     req: Request,
     lobby: {
@@ -122,8 +146,31 @@ export interface PartyServerOptions<
     | Promise<Response | Request | undefined | void>;
 }
 /**
- * A utility function for PartyKit style routing.
+ * Resolve CORS options into a concrete headers object (or null if CORS is disabled).
  */
+function resolveCorsHeaders(
+  cors: boolean | HeadersInit | undefined
+): Record<string, string> | null {
+  if (cors === true) {
+    return {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, POST, HEAD, OPTIONS",
+      "Access-Control-Allow-Headers": "*",
+      "Access-Control-Max-Age": "86400"
+    };
+  }
+  if (cors && typeof cors === "object") {
+    // Convert any HeadersInit shape to a plain record
+    const h = new Headers(cors as HeadersInit);
+    const record: Record<string, string> = {};
+    h.forEach((value, key) => {
+      record[key] = value;
+    });
+    return record;
+  }
+  return null;
+}
+
 export async function routePartykitRequest<
   Env extends Cloudflare.Env = Cloudflare.Env,
   T extends Server<Env> = Server<Env>,
@@ -188,6 +235,26 @@ Did you forget to add a durable object binding to the class ${namespace[0].toUpp
       return new Response("Invalid request", { status: 400 });
     }
 
+    // Resolve CORS headers for this matched route
+    const corsHeaders = resolveCorsHeaders(options?.cors);
+    const isWebSocket =
+      req.headers.get("Upgrade")?.toLowerCase() === "websocket";
+
+    // Helper: append CORS headers to a response (skipped for WebSocket upgrades)
+    function withCorsHeaders(response: Response): Response {
+      if (!corsHeaders || isWebSocket) return response;
+      const newResponse = new Response(response.body, response);
+      for (const [key, value] of Object.entries(corsHeaders)) {
+        newResponse.headers.set(key, value);
+      }
+      return newResponse;
+    }
+
+    // Handle CORS preflight requests for matched routes
+    if (req.method === "OPTIONS" && corsHeaders) {
+      return new Response(null, { headers: corsHeaders });
+    }
+
     let doNamespace = map[namespace];
     if (options?.jurisdiction) {
       doNamespace = doNamespace.jurisdiction(options.jurisdiction);
@@ -210,7 +277,7 @@ Did you forget to add a durable object binding to the class ${namespace[0].toUpp
       req.headers.set("x-partykit-props", JSON.stringify(options?.props));
     }
 
-    if (req.headers.get("Upgrade")?.toLowerCase() === "websocket") {
+    if (isWebSocket) {
       if (options?.onBeforeConnect) {
         const reqOrRes = await options.onBeforeConnect(req, {
           party: namespace,
@@ -231,12 +298,12 @@ Did you forget to add a durable object binding to the class ${namespace[0].toUpp
         if (reqOrRes instanceof Request) {
           req = reqOrRes;
         } else if (reqOrRes instanceof Response) {
-          return reqOrRes;
+          return withCorsHeaders(reqOrRes);
         }
       }
     }
 
-    return stub.fetch(req);
+    return withCorsHeaders(await stub.fetch(req));
   } else {
     return null;
   }
@@ -336,17 +403,6 @@ Did you try connecting directly to this Durable Object? Try using getServerByNam
         return Response.json({ ok: true });
       }
 
-      // Handle keep-alive WebSocket endpoint (internal use for waitUntil)
-      if (url.pathname === "/cdn-cgi/partyserver/keep-alive/") {
-        if (request.headers.get("Upgrade")?.toLowerCase() === "websocket") {
-          const { 0: client, 1: server } = new WebSocketPair();
-          // Always use hibernation API for keep-alive (efficient, internal-only)
-          this.ctx.acceptWebSocket(server, ["partyserver-keepalive"]);
-          return new Response(null, { status: 101, webSocket: client });
-        }
-        return new Response("WebSocket required", { status: 426 });
-      }
-
       if (request.headers.get("Upgrade")?.toLowerCase() !== "websocket") {
         return await this.onRequest(request);
       } else {
@@ -414,15 +470,6 @@ Did you try connecting directly to this Durable Object? Try using getServerByNam
   }
 
   async webSocketMessage(ws: WebSocket, message: WSMessage): Promise<void> {
-    // Handle keep-alive pings first (internal waitUntil mechanism)
-    const tags = this.ctx.getTags(ws);
-    if (tags.includes("partyserver-keepalive")) {
-      if (message === "ping") {
-        ws.send("pong");
-      }
-      return;
-    }
-
     // Ignore websockets accepted outside PartyServer (e.g. via
     // `state.acceptWebSocket()` in user code). These sockets won't have the
     // `__pk` attachment namespace required to rehydrate a Connection.
@@ -451,12 +498,6 @@ Did you try connecting directly to this Durable Object? Try using getServerByNam
     reason: string,
     wasClean: boolean
   ): Promise<void> {
-    // Ignore keep-alive socket closes (internal waitUntil mechanism)
-    const tags = this.ctx.getTags(ws);
-    if (tags.includes("partyserver-keepalive")) {
-      return;
-    }
-
     if (!isPartyServerWebSocket(ws)) {
       return;
     }
@@ -476,12 +517,6 @@ Did you try connecting directly to this Durable Object? Try using getServerByNam
   }
 
   async webSocketError(ws: WebSocket, error: unknown): Promise<void> {
-    // Ignore keep-alive socket errors (internal waitUntil mechanism)
-    const tags = this.ctx.getTags(ws);
-    if (tags.includes("partyserver-keepalive")) {
-      return;
-    }
-
     if (!isPartyServerWebSocket(ws)) {
       return;
     }
@@ -628,114 +663,6 @@ Did you try connecting directly to this Durable Object? Try using getServerByNam
     context: ConnectionContext
   ): string[] | Promise<string[]> {
     return [];
-  }
-
-  /**
-   * Execute a long-running async function while keeping the Durable Object alive.
-   *
-   * Durable Objects normally terminate 70-140s after the last network request.
-   * This method keeps the DO alive by establishing a WebSocket connection to itself
-   * and sending periodic ping messages.
-   *
-   * @experimental This API is experimental and may change in future versions.
-   *
-   * @param fn - The async function to execute
-   * @param timeoutMs - Maximum time to keep the DO alive (default: 30 minutes)
-   * @returns The result of the async function
-   *
-   * @remarks
-   * Requires the `enable_ctx_exports` compatibility flag in wrangler.jsonc:
-   * ```json
-   * {
-   *   "compatibility_flags": ["enable_ctx_exports"]
-   * }
-   * ```
-   *
-   * @example
-   * ```typescript
-   * const result = await this.experimental_waitUntil(async () => {
-   *   // Long-running operation
-   *   await processLargeDataset();
-   *   return { success: true };
-   * }, 60 * 60 * 1000); // 1 hour timeout
-   * ```
-   */
-  async experimental_waitUntil<T>(
-    fn: () => Promise<T>,
-    timeoutMs: number = 30 * 60 * 1000 // 30 minutes default
-  ): Promise<T> {
-    // Get namespace from ctx.exports (requires enable_ctx_exports compatibility flag)
-    const exports = (
-      this.ctx as DurableObjectState & { exports?: Record<string, unknown> }
-    ).exports;
-    if (!exports) {
-      throw new Error(
-        "waitUntil requires the 'enable_ctx_exports' compatibility flag. " +
-          'Add it to your wrangler.jsonc: { "compatibility_flags": ["enable_ctx_exports"] }'
-      );
-    }
-
-    const namespace = exports[this.#ParentClass.name] as
-      | DurableObjectNamespace
-      | undefined;
-    if (!namespace) {
-      throw new Error(
-        `Could not find namespace for ${this.#ParentClass.name} in ctx.exports. ` +
-          "Make sure the class name matches your Durable Object binding."
-      );
-    }
-
-    const stub = namespace.get(this.ctx.id);
-
-    // Connect to self via WebSocket for keep-alive
-    const response = await stub.fetch(
-      "http://dummy-example.cloudflare.com/cdn-cgi/partyserver/keep-alive/",
-      {
-        headers: {
-          Upgrade: "websocket",
-          "x-partykit-room": this.name
-        }
-      }
-    );
-
-    const ws = response.webSocket;
-    if (!ws) {
-      throw new Error("Failed to establish keep-alive WebSocket connection");
-    }
-    ws.accept();
-
-    // Set up ping interval (every 10 seconds)
-    const pingInterval = setInterval(() => {
-      try {
-        ws.send("ping");
-      } catch {
-        // WebSocket may have closed, ignore
-      }
-    }, 10_000);
-
-    // Create a timeout promise that rejects after timeoutMs
-    let timeoutId: ReturnType<typeof setTimeout>;
-    const timeoutPromise = new Promise<never>((_, reject) => {
-      timeoutId = setTimeout(() => {
-        reject(
-          new Error(`experimental_waitUntil timed out after ${timeoutMs}ms`)
-        );
-      }, timeoutMs);
-    });
-
-    try {
-      // Race the function against the timeout
-      const result = await Promise.race([fn(), timeoutPromise]);
-      return result;
-    } finally {
-      clearTimeout(timeoutId!);
-      clearInterval(pingInterval);
-      try {
-        ws.close(1000, "Complete");
-      } catch {
-        // Ignore close errors
-      }
-    }
   }
 
   #_props?: Props;

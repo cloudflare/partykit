@@ -15,6 +15,8 @@ export type Env = {
   ConfigurableState: DurableObjectNamespace<ConfigurableState>;
   ConfigurableStateInMemory: DurableObjectNamespace<ConfigurableStateInMemory>;
   StateRoundTrip: DurableObjectNamespace<StateRoundTrip>;
+  CorsServer: DurableObjectNamespace<CorsServer>;
+  CustomCorsServer: DurableObjectNamespace<CustomCorsServer>;
 };
 
 export class Stateful extends Server {
@@ -189,8 +191,50 @@ export class ConfigurableStateInMemory extends Server {
   }
 }
 
+export class CorsServer extends Server {
+  onRequest(): Response | Promise<Response> {
+    return Response.json({ cors: true });
+  }
+}
+
+export class CustomCorsServer extends Server {
+  onRequest(): Response | Promise<Response> {
+    return Response.json({ customCors: true });
+  }
+}
+
 export default {
   async fetch(request: Request, env: Env, _ctx: ExecutionContext) {
+    const url = new URL(request.url);
+
+    // Route requests under /cors-parties/ with cors: true
+    if (url.pathname.startsWith("/cors-parties/")) {
+      return (
+        (await routePartykitRequest(request, env, {
+          prefix: "cors-parties",
+          cors: true,
+          onBeforeRequest: async (_req, { name }) => {
+            if (name === "blocked") {
+              return new Response("Forbidden", { status: 403 });
+            }
+          }
+        })) || new Response("Not Found", { status: 404 })
+      );
+    }
+
+    // Route requests under /custom-cors-parties/ with custom CORS headers
+    if (url.pathname.startsWith("/custom-cors-parties/")) {
+      return (
+        (await routePartykitRequest(request, env, {
+          prefix: "custom-cors-parties",
+          cors: {
+            "Access-Control-Allow-Origin": "https://example.com",
+            "Access-Control-Allow-Methods": "GET, POST"
+          }
+        })) || new Response("Not Found", { status: 404 })
+      );
+    }
+
     return (
       (await routePartykitRequest(request, env, {
         onBeforeConnect: async (_request, { party, name }) => {
