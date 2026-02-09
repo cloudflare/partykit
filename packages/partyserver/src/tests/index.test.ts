@@ -658,3 +658,105 @@ describe("CORS", () => {
     );
   });
 });
+
+describe("Connection tags", () => {
+  it("exposes tags on a hibernating connection", async () => {
+    const ctx = createExecutionContext();
+    const request = new Request(
+      "http://example.com/parties/tags-server/room1",
+      {
+        headers: { Upgrade: "websocket" }
+      }
+    );
+    const response = await worker.fetch(request, env, ctx);
+    const ws = response.webSocket!;
+    ws.accept();
+
+    const { promise, resolve, reject } = Promise.withResolvers<void>();
+    ws.addEventListener("message", (message) => {
+      try {
+        const tags = JSON.parse(message.data as string) as string[];
+        // Should include the auto-prepended connection id plus the custom tags
+        expect(tags).toHaveLength(3);
+        expect(tags[0]).toBeTypeOf("string"); // connection id
+        expect(tags).toContain("role:admin");
+        expect(tags).toContain("room:lobby");
+        resolve();
+      } catch (e) {
+        reject(e);
+      } finally {
+        ws.close();
+      }
+    });
+
+    return promise;
+  });
+
+  it("exposes tags on a hibernating connection after wake-up", async () => {
+    const ctx = createExecutionContext();
+    const request = new Request(
+      "http://example.com/parties/tags-server/room2",
+      {
+        headers: { Upgrade: "websocket" }
+      }
+    );
+    const response = await worker.fetch(request, env, ctx);
+    const ws = response.webSocket!;
+    ws.accept();
+
+    // Wait for the onConnect message
+    const connectMessage = await new Promise<string>((resolve) => {
+      ws.addEventListener("message", (e) => resolve(e.data as string), {
+        once: true
+      });
+    });
+    const connectTags = JSON.parse(connectMessage) as string[];
+    expect(connectTags).toContain("role:admin");
+
+    // Send a message to trigger onMessage, which reads tags again
+    ws.send("ping");
+    const wakeMessage = await new Promise<string>((resolve) => {
+      ws.addEventListener("message", (e) => resolve(e.data as string), {
+        once: true
+      });
+    });
+    const wakeTags = JSON.parse(wakeMessage) as string[];
+    expect(wakeTags).toHaveLength(3);
+    expect(wakeTags).toContain("role:admin");
+    expect(wakeTags).toContain("room:lobby");
+
+    ws.close();
+  });
+
+  it("exposes tags on a non-hibernating (in-memory) connection", async () => {
+    const ctx = createExecutionContext();
+    const request = new Request(
+      "http://example.com/parties/tags-server-in-memory/room1",
+      {
+        headers: { Upgrade: "websocket" }
+      }
+    );
+    const response = await worker.fetch(request, env, ctx);
+    const ws = response.webSocket!;
+    ws.accept();
+
+    const { promise, resolve, reject } = Promise.withResolvers<void>();
+    ws.addEventListener("message", (message) => {
+      try {
+        const tags = JSON.parse(message.data as string) as string[];
+        // Should include the auto-prepended connection id plus the custom tags
+        expect(tags).toHaveLength(3);
+        expect(tags[0]).toBeTypeOf("string"); // connection id
+        expect(tags).toContain("role:viewer");
+        expect(tags).toContain("room:general");
+        resolve();
+      } catch (e) {
+        reject(e);
+      } finally {
+        ws.close();
+      }
+    });
+
+    return promise;
+  });
+});

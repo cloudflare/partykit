@@ -21,6 +21,8 @@ export type Env = {
   CustomCorsServer: DurableObjectNamespace<CustomCorsServer>;
   FailingOnStartServer: DurableObjectNamespace<FailingOnStartServer>;
   HibernatingNameInMessage: DurableObjectNamespace<HibernatingNameInMessage>;
+  TagsServer: DurableObjectNamespace<TagsServer>;
+  TagsServerInMemory: DurableObjectNamespace<TagsServerInMemory>;
 };
 
 export class Stateful extends Server {
@@ -304,6 +306,49 @@ export class HibernatingNameInMessage extends Server {
 
   onMessage(connection: Connection, _message: WSMessage): void {
     connection.send(`name:${this.name}`);
+  }
+}
+
+/**
+ * Tests that connection.tags is readable in hibernating mode.
+ */
+export class TagsServer extends Server {
+  static options = {
+    hibernate: true
+  };
+
+  getConnectionTags(
+    _connection: Connection,
+    _ctx: ConnectionContext
+  ): string[] {
+    return ["role:admin", "room:lobby"];
+  }
+
+  onConnect(connection: Connection): void {
+    connection.send(JSON.stringify(connection.tags));
+  }
+
+  onMessage(connection: Connection, _message: WSMessage): void {
+    // Also verify tags survive hibernation wake-up
+    connection.send(JSON.stringify(connection.tags));
+  }
+}
+
+/**
+ * Tests that connection.tags is readable in non-hibernating (in-memory) mode.
+ */
+export class TagsServerInMemory extends Server {
+  // no hibernate — uses the in-memory path
+
+  getConnectionTags(
+    _connection: Connection,
+    _ctx: ConnectionContext
+  ): string[] {
+    return ["role:viewer", "room:general"];
+  }
+
+  onConnect(connection: Connection): void {
+    connection.send(JSON.stringify(connection.tags));
   }
 }
 

@@ -71,6 +71,12 @@ export type Connection<TState = unknown> = WebSocket & {
   deserializeAttachment<T = unknown>(): T | null;
 
   /**
+   * Tags assigned to this connection via {@link Server.getConnectionTags}.
+   * Always includes the connection id as the first tag.
+   */
+  tags: readonly string[];
+
+  /**
    * Server's name
    */
   server: string;
