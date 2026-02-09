@@ -300,3 +300,130 @@ describe("Server", () => {
   // describe("hibernated");
   // describe("in-memory");
 });
+
+describe("CORS", () => {
+  it("returns CORS headers on OPTIONS preflight for matched routes", async () => {
+    const ctx = createExecutionContext();
+    const request = new Request(
+      "http://example.com/cors-parties/cors-server/room1",
+      { method: "OPTIONS" }
+    );
+    const response = await worker.fetch(request, env, ctx);
+    expect(response.status).toBe(200);
+    expect(response.headers.get("Access-Control-Allow-Origin")).toBe("*");
+    expect(response.headers.get("Access-Control-Allow-Methods")).toBe(
+      "GET, POST, HEAD, OPTIONS"
+    );
+    expect(response.headers.get("Access-Control-Allow-Headers")).toBe("*");
+    expect(response.headers.get("Access-Control-Max-Age")).toBe("86400");
+    // Credentials header should NOT be in defaults (contradicts wildcard origin)
+    expect(response.headers.get("Access-Control-Allow-Credentials")).toBeNull();
+  });
+
+  it("does not handle OPTIONS for unmatched routes (returns 404 from fallback)", async () => {
+    const ctx = createExecutionContext();
+    const request = new Request("http://example.com/other-path", {
+      method: "OPTIONS"
+    });
+    const response = await worker.fetch(request, env, ctx);
+    expect(response.status).toBe(404);
+    expect(response.headers.get("Access-Control-Allow-Origin")).toBeNull();
+  });
+
+  it("does not handle OPTIONS for routes without cors enabled", async () => {
+    const ctx = createExecutionContext();
+    // The default /parties/ prefix has no cors option
+    const request = new Request("http://example.com/parties/stateful/room1", {
+      method: "OPTIONS"
+    });
+    const response = await worker.fetch(request, env, ctx);
+    // Without cors, OPTIONS goes to the DO like any other request
+    expect(response.headers.get("Access-Control-Allow-Origin")).toBeNull();
+  });
+
+  it("appends CORS headers to regular (non-WebSocket) responses", async () => {
+    const ctx = createExecutionContext();
+    const request = new Request(
+      "http://example.com/cors-parties/cors-server/room1"
+    );
+    const response = await worker.fetch(request, env, ctx);
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ cors: true });
+    expect(response.headers.get("Access-Control-Allow-Origin")).toBe("*");
+    expect(response.headers.get("Access-Control-Allow-Methods")).toBe(
+      "GET, POST, HEAD, OPTIONS"
+    );
+  });
+
+  it("does not append CORS headers to WebSocket upgrade responses", async () => {
+    const ctx = createExecutionContext();
+    const request = new Request(
+      "http://example.com/cors-parties/cors-server/room1",
+      {
+        headers: { Upgrade: "websocket" }
+      }
+    );
+    const response = await worker.fetch(request, env, ctx);
+    expect(response.status).toBe(101);
+    expect(response.headers.get("Access-Control-Allow-Origin")).toBeNull();
+    response.webSocket?.accept();
+    response.webSocket?.close();
+  });
+
+  it("supports custom HeadersInit CORS headers", async () => {
+    const ctx = createExecutionContext();
+    const request = new Request(
+      "http://example.com/custom-cors-parties/custom-cors-server/room1"
+    );
+    const response = await worker.fetch(request, env, ctx);
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ customCors: true });
+    expect(response.headers.get("Access-Control-Allow-Origin")).toBe(
+      "https://example.com"
+    );
+    expect(response.headers.get("Access-Control-Allow-Methods")).toBe(
+      "GET, POST"
+    );
+    // Should not have the default headers that weren't specified
+    expect(response.headers.get("Access-Control-Max-Age")).toBeNull();
+  });
+
+  it("supports custom HeadersInit CORS headers on OPTIONS preflight", async () => {
+    const ctx = createExecutionContext();
+    const request = new Request(
+      "http://example.com/custom-cors-parties/custom-cors-server/room1",
+      { method: "OPTIONS" }
+    );
+    const response = await worker.fetch(request, env, ctx);
+    expect(response.status).toBe(200);
+    expect(response.headers.get("Access-Control-Allow-Origin")).toBe(
+      "https://example.com"
+    );
+    expect(response.headers.get("Access-Control-Allow-Methods")).toBe(
+      "GET, POST"
+    );
+  });
+
+  it("does not add CORS headers when cors option is not set", async () => {
+    const ctx = createExecutionContext();
+    const request = new Request("http://example.com/parties/stateful/room1");
+    const response = await worker.fetch(request, env, ctx);
+    expect(response.status).toBe(200);
+    expect(response.headers.get("Access-Control-Allow-Origin")).toBeNull();
+  });
+
+  it("appends CORS headers to responses returned by onBeforeRequest", async () => {
+    const ctx = createExecutionContext();
+    const request = new Request(
+      "http://example.com/cors-parties/cors-server/blocked"
+    );
+    const response = await worker.fetch(request, env, ctx);
+    expect(response.status).toBe(403);
+    expect(await response.text()).toBe("Forbidden");
+    // CORS headers must be present so the browser can read the error
+    expect(response.headers.get("Access-Control-Allow-Origin")).toBe("*");
+    expect(response.headers.get("Access-Control-Allow-Methods")).toBe(
+      "GET, POST, HEAD, OPTIONS"
+    );
+  });
+});

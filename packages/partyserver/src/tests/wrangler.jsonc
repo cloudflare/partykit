@@ -34,6 +34,14 @@
       {
         "name": "StateRoundTrip",
         "class_name": "StateRoundTrip"
+      },
+      {
+        "name": "CorsServer",
+        "class_name": "CorsServer"
+      },
+      {
+        "name": "CustomCorsServer",
+        "class_name": "CustomCorsServer"
       }
     ]
   },
@@ -49,6 +57,10 @@
         "ConfigurableStateInMemory",
         "StateRoundTrip"
       ]
+    },
+    {
+      "tag": "v3",
+      "new_classes": ["CorsServer", "CustomCorsServer"]
     }
   ]
 }
