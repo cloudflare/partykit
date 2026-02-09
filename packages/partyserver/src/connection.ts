@@ -34,6 +34,7 @@ type ConnectionAttachments = {
     // TODO: remove this once we have
     // durable object level setState
     server: string;
+    tags: string[];
   };
   __user?: unknown;
 };
@@ -57,11 +58,20 @@ function tryGetPartyServerMeta(
     if (!pk || typeof pk !== "object") {
       return null;
     }
-    const { id, server } = pk as { id?: unknown; server?: unknown };
+    const { id, server, tags } = pk as {
+      id?: unknown;
+      server?: unknown;
+      tags?: unknown;
+    };
     if (typeof id !== "string" || typeof server !== "string") {
       return null;
     }
-    return pk as ConnectionAttachments["__pk"];
+    // Default tags to [] for connections created before tags were stored
+    return {
+      id,
+      server,
+      tags: Array.isArray(tags) ? tags : []
+    } as ConnectionAttachments["__pk"];
   } catch {
     return null;
   }
@@ -136,6 +146,12 @@ export const createLazyConnection = (
     server: {
       get() {
         return attachments.get(ws).__pk.server;
+      }
+    },
+    tags: {
+      get() {
+        // Default to [] for connections accepted before tags were stored
+        return attachments.get(ws).__pk.tags ?? [];
       }
     },
     socket: {
@@ -233,6 +249,36 @@ class HibernatingConnectionIterator<T> implements IterableIterator<
   }
 }
 
+/**
+ * Deduplicate and validate connection tags.
+ * Returns the final tag array (always includes the connection id as the first tag).
+ */
+function prepareTags(connectionId: string, userTags: string[]): string[] {
+  const tags = [connectionId, ...userTags.filter((t) => t !== connectionId)];
+
+  // validate tags against documented restrictions
+  // https://developers.cloudflare.com/durable-objects/api/hibernatable-websockets-api/#state-methods-for-websockets
+  if (tags.length > 10) {
+    throw new Error(
+      "A connection can only have 10 tags, including the default id tag."
+    );
+  }
+
+  for (const tag of tags) {
+    if (typeof tag !== "string") {
+      throw new Error(`A connection tag must be a string. Received: ${tag}`);
+    }
+    if (tag === "") {
+      throw new Error("A connection tag must not be an empty string.");
+    }
+    if (tag.length > 256) {
+      throw new Error("A connection tag must not exceed 256 characters");
+    }
+  }
+
+  return tags;
+}
+
 export interface ConnectionManager {
   getCount(): number;
   getConnection<TState>(id: string): Connection<TState> | undefined;
@@ -280,12 +326,16 @@ export class InMemoryConnectionManager<TState> implements ConnectionManager {
   accept(connection: Connection, options: { tags: string[]; server: string }) {
     connection.accept();
 
+    const tags = prepareTags(connection.id, options.tags);
+
     this.#connections.set(connection.id, connection);
-    this.tags.set(connection, [
-      // make sure we have id tag
-      connection.id,
-      ...options.tags.filter((t) => t !== connection.id)
-    ]);
+    this.tags.set(connection, tags);
+
+    // Expose tags on the connection object itself
+    Object.defineProperty(connection, "tags", {
+      get: () => tags,
+      configurable: true
+    });
 
     const removeConnection = () => {
       this.#connections.delete(connection.id);
@@ -336,37 +386,14 @@ export class HibernatingConnectionManager<TState> implements ConnectionManager {
   }
 
   accept(connection: Connection, options: { tags: string[]; server: string }) {
-    // dedupe tags in case user already provided id tag
-    const tags = [
-      connection.id,
-      ...options.tags.filter((t) => t !== connection.id)
-    ];
-
-    // validate tags against documented restrictions
-    // shttps://developers.cloudflare.com/durable-objects/api/hibernatable-websockets-api/#state-methods-for-websockets
-    if (tags.length > 10) {
-      throw new Error(
-        "A connection can only have 10 tags, including the default id tag."
-      );
-    }
-
-    for (const tag of tags) {
-      if (typeof tag !== "string") {
-        throw new Error(`A connection tag must be a string. Received: ${tag}`);
-      }
-      if (tag === "") {
-        throw new Error("A connection tag must not be an empty string.");
-      }
-      if (tag.length > 256) {
-        throw new Error("A connection tag must not exceed 256 characters");
-      }
-    }
+    const tags = prepareTags(connection.id, options.tags);
 
     this.controller.acceptWebSocket(connection, tags);
     connection.serializeAttachment({
       __pk: {
         id: connection.id,
-        server: options.server
+        server: options.server,
+        tags
       },
       __user: null
     });

@@ -431,6 +431,7 @@ Did you try connecting directly to this Durable Object? Try using getServerByNam
         let connection: Connection = Object.assign(serverWebSocket, {
           id: connectionId,
           server: this.name,
+          tags: [] as string[],
           state: null as unknown as ConnectionState<unknown>,
           setState<T = unknown>(setState: T | ConnectionSetStateFn<T>) {
             let state: T;
