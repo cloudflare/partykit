@@ -1,5 +1,11 @@
 # partysocket
 
+## 1.1.13
+
+### Patch Changes
+
+- [#322](https://github.com/cloudflare/partykit/pull/322) [`3ed3bf0`](https://github.com/cloudflare/partykit/commit/3ed3bf003972b29bbe9194fedcde6bf729d5af14) Thanks [@threepointone](https://github.com/threepointone)! - Fix `reconnect()` not working after `maxRetries` has been exhausted. The `_connectLock` was not released when the max retries early return was hit in `_connect()`, preventing any subsequent `reconnect()` call from initiating a new connection.
+
 ## 1.1.12
 
 ### Patch Changes
