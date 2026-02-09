@@ -19,6 +19,8 @@ export type Env = {
   StateRoundTrip: DurableObjectNamespace<StateRoundTrip>;
   CorsServer: DurableObjectNamespace<CorsServer>;
   CustomCorsServer: DurableObjectNamespace<CustomCorsServer>;
+  FailingOnStartServer: DurableObjectNamespace<FailingOnStartServer>;
+  HibernatingNameInMessage: DurableObjectNamespace<HibernatingNameInMessage>;
 };
 
 export class Stateful extends Server {
@@ -259,6 +261,49 @@ export class ConfigurableStateInMemory extends Server {
 
     connection.setState({ answer: 99 });
     connection.send(JSON.stringify(connection.state));
+  }
+}
+
+/**
+ * Tests that onStart failure resets the status so subsequent requests
+ * can retry initialization. The first call to onStart throws; the second
+ * succeeds.
+ */
+export class FailingOnStartServer extends Server {
+  counter = 0;
+  failCount = 0;
+
+  async onStart() {
+    this.counter++;
+    if (this.counter === 1) {
+      this.failCount++;
+      throw new Error("onStart failed on first attempt");
+    }
+  }
+
+  onRequest(): Response {
+    return Response.json({
+      counter: this.counter,
+      failCount: this.failCount
+    });
+  }
+}
+
+/**
+ * Tests that this.name is correctly available in onMessage after a
+ * hibernating server wakes up. Sends this.name back in onMessage.
+ */
+export class HibernatingNameInMessage extends Server {
+  static options = {
+    hibernate: true
+  };
+
+  onConnect(connection: Connection): void {
+    connection.send(`connected:${this.name}`);
+  }
+
+  onMessage(connection: Connection, _message: WSMessage): void {
+    connection.send(`name:${this.name}`);
   }
 }
 

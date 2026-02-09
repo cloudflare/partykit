@@ -67,13 +67,7 @@ export async function getServerByName<
   }
 
   // unfortunately we have to await this
-  await stub
-    .fetch(req)
-    // drain body
-    .then((res) => res.text())
-    .catch((e) => {
-      console.error("Could not set server name:", e);
-    });
+  await stub.fetch(req).then((res) => res.text());
 
   return stub;
 }
@@ -366,34 +360,32 @@ export class Server<
    * Handle incoming requests to the server.
    */
   async fetch(request: Request): Promise<Response> {
-    // Set the props in-mem if the request included them.
-    const props = request.headers.get("x-partykit-props");
-    if (props) {
-      try {
-        this.#_props = JSON.parse(props);
-      } catch {
-        // This should never happen but log it just in case
-        console.error("Internal error parsing context props.");
-      }
-    }
-
-    if (!this.#_name) {
-      // This is temporary while we solve https://github.com/cloudflare/workerd/issues/2240
-
-      // get namespace and room from headers
-      // const namespace = request.headers.get("x-partykit-namespace");
-      const room = request.headers.get("x-partykit-room");
-      if (
-        // !namespace ||
-        !room
-      ) {
-        throw new Error(`Missing namespace or room headers when connecting to ${this.#ParentClass.name}.
-Did you try connecting directly to this Durable Object? Try using getServerByName(namespace, id) instead.`);
-      }
-      await this.setName(room);
-    }
-
     try {
+      // Set the props in-mem if the request included them.
+      const props = request.headers.get("x-partykit-props");
+      if (props) {
+        this.#_props = JSON.parse(props);
+      }
+      if (!this.#_name) {
+        // This is temporary while we solve https://github.com/cloudflare/workerd/issues/2240
+
+        // get namespace and room from headers
+        // const namespace = request.headers.get("x-partykit-namespace");
+        const room = request.headers.get("x-partykit-room");
+        if (
+          // !namespace ||
+          !room
+        ) {
+          throw new Error(`Missing namespace or room headers when connecting to ${this.#ParentClass.name}.
+Did you try connecting directly to this Durable Object? Try using getServerByName(namespace, id) instead.`);
+        }
+        await this.setName(room);
+      } else if (this.#status !== "started") {
+        // Name was set by a previous request but initialization failed.
+        // Retry initialization so the server can recover from transient
+        // onStart failures.
+        await this.#initialize();
+      }
       const url = new URL(request.url);
 
       // TODO: this is a hack to set the server name,
@@ -450,7 +442,7 @@ Did you try connecting directly to this Durable Object? Try using getServerByNam
       }
     } catch (err) {
       console.error(
-        `Error in ${this.#ParentClass.name}:${this.name} fetch:`,
+        `Error in ${this.#ParentClass.name}:${this.#_name ?? "<unnamed>"} fetch:`,
         err
       );
       if (!(err instanceof Error)) throw err;
@@ -477,13 +469,20 @@ Did you try connecting directly to this Durable Object? Try using getServerByNam
       return;
     }
 
-    const connection = createLazyConnection(ws);
+    try {
+      const connection = createLazyConnection(ws);
 
-    // rehydrate the server name if it's woken up
-    await this.setName(connection.server);
-    // TODO: ^ this shouldn't be async
+      // rehydrate the server name if it's woken up
+      await this.setName(connection.server);
+      // TODO: ^ this shouldn't be async
 
-    return this.onMessage(connection, message);
+      return this.onMessage(connection, message);
+    } catch (e) {
+      console.error(
+        `Error in ${this.#ParentClass.name}:${this.#_name ?? "<unnamed>"} webSocketMessage:`,
+        e
+      );
+    }
   }
 
   async webSocketClose(
@@ -496,13 +495,20 @@ Did you try connecting directly to this Durable Object? Try using getServerByNam
       return;
     }
 
-    const connection = createLazyConnection(ws);
+    try {
+      const connection = createLazyConnection(ws);
 
-    // rehydrate the server name if it's woken up
-    await this.setName(connection.server);
-    // TODO: ^ this shouldn't be async
+      // rehydrate the server name if it's woken up
+      await this.setName(connection.server);
+      // TODO: ^ this shouldn't be async
 
-    return this.onClose(connection, code, reason, wasClean);
+      return this.onClose(connection, code, reason, wasClean);
+    } catch (e) {
+      console.error(
+        `Error in ${this.#ParentClass.name}:${this.#_name ?? "<unnamed>"} webSocketClose:`,
+        e
+      );
+    }
   }
 
   async webSocketError(ws: WebSocket, error: unknown): Promise<void> {
@@ -510,21 +516,37 @@ Did you try connecting directly to this Durable Object? Try using getServerByNam
       return;
     }
 
-    const connection = createLazyConnection(ws);
+    try {
+      const connection = createLazyConnection(ws);
 
-    // rehydrate the server name if it's woken up
-    await this.setName(connection.server);
-    // TODO: ^ this shouldn't be async
+      // rehydrate the server name if it's woken up
+      await this.setName(connection.server);
+      // TODO: ^ this shouldn't be async
 
-    return this.onError(connection, error);
+      return this.onError(connection, error);
+    } catch (e) {
+      console.error(
+        `Error in ${this.#ParentClass.name}:${this.#_name ?? "<unnamed>"} webSocketError:`,
+        e
+      );
+    }
   }
 
   async #initialize(): Promise<void> {
+    let error: unknown;
     await this.ctx.blockConcurrencyWhile(async () => {
       this.#status = "starting";
-      await this.onStart(this.#_props);
-      this.#status = "started";
+      try {
+        await this.onStart(this.#_props);
+        this.#status = "started";
+      } catch (e) {
+        this.#status = "zero";
+        error = e;
+      }
     });
+    // Re-throw outside blockConcurrencyWhile so the DO's input gate
+    // isn't permanently broken, allowing subsequent requests to retry.
+    if (error) throw error;
   }
 
   #attachSocketEventHandlers(connection: Connection) {

@@ -50,29 +50,34 @@
       {
         "name": "AlarmServer",
         "class_name": "AlarmServer"
+      },
+      {
+        "name": "FailingOnStartServer",
+        "class_name": "FailingOnStartServer"
+      },
+      {
+        "name": "HibernatingNameInMessage",
+        "class_name": "HibernatingNameInMessage"
       }
     ]
   },
   "migrations": [
     {
-      "tag": "v1", // Should be unique for each entry
-      "new_classes": ["Stateful", "OnStartServer", "Mixed"]
-    },
-    {
-      "tag": "v2",
+      "tag": "v1",
       "new_classes": [
+        "Stateful",
+        "OnStartServer",
+        "Mixed",
         "ConfigurableState",
         "ConfigurableStateInMemory",
-        "StateRoundTrip"
+        "StateRoundTrip",
+        "CorsServer",
+        "CustomCorsServer",
+        "HibernatingOnStartServer",
+        "AlarmServer",
+        "FailingOnStartServer",
+        "HibernatingNameInMessage"
       ]
-    },
-    {
-      "tag": "v3",
-      "new_classes": ["CorsServer", "CustomCorsServer"]
-    },
-    {
-      "tag": "v4",
-      "new_classes": ["HibernatingOnStartServer", "AlarmServer"]
     }
   ]
 }
