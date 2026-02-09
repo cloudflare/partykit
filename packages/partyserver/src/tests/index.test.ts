@@ -1,6 +1,7 @@
 import {
   createExecutionContext,
-  env
+  env,
+  runDurableObjectAlarm
   // waitOnExecutionContext
 } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
@@ -398,6 +399,43 @@ describe("Hibernating Server (setName handles initialization)", () => {
     expect(echoMessage).toEqual("counter:1");
 
     ws.close();
+  });
+});
+
+describe("Alarm (initialize without redundant blockConcurrencyWhile)", () => {
+  it("properly initializes on alarm and calls onAlarm", async () => {
+    // Use a single stub for the entire test so runDurableObjectAlarm
+    // sees the same DO instance that has the alarm scheduled.
+    const id = env.AlarmServer.idFromName("alarm-test1");
+    const stub = env.AlarmServer.get(id);
+
+    // Initialize the DO and schedule an alarm in one request
+    const res = await stub.fetch(
+      new Request(
+        "http://example.com/parties/alarm-server/alarm-test1?setAlarm=1",
+        {
+          headers: { "x-partykit-room": "alarm-test1" }
+        }
+      )
+    );
+    expect(await res.text()).toEqual("alarm set");
+
+    // Trigger the alarm
+    const ran = await runDurableObjectAlarm(stub);
+    expect(ran).toBe(true);
+
+    // Verify state: onStart called once, alarm was triggered once
+    const stateRes = await stub.fetch(
+      new Request("http://example.com/", {
+        headers: { "x-partykit-room": "alarm-test1" }
+      })
+    );
+    const state = (await stateRes.json()) as {
+      counter: number;
+      alarmCount: number;
+    };
+    expect(state.counter).toEqual(1);
+    expect(state.alarmCount).toEqual(1);
   });
 });
 

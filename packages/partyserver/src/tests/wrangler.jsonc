@@ -46,6 +46,10 @@
       {
         "name": "HibernatingOnStartServer",
         "class_name": "HibernatingOnStartServer"
+      },
+      {
+        "name": "AlarmServer",
+        "class_name": "AlarmServer"
       }
     ]
   },
@@ -68,7 +72,7 @@
     },
     {
       "tag": "v4",
-      "new_classes": ["HibernatingOnStartServer"]
+      "new_classes": ["HibernatingOnStartServer", "AlarmServer"]
     }
   ]
 }

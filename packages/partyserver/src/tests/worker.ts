@@ -12,6 +12,7 @@ export type Env = {
   Stateful: DurableObjectNamespace<Stateful>;
   OnStartServer: DurableObjectNamespace<OnStartServer>;
   HibernatingOnStartServer: DurableObjectNamespace<HibernatingOnStartServer>;
+  AlarmServer: DurableObjectNamespace<AlarmServer>;
   Mixed: DurableObjectNamespace<Mixed>;
   ConfigurableState: DurableObjectNamespace<ConfigurableState>;
   ConfigurableStateInMemory: DurableObjectNamespace<ConfigurableStateInMemory>;
@@ -100,6 +101,40 @@ export class HibernatingOnStartServer extends Server {
 
   onRequest(): Response {
     return new Response(this.counter.toString());
+  }
+}
+
+/**
+ * Tests that alarm() properly initializes the server
+ * without the redundant blockConcurrencyWhile wrapper.
+ */
+export class AlarmServer extends Server {
+  static options = {
+    hibernate: true
+  };
+
+  counter = 0;
+  alarmCount = 0;
+
+  async onStart() {
+    this.counter++;
+  }
+
+  onAlarm() {
+    this.alarmCount++;
+  }
+
+  async onRequest(request: Request): Promise<Response> {
+    const url = new URL(request.url);
+    if (url.searchParams.get("setAlarm")) {
+      // Schedule alarm far in the future so it won't auto-fire
+      await this.ctx.storage.setAlarm(Date.now() + 60_000);
+      return new Response("alarm set");
+    }
+    return Response.json({
+      counter: this.counter,
+      alarmCount: this.alarmCount
+    });
   }
 }
 
