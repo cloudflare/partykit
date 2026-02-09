@@ -402,6 +402,86 @@ describe("Hibernating Server (setName handles initialization)", () => {
   });
 });
 
+describe("Error handling", () => {
+  it("returns 500 with useful message when room header is missing", async () => {
+    // Send a request directly to a DO stub without the x-partykit-room header.
+    // This should return a 500 with the "Missing namespace or room headers"
+    // message, NOT crash with "Attempting to read .name before it was set".
+    const id = env.Stateful.idFromName("no-header-test");
+    const stub = env.Stateful.get(id);
+    const response = await stub.fetch(
+      new Request("http://example.com/some-path")
+    );
+    expect(response.status).toBe(500);
+    const body = await response.text();
+    expect(body).toContain("Missing namespace or room headers");
+  });
+});
+
+describe("onStart failure recovery", () => {
+  it("resets status so subsequent requests can retry initialization", async () => {
+    const ctx = createExecutionContext();
+
+    // First request: onStart throws on first attempt, returns 500
+    const request1 = new Request(
+      "http://example.com/parties/failing-on-start-server/recovery-test"
+    );
+    const response1 = await worker.fetch(request1, env, ctx);
+    expect(response1.status).toBe(500);
+
+    // Second request: onStart should succeed on the retry because
+    // the status was reset to "zero" (not stuck at "starting"), and
+    // the error was caught inside blockConcurrencyWhile so the DO's
+    // input gate wasn't permanently broken.
+    const request2 = new Request(
+      "http://example.com/parties/failing-on-start-server/recovery-test"
+    );
+    const response2 = await worker.fetch(request2, env, ctx);
+    expect(response2.status).toBe(200);
+    const data = (await response2.json()) as {
+      counter: number;
+      failCount: number;
+    };
+    // counter is 2 because onStart ran twice (first failed, second succeeded)
+    expect(data.counter).toEqual(2);
+    expect(data.failCount).toEqual(1);
+  });
+});
+
+describe("Hibernating server name rehydration", () => {
+  it("this.name is available in onMessage after wake-up", async () => {
+    const ctx = createExecutionContext();
+    const request = new Request(
+      "http://example.com/parties/hibernating-name-in-message/rehydrate-test",
+      {
+        headers: { Upgrade: "websocket" }
+      }
+    );
+    const response = await worker.fetch(request, env, ctx);
+    const ws = response.webSocket!;
+    ws.accept();
+
+    // Wait for the onConnect message which includes the name
+    const connectMessage = await new Promise<string>((resolve) => {
+      ws.addEventListener("message", (e) => resolve(e.data as string), {
+        once: true
+      });
+    });
+    expect(connectMessage).toEqual("connected:rehydrate-test");
+
+    // Send a message to trigger onMessage, which also reads this.name
+    ws.send("ping");
+    const nameMessage = await new Promise<string>((resolve) => {
+      ws.addEventListener("message", (e) => resolve(e.data as string), {
+        once: true
+      });
+    });
+    expect(nameMessage).toEqual("name:rehydrate-test");
+
+    ws.close();
+  });
+});
+
 describe("Alarm (initialize without redundant blockConcurrencyWhile)", () => {
   it("properly initializes on alarm and calls onAlarm", async () => {
     // Use a single stub for the entire test so runDurableObjectAlarm
