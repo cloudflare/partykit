@@ -1,6 +1,6 @@
 import { routePartykitRequest, Server } from "../index";
 
-import type { Connection, ConnectionContext } from "../index";
+import type { Connection, ConnectionContext, WSMessage } from "../index";
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) {
@@ -11,6 +11,7 @@ function assert(condition: unknown, message: string): asserts condition {
 export type Env = {
   Stateful: DurableObjectNamespace<Stateful>;
   OnStartServer: DurableObjectNamespace<OnStartServer>;
+  HibernatingOnStartServer: DurableObjectNamespace<HibernatingOnStartServer>;
   Mixed: DurableObjectNamespace<Mixed>;
   ConfigurableState: DurableObjectNamespace<ConfigurableState>;
   ConfigurableStateInMemory: DurableObjectNamespace<ConfigurableStateInMemory>;
@@ -63,6 +64,41 @@ export class OnStartServer extends Server {
   onRequest(
     _request: Request<unknown, CfProperties<unknown>>
   ): Response | Promise<Response> {
+    return new Response(this.counter.toString());
+  }
+}
+
+/**
+ * Like OnStartServer but with hibernate: true.
+ * Tests that setName properly initializes the server in the
+ * hibernating websocket handler path (webSocketMessage, webSocketClose, etc.)
+ */
+export class HibernatingOnStartServer extends Server {
+  static options = {
+    hibernate: true
+  };
+
+  counter = 0;
+
+  async onStart() {
+    assert(this.name, "name is not available inside onStart");
+    await new Promise<void>((resolve) => {
+      setTimeout(() => {
+        this.counter++;
+        resolve();
+      }, 300);
+    });
+  }
+
+  onConnect(connection: Connection) {
+    connection.send(this.counter.toString());
+  }
+
+  onMessage(connection: Connection, _message: WSMessage) {
+    connection.send(`counter:${this.counter}`);
+  }
+
+  onRequest(): Response {
     return new Response(this.counter.toString());
   }
 }

@@ -301,6 +301,106 @@ describe("Server", () => {
   // describe("in-memory");
 });
 
+describe("Hibernating Server (setName handles initialization)", () => {
+  it("calls onStart before processing connections", async () => {
+    const ctx = createExecutionContext();
+    const request = new Request(
+      "http://example.com/parties/hibernating-on-start-server/h-test1",
+      {
+        headers: { Upgrade: "websocket" }
+      }
+    );
+    const response = await worker.fetch(request, env, ctx);
+    const ws = response.webSocket!;
+    ws.accept();
+
+    const { promise, resolve, reject } = Promise.withResolvers<void>();
+    ws.addEventListener("message", (message) => {
+      try {
+        // counter should be 1 because onStart completed before onConnect
+        expect(message.data).toEqual("1");
+        resolve();
+      } catch (e) {
+        reject(e);
+      } finally {
+        ws.close();
+      }
+    });
+
+    return promise;
+  });
+
+  it("calls onStart only once with concurrent connections and requests", async () => {
+    const ctx = createExecutionContext();
+
+    async function makeConnection() {
+      const request = new Request(
+        "http://example.com/parties/hibernating-on-start-server/h-test2",
+        {
+          headers: { Upgrade: "websocket" }
+        }
+      );
+      const response = await worker.fetch(request, env, ctx);
+      const ws = response.webSocket!;
+      ws.accept();
+      const { promise, resolve, reject } = Promise.withResolvers<void>();
+      ws.addEventListener("message", (message) => {
+        try {
+          expect(message.data).toEqual("1");
+          resolve();
+        } catch (e) {
+          reject(e);
+        } finally {
+          ws.close();
+        }
+      });
+      return promise;
+    }
+
+    async function makeRequest() {
+      const request = new Request(
+        "http://example.com/parties/hibernating-on-start-server/h-test2"
+      );
+      const response = await worker.fetch(request, env, ctx);
+      expect(await response.text()).toEqual("1");
+    }
+
+    await Promise.all([makeConnection(), makeConnection(), makeRequest()]);
+  });
+
+  it("handles websocket messages after initialization", async () => {
+    const ctx = createExecutionContext();
+    const request = new Request(
+      "http://example.com/parties/hibernating-on-start-server/h-test3",
+      {
+        headers: { Upgrade: "websocket" }
+      }
+    );
+    const response = await worker.fetch(request, env, ctx);
+    const ws = response.webSocket!;
+    ws.accept();
+
+    // Wait for the onConnect message
+    const connectMessage = await new Promise<string>((resolve) => {
+      ws.addEventListener("message", (e) => resolve(e.data as string), {
+        once: true
+      });
+    });
+    expect(connectMessage).toEqual("1");
+
+    // Send a message and verify the server is still initialized
+    ws.send("hello");
+    const echoMessage = await new Promise<string>((resolve) => {
+      ws.addEventListener("message", (e) => resolve(e.data as string), {
+        once: true
+      });
+    });
+    expect(echoMessage).toEqual("counter:1");
+
+    ws.close();
+  });
+});
+
 describe("CORS", () => {
   it("returns CORS headers on OPTIONS preflight for matched routes", async () => {
     const ctx = createExecutionContext();
