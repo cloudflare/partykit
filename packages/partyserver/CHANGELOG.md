@@ -1,5 +1,15 @@
 # partyflare
 
+## 0.1.4
+
+### Patch Changes
+
+- [#320](https://github.com/cloudflare/partykit/pull/320) [`9bd3f56`](https://github.com/cloudflare/partykit/commit/9bd3f5672eea27cb259f77fb3cf2444da5921803) Thanks [@threepointone](https://github.com/threepointone)! - Add CORS support to `routePartykitRequest`.
+
+  Pass `cors: true` for permissive defaults or `cors: { ...headers }` for custom CORS headers. Preflight (OPTIONS) requests are handled automatically for matched routes, and CORS headers are appended to all non-WebSocket responses — including responses returned by `onBeforeRequest`.
+
+- [#260](https://github.com/cloudflare/partykit/pull/260) [`84fe996`](https://github.com/cloudflare/partykit/commit/84fe9965cecbff3cf4f2f280c27d8f2d88909613) Thanks [@BlankParticle](https://github.com/BlankParticle)! - remove redundant initialize code as setName takes care of it, along with the nested blockConcurrencyWhile call
+
 ## 0.1.3
 
 ### Patch Changes
