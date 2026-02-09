@@ -150,6 +150,19 @@ describe("Server", () => {
     expect(response.headers.get("Location")).toBe("https://example3.com");
   });
 
+  it("provides className with the Durable Object class name", async () => {
+    const ctx = createExecutionContext();
+    const request = new Request(
+      "http://example.com/parties/on-start-server/lobby-info"
+    );
+    const response = await worker.fetch(request, env, ctx);
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      className: "OnStartServer",
+      name: "lobby-info"
+    });
+  });
+
   it("ignores foreign hibernated websockets when broadcasting", async () => {
     const ctx = createExecutionContext();
 

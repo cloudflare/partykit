@@ -31,6 +31,9 @@ const serverMapCache = new WeakMap<
   Record<string, DurableObjectNamespace>
 >();
 
+// Maps kebab-case namespace -> original env binding name (e.g. "my-agent" -> "MyAgent")
+const bindingNameCache = new WeakMap<object, Record<string, string>>();
+
 /**
  * For a given server namespace, create a server with a name.
  */
@@ -87,8 +90,20 @@ function camelCaseToKebabCase(str: string): string {
   // Convert any remaining underscores to hyphens and remove trailing -'s
   return kebabified.replace(/_/g, "-").replace(/-$/, "");
 }
+export interface Lobby<Env = Cloudflare.Env> {
+  /**
+   * The kebab-case namespace from the URL path (e.g. `"my-agent"`).
+   * @deprecated Use `className` instead, which returns the Durable Object class name.
+   * In the next major version, `party` will return the class name instead of the kebab-case namespace.
+   */
+  party: string;
+  /** The Durable Object class name / env binding name (e.g. `"MyAgent"`). */
+  className: Extract<keyof Env, string>;
+  /** The room / instance name extracted from the URL. */
+  name: string;
+}
+
 export interface PartyServerOptions<
-  // biome-ignore lint/correctness/noUnusedVariables: it's ok, we'll remove this in the next major
   Env = Cloudflare.Env,
   Props = Record<string, unknown>
 > {
@@ -122,17 +137,11 @@ export interface PartyServerOptions<
   cors?: boolean | HeadersInit;
   onBeforeConnect?: (
     req: Request,
-    lobby: {
-      party: string;
-      name: string;
-    }
+    lobby: Lobby<Env>
   ) => Response | Request | void | Promise<Response | Request | void>;
   onBeforeRequest?: (
     req: Request,
-    lobby: {
-      party: string;
-      name: string;
-    }
+    lobby: Lobby<Env>
   ) =>
     | Response
     | Request
@@ -175,26 +184,28 @@ export async function routePartykitRequest<
   options?: PartyServerOptions<Env, Props>
 ): Promise<Response | null> {
   if (!serverMapCache.has(env)) {
-    serverMapCache.set(
-      env,
-      Object.entries(env).reduce((acc, [k, v]) => {
-        if (
-          v &&
-          typeof v === "object" &&
-          "idFromName" in v &&
-          typeof v.idFromName === "function"
-        ) {
-          Object.assign(acc, { [camelCaseToKebabCase(k)]: v });
-          return acc;
-        }
-        return acc;
-      }, {})
-    );
+    const namespaceMap: Record<string, DurableObjectNamespace> = {};
+    const bindingNames: Record<string, string> = {};
+    for (const [k, v] of Object.entries(env)) {
+      if (
+        v &&
+        typeof v === "object" &&
+        "idFromName" in v &&
+        typeof v.idFromName === "function"
+      ) {
+        const kebab = camelCaseToKebabCase(k);
+        namespaceMap[kebab] = v as DurableObjectNamespace;
+        bindingNames[kebab] = k;
+      }
+    }
+    serverMapCache.set(env, namespaceMap);
+    bindingNameCache.set(env, bindingNames);
   }
   const map = serverMapCache.get(env) as unknown as Record<
     string,
     DurableObjectNamespace<T>
   >;
+  const bindingNames = bindingNameCache.get(env) as Record<string, string>;
 
   const prefix = options?.prefix || "parties";
   const prefixParts = prefix.split("/");
@@ -271,12 +282,27 @@ Did you forget to add a durable object binding to the class ${namespace[0].toUpp
       req.headers.set("x-partykit-props", JSON.stringify(options?.props));
     }
 
+    const className = bindingNames[namespace] as Extract<keyof Env, string>;
+    let partyDeprecationWarned = false;
+    const lobby: Lobby<Env> = {
+      get party() {
+        if (!partyDeprecationWarned) {
+          partyDeprecationWarned = true;
+          console.warn(
+            'lobby.party is deprecated and currently returns the kebab-case namespace (e.g. "my-agent"). ' +
+              'Use lobby.className instead to get the Durable Object class name (e.g. "MyAgent"). ' +
+              "In the next major version, lobby.party will return the class name."
+          );
+        }
+        return namespace;
+      },
+      className,
+      name
+    };
+
     if (isWebSocket) {
       if (options?.onBeforeConnect) {
-        const reqOrRes = await options.onBeforeConnect(req, {
-          party: namespace,
-          name
-        });
+        const reqOrRes = await options.onBeforeConnect(req, lobby);
         if (reqOrRes instanceof Request) {
           req = reqOrRes;
         } else if (reqOrRes instanceof Response) {
@@ -285,10 +311,7 @@ Did you forget to add a durable object binding to the class ${namespace[0].toUpp
       }
     } else {
       if (options?.onBeforeRequest) {
-        const reqOrRes = await options.onBeforeRequest(req, {
-          party: namespace,
-          name
-        });
+        const reqOrRes = await options.onBeforeRequest(req, lobby);
         if (reqOrRes instanceof Request) {
           req = reqOrRes;
         } else if (reqOrRes instanceof Response) {
