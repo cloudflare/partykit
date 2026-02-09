@@ -455,6 +455,7 @@ export default class ReconnectingWebSocket extends (EventTarget as TypedEventTar
 
     if (this._retryCount >= maxRetries) {
       this._debug("max retries reached", this._retryCount, ">=", maxRetries);
+      this._connectLock = false;
       return;
     }
 

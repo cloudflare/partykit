@@ -937,3 +937,40 @@ testDone("reconnect after closing", (done, fail) => {
     }
   });
 });
+
+testDone(
+  "reconnect() works after maxRetries has been exhausted",
+  (done, fail) => {
+    // Connect to an unreachable URL with maxRetries=0 so retries exhaust quickly.
+    // This reproduces the bug where _connectLock was not released when
+    // maxRetries was reached, preventing reconnect() from working.
+    // (https://github.com/cloudflare/partykit/issues/252)
+    const ws = new ReconnectingWebSocket(ERROR_URL, undefined, {
+      maxRetries: 0,
+      connectionTimeout: 500,
+      minReconnectionDelay: 10,
+      maxReconnectionDelay: 50
+    });
+
+    let reconnected = false;
+    ws.addEventListener("error", () => {
+      if (reconnected) return;
+      reconnected = true;
+
+      // maxRetries is now exhausted. Switch to the working server and reconnect.
+      // @ts-expect-error accessing private _url for testing
+      ws._url = URL;
+      ws.reconnect();
+    });
+
+    ws.addEventListener("open", () => {
+      ws.close();
+      done();
+    });
+
+    setTimeout(() => {
+      ws.close();
+      fail(new Error("timed out waiting for reconnect after maxRetries"));
+    }, 10000);
+  }
+);
