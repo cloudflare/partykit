@@ -802,6 +802,66 @@ describe.skipIf(!!process.env.GITHUB_ACTIONS)("usePartySocket", () => {
 
     result.current.close();
   });
+
+  test("creates new socket when options change while re-enabling", async () => {
+    // Bug: when enabled goes false→true at the same time as options change
+    // (e.g., query with fresh auth token), useStableSocket calls
+    // socket.reconnect() on the OLD socket and short-circuits past the
+    // option-change detection that would create a new socket.
+    const { result, rerender } = renderHook(
+      ({ enabled, query }: { enabled: boolean; query: Record<string, string> }) =>
+        usePartySocket({
+          host: "example.com",
+          room: "test-room",
+          query,
+          enabled,
+          startClosed: true
+        }),
+      { initialProps: { enabled: true, query: { token: "old-token" } } }
+    );
+
+    const firstSocket = result.current;
+
+    // Disable socket (simulates onClose → awaitingQueryRefresh = true)
+    rerender({ enabled: false, query: { token: "old-token" } });
+    expect(result.current).toBe(firstSocket); // same instance, just closed
+
+    // Re-enable with new query (simulates fresh token resolved)
+    rerender({ enabled: true, query: { token: "new-token" } });
+
+    // Should be a NEW socket created with the fresh query params.
+    // If this fails, the old socket was .reconnect()'d with stale params.
+    await waitFor(() => {
+      expect(result.current).not.toBe(firstSocket);
+    });
+  });
+
+  test("closes socket on unmount after enabled toggle", () => {
+    // Bug: the useEffect in useStableSocket returns no cleanup function
+    // on the enabled toggle paths (both false→true and true→false).
+    // If the component unmounts while in one of those paths, the socket
+    // is never closed and reconnects forever as a zombie.
+    const { result, rerender, unmount } = renderHook(
+      ({ enabled }) =>
+        usePartySocket({
+          host: "example.com",
+          room: "test-room",
+          enabled,
+          startClosed: true
+        }),
+      { initialProps: { enabled: true } }
+    );
+
+    // Toggle enabled: true → false → true (the reconnect path)
+    rerender({ enabled: false });
+    rerender({ enabled: true });
+
+    const closeSpy = vitest.spyOn(result.current, "close");
+
+    unmount();
+
+    expect(closeSpy).toHaveBeenCalled();
+  });
 });
 
 describe.skipIf(!!process.env.GITHUB_ACTIONS)("useWebSocket", () => {

@@ -71,6 +71,11 @@ export function useStableSocket<
   // whether the connection options actually changed.
   const prevSocketOptionsRef = useRef(socketOptions);
 
+  // tracks whether options changed at any point while the socket was disabled.
+  // The disabled path early-returns without creating a new socket, so we need
+  // to remember that options drifted and create a new socket on re-enable.
+  const optionsChangedWhileDisabledRef = useRef(false);
+
   // finally, initialize the socket
   useEffect(() => {
     const optionsChanged = prevSocketOptionsRef.current !== socketOptions;
@@ -80,14 +85,38 @@ export function useStableSocket<
     if (!enabled) {
       socket.close();
       prevEnabledRef.current = enabled;
-      return;
+      if (optionsChanged) {
+        optionsChangedWhileDisabledRef.current = true;
+      }
+      return () => {
+        socket.close();
+      };
     }
 
-    // if enabled just changed from false to true, reconnect
+    // if enabled just changed from false to true...
     if (!prevEnabledRef.current && enabled) {
-      socket.reconnect();
       prevEnabledRef.current = enabled;
-      return;
+      const needsNewSocket =
+        optionsChanged || optionsChangedWhileDisabledRef.current;
+      optionsChangedWhileDisabledRef.current = false;
+
+      if (!needsNewSocket) {
+        // options unchanged — reconnect existing socket
+        socket.reconnect();
+        return () => {
+          socket.close();
+        };
+      }
+
+      // options changed while disabled — create new socket with current config
+      const newSocket = createSocketRef.current({
+        ...socketOptions,
+        startClosed: true
+      });
+      setSocket(newSocket);
+      return () => {
+        newSocket.close();
+      };
     }
 
     prevEnabledRef.current = enabled;
@@ -95,16 +124,20 @@ export function useStableSocket<
     // we haven't yet restarted the socket
     if (socketInitializedRef.current === socket) {
       if (optionsChanged) {
-        // connection options changed — create new socket with new config
+        // connection options changed — create new socket with new config.
+        // startClosed: true so it's inert until the else branch below
+        // connects it on the next render. This ensures the socket is safe
+        // to clean up if the component unmounts before that re-render.
         const newSocket = createSocketRef.current({
           ...socketOptions,
-          // when reconnecting because of options change, we always reconnect
-          // (startClosed only applies to initial mount)
-          startClosed: false
+          startClosed: true
         });
 
         // update socket reference (this will cause the effect to run again)
         setSocket(newSocket);
+        return () => {
+          newSocket.close();
+        };
       } else {
         // HMR or React Strict Mode effect re-run — reconnect the existing
         // socket instead of creating a new instance. This preserves the
@@ -119,8 +152,13 @@ export function useStableSocket<
         };
       }
     } else {
-      // if this is the first time we are running the hook, connect...
-      if (!socketInitializedRef.current && socketOptions.startClosed !== true) {
+      if (!socketInitializedRef.current) {
+        // first mount — respect the caller's startClosed preference
+        if (socketOptions.startClosed !== true) {
+          socket.reconnect();
+        }
+      } else if (socketInitializedRef.current !== socket) {
+        // replacement socket from an options change — always connect
         socket.reconnect();
       }
       // track initialized socket so we know not to do it again
