@@ -66,6 +66,10 @@
       {
         "name": "TagsServerInMemory",
         "class_name": "TagsServerInMemory"
+      },
+      {
+        "name": "AlarmNameServer",
+        "class_name": "AlarmNameServer"
       }
     ]
   },
@@ -86,7 +90,8 @@
         "FailingOnStartServer",
         "HibernatingNameInMessage",
         "TagsServer",
-        "TagsServerInMemory"
+        "TagsServerInMemory",
+        "AlarmNameServer"
       ]
     }
   ]

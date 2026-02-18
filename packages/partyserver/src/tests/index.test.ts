@@ -532,6 +532,37 @@ describe("Alarm (initialize without redundant blockConcurrencyWhile)", () => {
   });
 });
 
+describe("Alarm name recovery from storage", () => {
+  it("this.name is available in onAlarm after cold wake", async () => {
+    const id = env.AlarmNameServer.idFromName("alarm-name-test");
+    const stub = env.AlarmNameServer.get(id);
+
+    // Seed storage directly, bypassing Server.fetch()/setName() so #_name stays unset.
+    const res = await stub.fetch(
+      new Request(
+        "http://example.com/?seed=1&name=alarm-name-test"
+      )
+    );
+    expect(await res.text()).toEqual("seeded");
+
+    const ran = await runDurableObjectAlarm(stub);
+    expect(ran).toBe(true);
+
+    const stateRes = await stub.fetch(
+      new Request("http://example.com/", {
+        headers: { "x-partykit-room": "alarm-name-test" }
+      })
+    );
+    const state = (await stateRes.json()) as {
+      alarmName: string | null;
+      nameWasCold: boolean;
+    };
+
+    expect(state.nameWasCold).toBe(true);
+    expect(state.alarmName).toEqual("alarm-name-test");
+  });
+});
+
 describe("CORS", () => {
   it("returns CORS headers on OPTIONS preflight for matched routes", async () => {
     const ctx = createExecutionContext();

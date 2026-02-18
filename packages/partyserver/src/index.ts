@@ -641,6 +641,8 @@ Did you try connecting directly to this Durable Object? Try using getServerByNam
     }
     this.#_name = name;
 
+    await this.ctx.storage.put("__partyserver_name", name);
+
     if (this.#status !== "started") {
       await this.#initialize();
     }
@@ -793,6 +795,12 @@ Did you try connecting directly to this Durable Object? Try using getServerByNam
   }
 
   async alarm(): Promise<void> {
+    if (!this.#_name) {
+      const stored = await this.ctx.storage.get<string>("__partyserver_name");
+      if (stored) {
+        this.#_name = stored;
+      }
+    }
     if (this.#status !== "started") {
       // This means the server "woke up" after hibernation
       // so we need to hydrate it again

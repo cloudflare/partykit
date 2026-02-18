@@ -23,6 +23,7 @@ export type Env = {
   HibernatingNameInMessage: DurableObjectNamespace<HibernatingNameInMessage>;
   TagsServer: DurableObjectNamespace<TagsServer>;
   TagsServerInMemory: DurableObjectNamespace<TagsServerInMemory>;
+  AlarmNameServer: DurableObjectNamespace<AlarmNameServer>;
 };
 
 export class Stateful extends Server {
@@ -349,6 +350,52 @@ export class TagsServerInMemory extends Server {
 
   onConnect(connection: Connection): void {
     connection.send(JSON.stringify(connection.tags));
+  }
+}
+
+/**
+ * Tests that this.name is recovered from storage when alarm() fires without a prior HTTP request in the wake cycle.
+ */
+export class AlarmNameServer extends Server {
+  static options = {
+    hibernate: true
+  };
+
+  alarmName: string | null = null;
+  nameWasCold = false;
+
+  // Bypass Server.fetch() for the seed request so setName() is never called.
+  // This simulates a DO that was previously named, went to sleep, and wakes
+  // up cold for an alarm — #_name is unset, only storage has the name.
+  async fetch(request: Request): Promise<Response> {
+    const url = new URL(request.url);
+    if (url.searchParams.get("seed")) {
+      const name = url.searchParams.get("name")!;
+      await this.ctx.storage.put("__partyserver_name", name);
+      await this.ctx.storage.setAlarm(Date.now() + 60_000);
+      return new Response("seeded");
+    }
+    return super.fetch(request);
+  }
+
+  async alarm() {
+    try {
+      this.name;
+    } catch {
+      this.nameWasCold = true;
+    }
+    await super.alarm();
+  }
+
+  onAlarm() {
+    this.alarmName = this.name;
+  }
+
+  async onRequest(): Promise<Response> {
+    return Response.json({
+      alarmName: this.alarmName,
+      nameWasCold: this.nameWasCold
+    });
   }
 }
 
