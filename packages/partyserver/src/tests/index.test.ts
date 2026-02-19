@@ -1,7 +1,8 @@
 import {
   createExecutionContext,
   env,
-  runDurableObjectAlarm
+  runDurableObjectAlarm,
+  runInDurableObject
   // waitOnExecutionContext
 } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
@@ -529,6 +530,42 @@ describe("Alarm (initialize without redundant blockConcurrencyWhile)", () => {
     };
     expect(state.counter).toEqual(1);
     expect(state.alarmCount).toEqual(1);
+  });
+});
+
+describe("Alarm cold start (name persisted to storage)", () => {
+  it("setName persists the room name to storage", async () => {
+    const id = env.AlarmNameServer.idFromName("persist-write-test");
+    const stub = env.AlarmNameServer.get(id);
+
+    await stub.fetch(
+      new Request("http://example.com/", {
+        headers: { "x-partykit-room": "persist-write-test" }
+      })
+    );
+
+    const stored = await runInDurableObject(stub, async (_instance, state) => {
+      return state.storage.get("__partyserver_name");
+    });
+    expect(stored).toEqual("persist-write-test");
+  });
+
+  it("this.name is available in onAlarm after a cold start", async () => {
+    const id = env.AlarmNameServer.idFromName("alarm-name-test");
+    const stub = env.AlarmNameServer.get(id);
+
+    // Pre-seed storage directly — no fetch, so #_name is never set in memory.
+    // This simulates a DO that was previously initialized (name persisted)
+    // but has since been evicted and is now cold-starting via alarm.
+    await runInDurableObject(stub, async (_instance, state) => {
+      await state.storage.put("__partyserver_name", "alarm-name-test");
+      await state.storage.setAlarm(Date.now() + 60_000);
+    });
+
+    await runDurableObjectAlarm(stub);
+
+    const alarmName = await runInDurableObject(stub, (i) => i.alarmName);
+    expect(alarmName).toEqual("alarm-name-test");
   });
 });
 

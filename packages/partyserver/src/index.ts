@@ -403,11 +403,19 @@ export class Server<
 Did you try connecting directly to this Durable Object? Try using getServerByName(namespace, id) instead.`);
         }
         await this.setName(room);
-      } else if (this.#status !== "started") {
-        // Name was set by a previous request but initialization failed.
-        // Retry initialization so the server can recover from transient
-        // onStart failures.
-        await this.#initialize();
+      } else {
+        const room = request.headers.get("x-partykit-room");
+        if (room && room !== this.#_name) {
+          throw new Error(
+            `Room name mismatch: this server is "${this.#_name}" but request has room "${room}"`
+          );
+        }
+        if (this.#status !== "started") {
+          // Name was set by a previous request but initialization failed.
+          // Retry initialization so the server can recover from transient
+          // onStart failures.
+          await this.#initialize();
+        }
       }
       const url = new URL(request.url);
 
@@ -559,6 +567,11 @@ Did you try connecting directly to this Durable Object? Try using getServerByNam
   async #initialize(): Promise<void> {
     let error: unknown;
     await this.ctx.blockConcurrencyWhile(async () => {
+      if (!this.#_name) {
+        const stored =
+          await this.ctx.storage.get<string>("__partyserver_name");
+        if (stored) this.#_name = stored;
+      }
       this.#status = "starting";
       try {
         await this.onStart(this.#_props);
@@ -627,9 +640,6 @@ Did you try connecting directly to this Durable Object? Try using getServerByNam
     return this.#_name;
   }
 
-  // We won't have an await inside this function
-  // but it will be called remotely,
-  // so we need to mark it as async
   async setName(name: string) {
     if (!name) {
       throw new Error("A name is required.");
@@ -640,6 +650,7 @@ Did you try connecting directly to this Durable Object? Try using getServerByNam
       );
     }
     this.#_name = name;
+    await this.ctx.storage.put("__partyserver_name", name);
 
     if (this.#status !== "started") {
       await this.#initialize();
@@ -797,6 +808,12 @@ Did you try connecting directly to this Durable Object? Try using getServerByNam
       // This means the server "woke up" after hibernation
       // so we need to hydrate it again
       await this.#initialize();
+    }
+    if (!this.#_name) {
+      console.warn(
+        `${this.#ParentClass.name} alarm fired but this.name is not available. ` +
+          `The server must be fetched at least once (via routePartykitRequest or getServerByName) before this.name can be used in onAlarm.`
+      );
     }
     await this.onAlarm();
   }

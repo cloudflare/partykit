@@ -13,6 +13,7 @@ export type Env = {
   OnStartServer: DurableObjectNamespace<OnStartServer>;
   HibernatingOnStartServer: DurableObjectNamespace<HibernatingOnStartServer>;
   AlarmServer: DurableObjectNamespace<AlarmServer>;
+  AlarmNameServer: DurableObjectNamespace<AlarmNameServer>;
   Mixed: DurableObjectNamespace<Mixed>;
   ConfigurableState: DurableObjectNamespace<ConfigurableState>;
   ConfigurableStateInMemory: DurableObjectNamespace<ConfigurableStateInMemory>;
@@ -349,6 +350,22 @@ export class TagsServerInMemory extends Server {
 
   onConnect(connection: Connection): void {
     connection.send(JSON.stringify(connection.tags));
+  }
+}
+
+/**
+ * Tests that this.name is available in onAlarm after an alarm-triggered
+ * cold start (no prior fetch).
+ */
+export class AlarmNameServer extends Server {
+  static options = {
+    hibernate: true
+  };
+
+  alarmName: string | null = null;
+
+  onAlarm() {
+    this.alarmName = this.name;
   }
 }
 
