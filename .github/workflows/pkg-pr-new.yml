@@ -17,4 +17,4 @@ jobs:
 
       - run: npm ci
       - run: npm run build
-      - run: npx pkg-pr-new publish
+      - run: npx pkg-pr-new publish './packages/partyserver' './packages/partysocket' './packages/y-partyserver' './packages/partysub' './packages/partyfn' './packages/partysync' './packages/partywhen' './packages/partytracks' './packages/hono-party'
