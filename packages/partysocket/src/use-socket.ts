@@ -65,8 +65,17 @@ export function useStableSocket<
   // track the previous enabled state to detect changes
   const prevEnabledRef = useRef(enabled);
 
+  // track the previous socketOptions reference to distinguish option changes
+  // from HMR/StrictMode effect re-runs. useMemo returns the same reference
+  // when the memo key hasn't changed, so referential equality tells us
+  // whether the connection options actually changed.
+  const prevSocketOptionsRef = useRef(socketOptions);
+
   // finally, initialize the socket
   useEffect(() => {
+    const optionsChanged = prevSocketOptionsRef.current !== socketOptions;
+    prevSocketOptionsRef.current = socketOptions;
+
     // if disabled, close the socket and don't proceed with connection logic
     if (!enabled) {
       socket.close();
@@ -85,16 +94,28 @@ export function useStableSocket<
 
     // we haven't yet restarted the socket
     if (socketInitializedRef.current === socket) {
-      // create new socket
-      const newSocket = createSocketRef.current({
-        ...socketOptions,
-        // when reconnecting because of options change, we always reconnect
-        // (startClosed only applies to initial mount)
-        startClosed: false
-      });
+      if (optionsChanged) {
+        // connection options changed — create new socket with new config
+        const newSocket = createSocketRef.current({
+          ...socketOptions,
+          // when reconnecting because of options change, we always reconnect
+          // (startClosed only applies to initial mount)
+          startClosed: false
+        });
 
-      // update socket reference (this will cause the effect to run again)
-      setSocket(newSocket);
+        // update socket reference (this will cause the effect to run again)
+        setSocket(newSocket);
+      } else {
+        // HMR or React Strict Mode effect re-run — reconnect the existing
+        // socket instead of creating a new instance. This preserves the
+        // socket identity (event listeners, _pk, etc.) across Hot Module
+        // Replacement, preventing downstream code from losing its reference
+        // to the live socket.
+        socket.reconnect();
+        return () => {
+          socket.close();
+        };
+      }
     } else {
       // if this is the first time we are running the hook, connect...
       if (!socketInitializedRef.current && socketOptions.startClosed !== true) {
