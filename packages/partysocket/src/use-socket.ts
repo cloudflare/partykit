@@ -111,7 +111,9 @@ export function useStableSocket<
         // socket identity (event listeners, _pk, etc.) across Hot Module
         // Replacement, preventing downstream code from losing its reference
         // to the live socket.
-        socket.reconnect();
+        if (socketOptions.startClosed !== true) {
+          socket.reconnect();
+        }
         return () => {
           socket.close();
         };
