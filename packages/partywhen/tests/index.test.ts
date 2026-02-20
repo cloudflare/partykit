@@ -8,6 +8,9 @@ import { describe, expect, it } from "vitest";
 
 import worker from ".";
 
+type IsNever<T> = [T] extends [never] ? true : false;
+type AssertNot<T extends false> = T;
+
 function getStub(environment: typeof env) {
   const id = environment.SCHEDULER.idFromName("example");
   return environment.SCHEDULER.get(id);
@@ -45,6 +48,9 @@ describe("Hello World worker", () => {
       type: "scheduled",
       time
     });
+
+    // this will get a type error if scheduleTask returns `never`
+    type _ = AssertNot<IsNever<typeof task>>;
 
     expect(task).toMatchInlineSnapshot(`
       {
@@ -117,9 +123,8 @@ describe("Hello World worker", () => {
           "test": "test",
         },
         "time": ${
-          // @ts-expect-error I'm bad at typescript
           // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-          taskTime.toISOString()
+          await taskTime.toISOString()
         },
         "type": "delayed",
       }
@@ -228,11 +233,7 @@ describe("Hello World worker", () => {
         "payload": {
           "test": "test",
         },
-        "time": ${
-          // @ts-expect-error I'm bad at typescript
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-          time.toISOString()
-        },
+        "time": ${await time.toISOString()},
         "type": "no-schedule",
       }
     `);
@@ -250,11 +251,7 @@ describe("Hello World worker", () => {
         "description": "test",
         "id": "no-schedule-task-001",
         "payload": "{"test":"test"}",
-        "time": ${Math.floor(
-          // @ts-expect-error I'm bad at typescript
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-          time.getTime() / 1000
-        )},
+        "time": ${Math.floor((await time.getTime()) / 1000)},
         "type": "no-schedule",
       }
     `);

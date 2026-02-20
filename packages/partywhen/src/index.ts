@@ -4,7 +4,7 @@ import { Server } from "partyserver";
 export type RawTask = {
   id: string;
   description?: string | undefined;
-  payload?: Record<string, unknown> | undefined;
+  payload?: Record<string, Rpc.Serializable<unknown>> | undefined;
   callback?: Callback | undefined;
 } & (
   | {
