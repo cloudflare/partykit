@@ -1,5 +1,11 @@
 # partysocket
 
+## 1.1.14
+
+### Patch Changes
+
+- [#335](https://github.com/cloudflare/partykit/pull/335) [`659ceda`](https://github.com/cloudflare/partykit/commit/659cedafd67d0b8d10bbea5280c6e06a68564335) Thanks [@deathbyknowledge](https://github.com/deathbyknowledge)! - Fix useStableSocket replacing socket on HMR/StrictMode effect re-runs. When Vite HMR fires, React Fast Refresh re-runs all effects — the old code unconditionally created a new socket, breaking downstream references (event listeners, \_pk identity, etc.). Now detects whether connection options actually changed via referential equality on the memoized options object: if unchanged (HMR), calls `socket.reconnect()` to preserve identity; if changed, creates a new socket as before.
+
 ## 1.1.13
 
 ### Patch Changes

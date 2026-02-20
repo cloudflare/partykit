@@ -9,9 +9,9 @@
   },
   "dependencies": {
     "hono": "^4.11.1",
-    "hono-party": "^1.0.0",
-    "partyserver": "^0.1.5",
-    "partysocket": "^1.1.13",
+    "hono-party": "^2.0.0",
+    "partyserver": "^0.2.0",
+    "partysocket": "^1.1.14",
     "react": "^19.2.3",
     "react-dom": "^19.2.3"
   },
