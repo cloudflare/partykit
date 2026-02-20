@@ -1,5 +1,13 @@
 # partysub
 
+## 2.0.0
+
+### Patch Changes
+
+- Updated dependencies [[`eef891a`](https://github.com/cloudflare/partykit/commit/eef891aae465d93b61b6ba36278115c41b3e1b11), [`659ceda`](https://github.com/cloudflare/partykit/commit/659cedafd67d0b8d10bbea5280c6e06a68564335), [`c15e9d9`](https://github.com/cloudflare/partykit/commit/c15e9d9f85a7dbb9b640a46580d934b9b430a694)]:
+  - partyserver@0.2.0
+  - partysocket@1.1.14
+
 ## 1.0.0
 
 ### Minor Changes

@@ -1,5 +1,15 @@
 # partyflare
 
+## 0.2.0
+
+### Minor Changes
+
+- [#327](https://github.com/cloudflare/partykit/pull/327) [`eef891a`](https://github.com/cloudflare/partykit/commit/eef891aae465d93b61b6ba36278115c41b3e1b11) Thanks [@threepointone](https://github.com/threepointone)! - Add `connection.tags` property to read back tags assigned via `getConnectionTags()`. Works in both hibernating and in-memory modes. Tags are validated and always include the connection id as the first tag.
+
+### Patch Changes
+
+- [#325](https://github.com/cloudflare/partykit/pull/325) [`c15e9d9`](https://github.com/cloudflare/partykit/commit/c15e9d9f85a7dbb9b640a46580d934b9b430a694) Thanks [@threepointone](https://github.com/threepointone)! - Add `lobby.className` to `onBeforeConnect`/`onBeforeRequest` callbacks, providing the Durable Object class name (e.g. `"MyAgent"`). The existing `lobby.party` field is now deprecated (it returns the kebab-case URL namespace) and will be changed to return the class name in the next major version.
+
 ## 0.1.5
 
 ### Patch Changes
