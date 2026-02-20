@@ -47,6 +47,7 @@ export default {
 
 A task has a few parts:
 
+- **id**: a unique identifier for the task
 - **description**: which is a string that you can use to identify the task
 - **payload**: which is a JSON object that is passed to the task
 - **type**: which is one of "delayed", "cron", or "scheduled"
@@ -65,6 +66,7 @@ Here are some examples:
 
   ```ts
   scheduler.scheduleTask({
+    id: "my-task",
     description: "my-task",
     type: "delayed",
     delayInSeconds: 60,
@@ -82,6 +84,7 @@ Here are some examples:
 
   ```ts
   scheduler.scheduleTask({
+    id: "my-task",
     description: "my-task",
     type: "cron",
     cron: "0 18 * * 5",
@@ -101,6 +104,7 @@ Here are some examples:
 
   ```ts
   scheduler.scheduleTask({
+    id: "my-task",
     description: "my-task",
     type: "scheduled",
     time: new Date("2024-01-01T12:00:00Z"),
