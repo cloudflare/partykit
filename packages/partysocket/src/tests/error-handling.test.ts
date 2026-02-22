@@ -528,18 +528,18 @@ describe.skipIf(!!process.env.GITHUB_ACTIONS)(
         maxRetries: 5,
         minReconnectionDelay: 10,
         maxReconnectionDelay: 20,
+        connectionTimeout: 500,
         minUptime: 50
       });
 
-      // Wait for some retries
       await new Promise<void>((resolve) => {
         setTimeout(() => {
           expect(ws.retryCount).toBeGreaterThan(0);
           ws.close();
           resolve();
-        }, 100);
+        }, 2000);
       });
-    });
+    }, 10000);
 
     test("exponential backoff increases delay correctly", async () => {
       const ws = new ReconnectingWebSocket("ws://255.255.255.255", undefined, {

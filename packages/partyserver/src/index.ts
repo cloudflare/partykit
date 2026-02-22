@@ -1,7 +1,3 @@
-// rethink error handling, how to pass it on to the client
-// rethink oBC/oBR
-// push for durable.setState (in addition to connection.setState)
-
 import { DurableObject, env as defaultEnv } from "cloudflare:workers";
 import { nanoid } from "nanoid";
 
@@ -269,9 +265,6 @@ Did you forget to add a durable object binding to the class ${namespace[0].toUpp
 
     const id = doNamespace.idFromName(name);
     const stub = doNamespace.get(id, options);
-
-    // const stub = await getServerByName(map[namespace], name, options); // TODO: fix this
-    // make a new request with additional headers
 
     req = new Request(req);
     req.headers.set("x-partykit-room", name);

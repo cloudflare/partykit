@@ -10,7 +10,12 @@ import { WebSocketServer } from "ws";
 import usePartySocket, { useWebSocket } from "../react";
 
 const PORT = 50128;
-//  const URL = `ws://localhost:${PORT}`;
+
+const FAST_RECONNECT = {
+  minReconnectionDelay: 50,
+  maxReconnectionDelay: 200,
+  connectionTimeout: 2000
+} as const;
 
 describe.skipIf(!!process.env.GITHUB_ACTIONS)("usePartySocket", () => {
   let wss: WebSocketServer;
@@ -311,14 +316,11 @@ describe.skipIf(!!process.env.GITHUB_ACTIONS)("usePartySocket", () => {
     expect(result.current).toBe(firstSocket);
   });
 
-  // TODO: flaky — relies on WebSocket open event timing that doesn't work reliably
-  test.skip("attaches onOpen event handler", async () => {
+  test("attaches onOpen event handler", { timeout: 15000 }, async () => {
     const onOpen = vitest.fn();
 
-    // Set up connection handler before rendering
     const connectionPromise = new Promise<void>((resolve) => {
       wss.once("connection", (_ws: any) => {
-        // Connection established
         resolve();
       });
     });
@@ -327,7 +329,8 @@ describe.skipIf(!!process.env.GITHUB_ACTIONS)("usePartySocket", () => {
       usePartySocket({
         host: `localhost:${PORT}`,
         room: "test-room",
-        onOpen
+        onOpen,
+        ...FAST_RECONNECT
       })
     );
 
@@ -348,16 +351,14 @@ describe.skipIf(!!process.env.GITHUB_ACTIONS)("usePartySocket", () => {
     result.current.close();
   });
 
-  // TODO: flaky — WebSocket connection timing in jsdom is unreliable
-  test.skip("attaches onMessage event handler", async () => {
+  test("attaches onMessage event handler", { timeout: 15000 }, async () => {
     const onMessage = vitest.fn();
     const testMessage = "hello from server";
 
     const connectionHandler = (ws: any) => {
-      // Send message after a small delay to ensure connection is fully established
       setTimeout(() => {
         ws.send(testMessage);
-      }, 50);
+      }, 200);
     };
     wss.on("connection", connectionHandler);
 
@@ -365,60 +366,64 @@ describe.skipIf(!!process.env.GITHUB_ACTIONS)("usePartySocket", () => {
       usePartySocket({
         host: `localhost:${PORT}`,
         room: "test-room",
-        onMessage
+        onMessage,
+        ...FAST_RECONNECT
       })
     );
 
-    // Wait for message to be received
+    await waitFor(
+      () => {
+        expect(result.current.readyState).toBe(WebSocket.OPEN);
+      },
+      { timeout: 5000 }
+    );
+
     await waitFor(
       () => {
         expect(onMessage).toHaveBeenCalled();
         const event = onMessage.mock.calls[0][0];
         expect(event.data).toBeDefined();
       },
-      { timeout: 3000 }
+      { timeout: 5000 }
     );
 
     wss.off("connection", connectionHandler);
     result.current.close();
   });
 
-  // TODO: flaky — WebSocket connection timing in jsdom is unreliable
-  test.skip("attaches onClose event handler", async () => {
+  test("attaches onClose event handler", { timeout: 15000 }, async () => {
     const onClose = vitest.fn();
 
     wss.once("connection", (ws) => {
-      // Wait for connection to be fully established before closing
-      setTimeout(() => ws.close(), 100);
+      setTimeout(() => ws.close(), 200);
     });
 
     const { result } = renderHook(() =>
       usePartySocket({
         host: `localhost:${PORT}`,
         room: "test-room",
-        onClose
+        onClose,
+        maxRetries: 0,
+        ...FAST_RECONNECT
       })
     );
 
-    // Wait for connection to be established first
     await waitFor(
       () => {
         expect(result.current.readyState).toBe(WebSocket.OPEN);
       },
-      { timeout: 3000 }
+      { timeout: 5000 }
     );
 
-    // Then wait for close event
     await waitFor(
       () => {
         expect(onClose).toHaveBeenCalled();
       },
-      { timeout: 3000 }
+      { timeout: 5000 }
     );
   });
 
-  // TODO: flaky — WebSocket connection timing in jsdom is unreliable
-  test.skip("attaches onError event handler", async () => {
+  test("attaches onError event handler", { timeout: 15000 }, async () => {
     const onError = vitest.fn();
 
     const { result } = renderHook(() =>
@@ -426,7 +431,8 @@ describe.skipIf(!!process.env.GITHUB_ACTIONS)("usePartySocket", () => {
         host: "invalid-host-that-does-not-exist",
         room: "test-room",
         onError,
-        maxRetries: 0
+        maxRetries: 0,
+        ...FAST_RECONNECT
       })
     );
 
@@ -440,55 +446,58 @@ describe.skipIf(!!process.env.GITHUB_ACTIONS)("usePartySocket", () => {
     result.current.close();
   });
 
-  // TODO: flaky — WebSocket connection timing in jsdom is unreliable
-  test.skip("updates event handlers without reconnecting", async () => {
-    const onMessage1 = vitest.fn();
-    const onMessage2 = vitest.fn();
+  test(
+    "updates event handlers without reconnecting",
+    { timeout: 15000 },
+    async () => {
+      const onMessage1 = vitest.fn();
+      const onMessage2 = vitest.fn();
 
-    const connectionHandler = (ws: any) => {
-      // Send messages with delays to ensure connection is established
-      setTimeout(() => ws.send("message1"), 100);
-      setTimeout(() => ws.send("message2"), 200);
-    };
-    wss.on("connection", connectionHandler);
+      const connectionHandler = (ws: any) => {
+        setTimeout(() => ws.send("message1"), 100);
+        setTimeout(() => ws.send("message2"), 200);
+      };
+      wss.on("connection", connectionHandler);
 
-    const { result, rerender } = renderHook(
-      ({ onMessage }) =>
-        usePartySocket({
-          host: `localhost:${PORT}`,
-          room: "test-room",
-          onMessage
-        }),
-      { initialProps: { onMessage: onMessage1 } }
-    );
+      const { result, rerender } = renderHook(
+        ({ onMessage }) =>
+          usePartySocket({
+            host: `localhost:${PORT}`,
+            room: "test-room",
+            onMessage,
+            ...FAST_RECONNECT
+          }),
+        { initialProps: { onMessage: onMessage1 } }
+      );
 
-    const firstSocket = result.current;
+      const firstSocket = result.current;
 
-    // Wait for first message
-    await waitFor(
-      () => {
-        expect(onMessage1).toHaveBeenCalled();
-      },
-      { timeout: 3000 }
-    );
+      // Wait for first message
+      await waitFor(
+        () => {
+          expect(onMessage1).toHaveBeenCalled();
+        },
+        { timeout: 3000 }
+      );
 
-    // Change handler
-    rerender({ onMessage: onMessage2 });
+      // Change handler
+      rerender({ onMessage: onMessage2 });
 
-    // Socket should be the same
-    expect(result.current).toBe(firstSocket);
+      // Socket should be the same
+      expect(result.current).toBe(firstSocket);
 
-    // Wait for second message with new handler
-    await waitFor(
-      () => {
-        expect(onMessage2).toHaveBeenCalled();
-      },
-      { timeout: 3000 }
-    );
+      // Wait for second message with new handler
+      await waitFor(
+        () => {
+          expect(onMessage2).toHaveBeenCalled();
+        },
+        { timeout: 3000 }
+      );
 
-    wss.off("connection", connectionHandler);
-    result.current.close();
-  });
+      wss.off("connection", connectionHandler);
+      result.current.close();
+    }
+  );
 
   test("closes socket on unmount", () => {
     const { result, unmount } = renderHook(() =>
@@ -518,29 +527,31 @@ describe.skipIf(!!process.env.GITHUB_ACTIONS)("usePartySocket", () => {
     expect(result.current.readyState).toBe(WebSocket.CLOSED);
   });
 
-  // TODO: flaky — WebSocket connection timing in jsdom is unreliable
-  test.skip("connects automatically when startClosed is false", async () => {
-    wss.once("connection", (_ws) => {
-      // Connection established
-    });
+  test(
+    "connects automatically when startClosed is false",
+    { timeout: 15000 },
+    async () => {
+      wss.once("connection", (_ws) => {});
 
-    const { result } = renderHook(() =>
-      usePartySocket({
-        host: `localhost:${PORT}`,
-        room: "test-room",
-        startClosed: false
-      })
-    );
+      const { result } = renderHook(() =>
+        usePartySocket({
+          host: `localhost:${PORT}`,
+          room: "test-room",
+          startClosed: false,
+          ...FAST_RECONNECT
+        })
+      );
 
-    await waitFor(
-      () => {
-        expect(result.current.readyState).toBe(WebSocket.OPEN);
-      },
-      { timeout: 3000 }
-    );
+      await waitFor(
+        () => {
+          expect(result.current.readyState).toBe(WebSocket.OPEN);
+        },
+        { timeout: 3000 }
+      );
 
-    result.current.close();
-  });
+      result.current.close();
+    }
+  );
 
   test("handles query parameters", () => {
     const { result } = renderHook(() =>
@@ -591,8 +602,7 @@ describe.skipIf(!!process.env.GITHUB_ACTIONS)("usePartySocket", () => {
     expect(result.current).not.toBe(firstSocket);
   });
 
-  // TODO: flaky — depends on open event handler which has timing issues
-  test.skip("handles all event handlers together", async () => {
+  test("handles all event handlers together", { timeout: 15000 }, async () => {
     const onOpen = vitest.fn();
     const onMessage = vitest.fn();
     const onClose = vitest.fn();
@@ -610,7 +620,9 @@ describe.skipIf(!!process.env.GITHUB_ACTIONS)("usePartySocket", () => {
         onOpen,
         onMessage,
         onClose,
-        onError
+        onError,
+        maxRetries: 0,
+        ...FAST_RECONNECT
       })
     );
 
@@ -626,11 +638,10 @@ describe.skipIf(!!process.env.GITHUB_ACTIONS)("usePartySocket", () => {
     result.current.close();
   });
 
-  // TODO: flaky — WebSocket connection timing in jsdom is unreliable
-  test.skip("can call socket methods", async () => {
+  test("can call socket methods", { timeout: 15000 }, async () => {
     wss.once("connection", (ws) => {
       ws.on("message", (data) => {
-        ws.send(data); // Echo back
+        ws.send(data);
       });
     });
 
@@ -640,7 +651,8 @@ describe.skipIf(!!process.env.GITHUB_ACTIONS)("usePartySocket", () => {
       usePartySocket({
         host: `localhost:${PORT}`,
         room: "test-room",
-        onMessage
+        onMessage,
+        ...FAST_RECONNECT
       })
     );
 
@@ -676,42 +688,38 @@ describe.skipIf(!!process.env.GITHUB_ACTIONS)("usePartySocket", () => {
     expect(result.current.readyState).toBe(WebSocket.CLOSED);
   });
 
-  // TODO: flaky — WebSocket connection timing in jsdom is unreliable
-  test.skip("connects when enabled is true (default)", async () => {
-    wss.once("connection", (ws) => {
-      ws.close();
-    });
+  test(
+    "connects when enabled is true (default)",
+    { timeout: 15000 },
+    async () => {
+      const { result } = renderHook(() =>
+        usePartySocket({
+          host: `localhost:${PORT}`,
+          room: "test-room",
+          enabled: true,
+          ...FAST_RECONNECT
+        })
+      );
 
-    const { result } = renderHook(() =>
-      usePartySocket({
-        host: `localhost:${PORT}`,
-        room: "test-room",
-        enabled: true
-      })
-    );
+      await waitFor(
+        () => {
+          expect(result.current.readyState).toBe(WebSocket.OPEN);
+        },
+        { timeout: 10000 }
+      );
 
-    await waitFor(
-      () => {
-        expect(result.current.readyState).toBe(WebSocket.OPEN);
-      },
-      { timeout: 3000 }
-    );
+      result.current.close();
+    }
+  );
 
-    result.current.close();
-  });
-
-  // TODO: flaky — WebSocket connection timing in jsdom is unreliable
-  test.skip("disconnects when enabled changes from true to false", async () => {
-    wss.once("connection", (ws) => {
-      // Keep connection open
-    });
-
+  test("disconnects when enabled changes from true to false", async () => {
     const { result, rerender } = renderHook(
       ({ enabled }) =>
         usePartySocket({
           host: `localhost:${PORT}`,
           room: "test-room",
-          enabled
+          enabled,
+          ...FAST_RECONNECT
         }),
       { initialProps: { enabled: true } }
     );
@@ -720,7 +728,7 @@ describe.skipIf(!!process.env.GITHUB_ACTIONS)("usePartySocket", () => {
       () => {
         expect(result.current.readyState).toBe(WebSocket.OPEN);
       },
-      { timeout: 3000 }
+      { timeout: 10000 }
     );
 
     rerender({ enabled: false });
@@ -729,79 +737,78 @@ describe.skipIf(!!process.env.GITHUB_ACTIONS)("usePartySocket", () => {
       () => {
         expect(result.current.readyState).toBe(WebSocket.CLOSED);
       },
-      { timeout: 3000 }
+      { timeout: 5000 }
     );
-  });
+  }, 15000);
 
-  // TODO: flaky — WebSocket connection timing in jsdom is unreliable
-  test.skip("reconnects when enabled changes from false to true", async () => {
-    wss.once("connection", (ws) => {
-      // Keep connection open
-    });
+  test(
+    "reconnects when enabled changes from false to true",
+    { timeout: 15000 },
+    async () => {
+      const { result, rerender } = renderHook(
+        ({ enabled }) =>
+          usePartySocket({
+            host: `localhost:${PORT}`,
+            room: "test-room",
+            enabled,
+            ...FAST_RECONNECT
+          }),
+        { initialProps: { enabled: false } }
+      );
 
-    const { result, rerender } = renderHook(
-      ({ enabled }) =>
-        usePartySocket({
-          host: `localhost:${PORT}`,
-          room: "test-room",
-          enabled
-        }),
-      { initialProps: { enabled: false } }
-    );
+      expect(result.current.readyState).toBe(WebSocket.CLOSED);
 
-    expect(result.current.readyState).toBe(WebSocket.CLOSED);
+      rerender({ enabled: true });
 
-    rerender({ enabled: true });
+      await waitFor(
+        () => {
+          expect(result.current.readyState).toBe(WebSocket.OPEN);
+        },
+        { timeout: 10000 }
+      );
 
-    await waitFor(
-      () => {
-        expect(result.current.readyState).toBe(WebSocket.OPEN);
-      },
-      { timeout: 3000 }
-    );
+      result.current.close();
+    }
+  );
 
-    result.current.close();
-  });
+  test(
+    "keeps the same socket instance when enabled toggles",
+    { timeout: 15000 },
+    async () => {
+      const { result, rerender } = renderHook(
+        ({ enabled }) =>
+          usePartySocket({
+            host: `localhost:${PORT}`,
+            room: "test-room",
+            enabled,
+            ...FAST_RECONNECT
+          }),
+        { initialProps: { enabled: true } }
+      );
 
-  // TODO: flaky — WebSocket connection timing in jsdom is unreliable
-  test.skip("keeps the same socket instance when enabled toggles", async () => {
-    wss.once("connection", () => {
-      // Keep connection open
-    });
+      await waitFor(
+        () => {
+          expect(result.current.readyState).toBe(WebSocket.OPEN);
+        },
+        { timeout: 10000 }
+      );
 
-    const { result, rerender } = renderHook(
-      ({ enabled }) =>
-        usePartySocket({
-          host: `localhost:${PORT}`,
-          room: "test-room",
-          enabled
-        }),
-      { initialProps: { enabled: true } }
-    );
+      const socketInstance = result.current;
 
-    await waitFor(
-      () => {
-        expect(result.current.readyState).toBe(WebSocket.OPEN);
-      },
-      { timeout: 3000 }
-    );
+      rerender({ enabled: false });
 
-    const socketInstance = result.current;
+      await waitFor(
+        () => {
+          expect(result.current.readyState).toBe(WebSocket.CLOSED);
+        },
+        { timeout: 5000 }
+      );
 
-    rerender({ enabled: false });
+      expect(result.current).toBe(socketInstance);
 
-    await waitFor(
-      () => {
-        expect(result.current.readyState).toBe(WebSocket.CLOSED);
-      },
-      { timeout: 3000 }
-    );
-
-    // Same socket instance should be reused
-    expect(result.current).toBe(socketInstance);
-
-    result.current.close();
-  });
+      result.current.close();
+    }
+  );
 
   test("creates new socket when options change while re-enabling", async () => {
     // Bug: when enabled goes false→true at the same time as options change
@@ -1233,15 +1240,11 @@ describe.skipIf(!!process.env.GITHUB_ACTIONS)("useWebSocket", () => {
     expect(result.current.readyState).toBe(WebSocket.CLOSED);
   });
 
-  // TODO: flaky — WebSocket connection timing in jsdom is unreliable
-  test.skip("connects when enabled is true (default)", async () => {
-    wss.once("connection", (ws) => {
-      ws.close();
-    });
-
+  test("connects when enabled is true (default)", async () => {
     const { result } = renderHook(() =>
       useWebSocket(`ws://localhost:${PORT + 1}`, undefined, {
-        enabled: true
+        enabled: true,
+        ...FAST_RECONNECT
       })
     );
 
@@ -1249,22 +1252,18 @@ describe.skipIf(!!process.env.GITHUB_ACTIONS)("useWebSocket", () => {
       () => {
         expect(result.current.readyState).toBe(WebSocket.OPEN);
       },
-      { timeout: 3000 }
+      { timeout: 10000 }
     );
 
     result.current.close();
-  });
+  }, 15000);
 
-  // TODO: flaky — WebSocket connection timing in jsdom is unreliable
-  test.skip("disconnects when enabled changes from true to false", async () => {
-    wss.once("connection", () => {
-      // Keep connection open
-    });
-
+  test("disconnects when enabled changes from true to false", async () => {
     const { result, rerender } = renderHook(
       ({ enabled }) =>
         useWebSocket(`ws://localhost:${PORT + 1}`, undefined, {
-          enabled
+          enabled,
+          ...FAST_RECONNECT
         }),
       { initialProps: { enabled: true } }
     );
@@ -1273,7 +1272,7 @@ describe.skipIf(!!process.env.GITHUB_ACTIONS)("useWebSocket", () => {
       () => {
         expect(result.current.readyState).toBe(WebSocket.OPEN);
       },
-      { timeout: 3000 }
+      { timeout: 10000 }
     );
 
     rerender({ enabled: false });
@@ -1282,20 +1281,16 @@ describe.skipIf(!!process.env.GITHUB_ACTIONS)("useWebSocket", () => {
       () => {
         expect(result.current.readyState).toBe(WebSocket.CLOSED);
       },
-      { timeout: 3000 }
+      { timeout: 5000 }
     );
-  });
+  }, 15000);
 
-  // TODO: flaky — WebSocket connection timing in jsdom is unreliable
-  test.skip("reconnects when enabled changes from false to true", async () => {
-    wss.once("connection", () => {
-      // Keep connection open
-    });
-
+  test("reconnects when enabled changes from false to true", async () => {
     const { result, rerender } = renderHook(
       ({ enabled }) =>
         useWebSocket(`ws://localhost:${PORT + 1}`, undefined, {
-          enabled
+          enabled,
+          ...FAST_RECONNECT
         }),
       { initialProps: { enabled: false } }
     );
@@ -1308,22 +1303,18 @@ describe.skipIf(!!process.env.GITHUB_ACTIONS)("useWebSocket", () => {
       () => {
         expect(result.current.readyState).toBe(WebSocket.OPEN);
       },
-      { timeout: 3000 }
+      { timeout: 10000 }
     );
 
     result.current.close();
-  });
+  }, 15000);
 
-  // TODO: flaky — WebSocket connection timing in jsdom is unreliable
-  test.skip("keeps the same socket instance when enabled toggles", async () => {
-    wss.once("connection", () => {
-      // Keep connection open
-    });
-
+  test("keeps the same socket instance when enabled toggles", async () => {
     const { result, rerender } = renderHook(
       ({ enabled }) =>
         useWebSocket(`ws://localhost:${PORT + 1}`, undefined, {
-          enabled
+          enabled,
+          ...FAST_RECONNECT
         }),
       { initialProps: { enabled: true } }
     );
@@ -1332,7 +1323,7 @@ describe.skipIf(!!process.env.GITHUB_ACTIONS)("useWebSocket", () => {
       () => {
         expect(result.current.readyState).toBe(WebSocket.OPEN);
       },
-      { timeout: 3000 }
+      { timeout: 10000 }
     );
 
     const socketInstance = result.current;
@@ -1343,14 +1334,13 @@ describe.skipIf(!!process.env.GITHUB_ACTIONS)("useWebSocket", () => {
       () => {
         expect(result.current.readyState).toBe(WebSocket.CLOSED);
       },
-      { timeout: 3000 }
+      { timeout: 5000 }
     );
 
-    // Same socket instance should be reused
     expect(result.current).toBe(socketInstance);
 
     result.current.close();
-  });
+  }, 15000);
 });
 
 /**
@@ -1606,9 +1596,7 @@ describe.skipIf(!!process.env.GITHUB_ACTIONS)(
             room: "wire-test",
             query,
             enabled,
-            minReconnectionDelay: 50,
-            maxReconnectionDelay: 200,
-            connectionTimeout: 2000
+            ...FAST_RECONNECT
           }),
         { initialProps: { enabled: true, query: { token: "old" } } }
       );
@@ -1668,9 +1656,7 @@ describe.skipIf(!!process.env.GITHUB_ACTIONS)(
             room: "storm-wire-test",
             query,
             enabled,
-            minReconnectionDelay: 50,
-            maxReconnectionDelay: 200,
-            connectionTimeout: 2000
+            ...FAST_RECONNECT
           }),
         { initialProps: { enabled: true, query: { token: "t1" } } }
       );
