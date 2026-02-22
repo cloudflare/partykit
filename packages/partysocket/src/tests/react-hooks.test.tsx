@@ -5,7 +5,7 @@
 import { renderHook, waitFor } from "@testing-library/react";
 import React from "react";
 import { afterAll, beforeAll, describe, expect, test, vitest } from "vitest";
-import { WebSocketServer } from "ws";
+import { type WebSocket as WsWebSocket, WebSocketServer } from "ws";
 
 import usePartySocket, { useWebSocket } from "../react";
 
@@ -320,7 +320,7 @@ describe.skipIf(!!process.env.GITHUB_ACTIONS)("usePartySocket", () => {
     const onOpen = vitest.fn();
 
     const connectionPromise = new Promise<void>((resolve) => {
-      wss.once("connection", (_ws: any) => {
+      wss.once("connection", (_ws: WsWebSocket) => {
         resolve();
       });
     });
@@ -355,7 +355,7 @@ describe.skipIf(!!process.env.GITHUB_ACTIONS)("usePartySocket", () => {
     const onMessage = vitest.fn();
     const testMessage = "hello from server";
 
-    const connectionHandler = (ws: any) => {
+    const connectionHandler = (ws: WsWebSocket) => {
       setTimeout(() => {
         ws.send(testMessage);
       }, 200);
@@ -453,7 +453,7 @@ describe.skipIf(!!process.env.GITHUB_ACTIONS)("usePartySocket", () => {
       const onMessage1 = vitest.fn();
       const onMessage2 = vitest.fn();
 
-      const connectionHandler = (ws: any) => {
+      const connectionHandler = (ws: WsWebSocket) => {
         setTimeout(() => ws.send("message1"), 100);
         setTimeout(() => ws.send("message2"), 200);
       };

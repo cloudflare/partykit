@@ -21,7 +21,7 @@ app.use(
   "*",
   partyserverMiddleware<{ Bindings: Bindings }>({
     options: {
-      onBeforeConnect(req, lobby, c) {
+      onBeforeConnect(req, _lobby, c) {
         const url = new URL(req.url);
         const token = url.searchParams.get("token");
         if (!token) {
