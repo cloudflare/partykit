@@ -19,7 +19,7 @@
   ],
   "dependencies": {
     "nanoid": "^5.1.6",
-    "partysocket": "^1.1.13"
+    "partysocket": "^1.1.14"
   },
   "scripts": {
     "build": "tsx scripts/build.ts"

@@ -13,6 +13,8 @@ export type Env = {
   OnStartServer: DurableObjectNamespace<OnStartServer>;
   HibernatingOnStartServer: DurableObjectNamespace<HibernatingOnStartServer>;
   AlarmServer: DurableObjectNamespace<AlarmServer>;
+  AlarmNameServer: DurableObjectNamespace<AlarmNameServer>;
+  NoNameServer: DurableObjectNamespace<NoNameServer>;
   Mixed: DurableObjectNamespace<Mixed>;
   ConfigurableState: DurableObjectNamespace<ConfigurableState>;
   ConfigurableStateInMemory: DurableObjectNamespace<ConfigurableStateInMemory>;
@@ -139,6 +141,80 @@ export class AlarmServer extends Server {
       counter: this.counter,
       alarmCount: this.alarmCount
     });
+  }
+}
+
+/**
+ * Multipurpose test DO for name persistence scenarios.
+ * Supports seeding storage directly (bypassing setName), reading back
+ * what this.name returned in onStart/onAlarm, and direct fetch without
+ * the x-partykit-room header.
+ */
+export class AlarmNameServer extends Server {
+  static options = {
+    hibernate: true
+  };
+
+  alarmName: string | null = null;
+  onStartName: string | null = null;
+  nameWasCold = false;
+
+  async fetch(request: Request): Promise<Response> {
+    const url = new URL(request.url);
+
+    // Seed storage directly, bypassing Server.fetch()/setName().
+    // Simulates a DO that was previously named, hibernated, and
+    // wakes cold — #_name is unset, only storage has the name.
+    if (url.searchParams.get("seed")) {
+      const name = url.searchParams.get("name")!;
+      this.ctx.storage.kv.put("__ps_name", name);
+      await this.ctx.storage.setAlarm(Date.now() + 60_000);
+      return new Response("seeded");
+    }
+
+    return super.fetch(request);
+  }
+
+  async onStart() {
+    try {
+      this.onStartName = this.name;
+    } catch {
+      this.onStartName = null;
+    }
+  }
+
+  onAlarm() {
+    this.alarmName = this.name;
+  }
+
+  async onRequest(request: Request): Promise<Response> {
+    const url = new URL(request.url);
+    if (url.searchParams.get("setAlarm")) {
+      await this.ctx.storage.setAlarm(Date.now() + 60_000);
+      return new Response("alarm set");
+    }
+    return Response.json({
+      name: this.name,
+      alarmName: this.alarmName,
+      onStartName: this.onStartName,
+      nameWasCold: this.nameWasCold
+    });
+  }
+}
+
+/**
+ * Minimal DO that never has its name set.
+ * Used to test that the name getter throws appropriately.
+ */
+export class NoNameServer extends Server {
+  static options = { hibernate: true };
+
+  async onStart() {
+    // no-op
+  }
+
+  onRequest(): Response {
+    return Response.json({ name: this.name });
   }
 }
 
