@@ -43,8 +43,12 @@ export function useStableSocket<
   // extract enabled with default value of true
   const { enabled = true } = options;
 
-  // ensure we only reconnect when necessary
+  // Returns a stable reference to options, only updating when the serialized
+  // key changes. This avoids reconnecting on every render when callers pass
+  // an inline options object (new reference each time) whose values haven't
+  // actually changed.
   const shouldReconnect = createOptionsMemoKey(options);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: shouldReconnect is a serialized key derived from options — we intentionally memo on the key, not the object reference
   const socketOptions = useMemo(() => {
     return options;
   }, [shouldReconnect]);
