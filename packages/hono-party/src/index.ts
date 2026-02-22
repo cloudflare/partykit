@@ -3,14 +3,39 @@ import { createMiddleware } from "hono/factory";
 import { routePartykitRequest } from "partyserver";
 
 import type { Context, Env } from "hono";
-import type { PartyServerOptions } from "partyserver";
+import type { Lobby, PartyServerOptions } from "partyserver";
+
+/**
+ * Extended options for the Hono middleware that pass the Hono context
+ * to `onBeforeConnect` and `onBeforeRequest` as a third argument,
+ * giving access to `c.env`, `c.var`, `c.get()`, etc.
+ */
+export type HonoPartyServerOptions<E extends Env> = Omit<
+  PartyServerOptions,
+  "onBeforeConnect" | "onBeforeRequest"
+> & {
+  onBeforeConnect?: (
+    req: Request,
+    lobby: Lobby,
+    c: Context<E>
+  ) => Response | Request | void | Promise<Response | Request | void>;
+  onBeforeRequest?: (
+    req: Request,
+    lobby: Lobby,
+    c: Context<E>
+  ) =>
+    | Response
+    | Request
+    | void
+    | Promise<Response | Request | undefined | void>;
+};
 
 /**
  * Configuration options for the PartyServer middleware
  */
 type PartyServerMiddlewareContext<E extends Env> = {
   /** PartyServer-specific configuration options */
-  options?: PartyServerOptions<E>;
+  options?: HonoPartyServerOptions<E>;
   /** Optional error handler for caught errors */
   onError?: (error: Error) => void;
 };
@@ -22,12 +47,12 @@ type PartyServerMiddlewareContext<E extends Env> = {
 export function partyserverMiddleware<E extends Env = Env>(
   ctx?: PartyServerMiddlewareContext<E>
 ) {
-  return createMiddleware(async (c, next) => {
+  return createMiddleware<E>(async (c, next) => {
     try {
-      const handler = isWebSocketUpgrade(c)
-        ? handleWebSocketUpgrade
-        : handleHttpRequest;
-      const response = await handler(c, ctx?.options);
+      const options = wrapOptionsWithContext(ctx?.options, c);
+      const response = isWebSocketUpgrade(c)
+        ? await handleWebSocketUpgrade(c, options)
+        : await handleHttpRequest(c, options);
 
       return response === null ? await next() : response;
     } catch (error) {
@@ -38,6 +63,30 @@ export function partyserverMiddleware<E extends Env = Env>(
       throw error;
     }
   });
+}
+
+/**
+ * Wraps the Hono-specific options into standard PartyServerOptions by
+ * closing over the Hono context so callbacks receive it as a third arg.
+ */
+function wrapOptionsWithContext<E extends Env>(
+  options: HonoPartyServerOptions<E> | undefined,
+  c: Context<E>
+): PartyServerOptions | undefined {
+  if (!options) return undefined;
+
+  const { onBeforeConnect, onBeforeRequest, ...rest } = options;
+  return {
+    ...rest,
+    ...(onBeforeConnect && {
+      onBeforeConnect: (req: Request, lobby: Lobby) =>
+        onBeforeConnect(req, lobby, c)
+    }),
+    ...(onBeforeRequest && {
+      onBeforeRequest: (req: Request, lobby: Lobby) =>
+        onBeforeRequest(req, lobby, c)
+    })
+  };
 }
 
 /**
@@ -60,9 +109,9 @@ function createRequestFromContext(c: Context) {
  * Handles WebSocket upgrade requests
  * Returns a WebSocket upgrade response if successful, null otherwise
  */
-async function handleWebSocketUpgrade<E extends Env>(
-  c: Context<E>,
-  options?: PartyServerOptions<E>
+async function handleWebSocketUpgrade(
+  c: Context,
+  options?: PartyServerOptions
 ) {
   const req = createRequestFromContext(c);
   const response = await routePartykitRequest(req, env(c), options);
@@ -81,10 +130,7 @@ async function handleWebSocketUpgrade<E extends Env>(
  * Handles standard HTTP requests
  * Forwards the request to PartyServer and returns the response
  */
-async function handleHttpRequest<E extends Env>(
-  c: Context<E>,
-  options?: PartyServerOptions<E>
-) {
+async function handleHttpRequest(c: Context, options?: PartyServerOptions) {
   const req = createRequestFromContext(c);
   return routePartykitRequest(req, env(c), options);
 }

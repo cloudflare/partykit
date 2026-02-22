@@ -24,14 +24,16 @@ export class Document extends Server {}
 const app = new Hono();
 app.use("*", partyserverMiddleware());
 
-// or with authentication
+// or with authentication (using env bindings via Hono context)
+type Env = { Bindings: { JWT_SECRET: string } };
 app.use(
   "*",
-  partyserverMiddleware({
+  partyserverMiddleware<Env>({
     options: {
-      onBeforeConnect: async (req) => {
+      onBeforeConnect: async (req, lobby, c) => {
         const token = req.headers.get("authorization");
-        // validate token
+        const secret = c.env.JWT_SECRET;
+        // validate token against secret
         if (!token) return new Response("Unauthorized", { status: 401 });
       }
     }
