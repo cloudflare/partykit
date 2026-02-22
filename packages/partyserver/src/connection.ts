@@ -31,9 +31,6 @@ if (!("OPEN" in WebSocket)) {
 type ConnectionAttachments = {
   __pk: {
     id: string;
-    // TODO: remove this once we have
-    // durable object level setState
-    server: string;
     tags: string[];
   };
   __user?: unknown;
@@ -58,18 +55,15 @@ function tryGetPartyServerMeta(
     if (!pk || typeof pk !== "object") {
       return null;
     }
-    const { id, server, tags } = pk as {
+    const { id, tags } = pk as {
       id?: unknown;
-      server?: unknown;
       tags?: unknown;
     };
-    if (typeof id !== "string" || typeof server !== "string") {
+    if (typeof id !== "string") {
       return null;
     }
-    // Default tags to [] for connections created before tags were stored
     return {
       id,
-      server,
       tags: Array.isArray(tags) ? tags : []
     } as ConnectionAttachments["__pk"];
   } catch {
@@ -141,11 +135,6 @@ export const createLazyConnection = (
     id: {
       get() {
         return attachments.get(ws).__pk.id;
-      }
-    },
-    server: {
-      get() {
-        return attachments.get(ws).__pk.server;
       }
     },
     tags: {
@@ -283,10 +272,7 @@ export interface ConnectionManager {
   getCount(): number;
   getConnection<TState>(id: string): Connection<TState> | undefined;
   getConnections<TState>(tag?: string): IterableIterator<Connection<TState>>;
-  accept(
-    connection: Connection,
-    options: { tags: string[]; server: string }
-  ): Connection;
+  accept(connection: Connection, options: { tags: string[] }): Connection;
 }
 
 /**
@@ -323,7 +309,7 @@ export class InMemoryConnectionManager<TState> implements ConnectionManager {
     }
   }
 
-  accept(connection: Connection, options: { tags: string[]; server: string }) {
+  accept(connection: Connection, options: { tags: string[] }) {
     connection.accept();
 
     const tags = prepareTags(connection.id, options.tags);
@@ -385,14 +371,13 @@ export class HibernatingConnectionManager<TState> implements ConnectionManager {
     return new HibernatingConnectionIterator<T>(this.controller, tag);
   }
 
-  accept(connection: Connection, options: { tags: string[]; server: string }) {
+  accept(connection: Connection, options: { tags: string[] }) {
     const tags = prepareTags(connection.id, options.tags);
 
     this.controller.acceptWebSocket(connection, tags);
     connection.serializeAttachment({
       __pk: {
         id: connection.id,
-        server: options.server,
         tags
       },
       __user: null

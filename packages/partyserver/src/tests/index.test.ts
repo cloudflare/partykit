@@ -462,7 +462,29 @@ describe("onStart failure recovery", () => {
 });
 
 describe("Hibernating server name rehydration", () => {
-  it("this.name is available in onMessage after wake-up", async () => {
+  it("this.name and connection.server are available in onConnect", async () => {
+    const ctx = createExecutionContext();
+    const request = new Request(
+      "http://example.com/parties/hibernating-name-in-message/connect-test",
+      {
+        headers: { Upgrade: "websocket" }
+      }
+    );
+    const response = await worker.fetch(request, env, ctx);
+    const ws = response.webSocket!;
+    ws.accept();
+
+    const connectMessage = await new Promise<string>((resolve) => {
+      ws.addEventListener("message", (e) => resolve(e.data as string), {
+        once: true
+      });
+    });
+    expect(connectMessage).toEqual("connected:connect-test:connect-test");
+
+    ws.close();
+  });
+
+  it("this.name and connection.server are available in onMessage after wake-up", async () => {
     const ctx = createExecutionContext();
     const request = new Request(
       "http://example.com/parties/hibernating-name-in-message/rehydrate-test",
@@ -474,22 +496,21 @@ describe("Hibernating server name rehydration", () => {
     const ws = response.webSocket!;
     ws.accept();
 
-    // Wait for the onConnect message which includes the name
-    const connectMessage = await new Promise<string>((resolve) => {
+    // Wait for the onConnect message
+    await new Promise<string>((resolve) => {
       ws.addEventListener("message", (e) => resolve(e.data as string), {
         once: true
       });
     });
-    expect(connectMessage).toEqual("connected:rehydrate-test");
 
-    // Send a message to trigger onMessage, which also reads this.name
+    // Send a message to trigger onMessage after hibernation wake-up
     ws.send("ping");
     const nameMessage = await new Promise<string>((resolve) => {
       ws.addEventListener("message", (e) => resolve(e.data as string), {
         once: true
       });
     });
-    expect(nameMessage).toEqual("name:rehydrate-test");
+    expect(nameMessage).toEqual("name:rehydrate-test:rehydrate-test");
 
     ws.close();
   });

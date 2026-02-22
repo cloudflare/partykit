@@ -377,11 +377,11 @@ export class HibernatingNameInMessage extends Server {
   };
 
   onConnect(connection: Connection): void {
-    connection.send(`connected:${this.name}`);
+    connection.send(`connected:${this.name}:${connection.server}`);
   }
 
   onMessage(connection: Connection, _message: WSMessage): void {
-    connection.send(`name:${this.name}`);
+    connection.send(`name:${this.name}:${connection.server}`);
   }
 }
 

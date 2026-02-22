@@ -445,10 +445,7 @@ Did you try connecting directly to this Durable Object? Try using getServerByNam
         const tags = await this.getConnectionTags(connection, ctx);
 
         // Accept the websocket connection
-        connection = this.#connectionManager.accept(connection, {
-          tags,
-          server: this.name
-        });
+        connection = this.#connectionManager.accept(connection, { tags });
 
         if (!this.#ParentClass.options.hibernate) {
           this.#attachSocketEventHandlers(connection);
@@ -490,6 +487,7 @@ Did you try connecting directly to this Durable Object? Try using getServerByNam
       const connection = createLazyConnection(ws);
 
       await this.#ensureInitialized();
+      connection.server = this.name;
 
       return this.onMessage(connection, message);
     } catch (e) {
@@ -514,6 +512,7 @@ Did you try connecting directly to this Durable Object? Try using getServerByNam
       const connection = createLazyConnection(ws);
 
       await this.#ensureInitialized();
+      connection.server = this.name;
 
       return this.onClose(connection, code, reason, wasClean);
     } catch (e) {
@@ -533,6 +532,7 @@ Did you try connecting directly to this Durable Object? Try using getServerByNam
       const connection = createLazyConnection(ws);
 
       await this.#ensureInitialized();
+      connection.server = this.name;
 
       return this.onError(connection, error);
     } catch (e) {

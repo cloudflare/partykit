@@ -77,7 +77,8 @@ export type Connection<TState = unknown> = WebSocket & {
   tags: readonly string[];
 
   /**
-   * Server's name
+   * @deprecated Use `this.name` on the Server instead.
+   * The server name. Populated from `Server.name` after initialization.
    */
   server: string;
 };
