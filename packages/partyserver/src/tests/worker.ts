@@ -167,7 +167,7 @@ export class AlarmNameServer extends Server {
     // wakes cold — #_name is unset, only storage has the name.
     if (url.searchParams.get("seed")) {
       const name = url.searchParams.get("name")!;
-      this.ctx.storage.kv.put("__ps_name", name);
+      await this.ctx.storage.put("__ps_name", name);
       await this.ctx.storage.setAlarm(Date.now() + 60_000);
       return new Response("seeded");
     }

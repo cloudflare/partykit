@@ -392,21 +392,15 @@ export class Server<
         this.#_props = JSON.parse(props);
       }
       if (!this.#_name) {
-        // Try hydrating from storage first (covers cold starts after
-        // a previous request already persisted the name).
-        const stored = this.ctx.storage.kv.get<string>(NAME_STORAGE_KEY);
-        if (stored) {
-          this.#_name = stored;
-        } else {
-          // First-time contact: name must come from the request header
-          // (set by routePartykitRequest or getServerByName).
-          const room = request.headers.get("x-partykit-room");
-          if (!room) {
-            throw new Error(`Missing namespace or room headers when connecting to ${this.#ParentClass.name}.
+        await this.#hydrateNameFromStorage();
+      }
+      if (!this.#_name) {
+        const room = request.headers.get("x-partykit-room");
+        if (!room) {
+          throw new Error(`Missing namespace or room headers when connecting to ${this.#ParentClass.name}.
 Did you try connecting directly to this Durable Object? Try using getServerByName(namespace, id) instead.`);
-          }
-          await this.setName(room);
         }
+        await this.setName(room);
       }
 
       await this.#ensureInitialized();
@@ -549,8 +543,17 @@ Did you try connecting directly to this Durable Object? Try using getServerByNam
     }
   }
 
+  async #hydrateNameFromStorage(): Promise<void> {
+    if (this.#_name) return;
+    const stored = await this.ctx.storage.get<string>(NAME_STORAGE_KEY);
+    if (stored) {
+      this.#_name = stored;
+    }
+  }
+
   async #ensureInitialized(): Promise<void> {
     if (this.#status === "started") return;
+    await this.#hydrateNameFromStorage();
     let error: unknown;
     await this.ctx.blockConcurrencyWhile(async () => {
       this.#status = "starting";
@@ -603,16 +606,10 @@ Did you try connecting directly to this Durable Object? Try using getServerByNam
 
   /**
    * The name for this server. Write-once-only.
-   * Hydrates from durable storage on first access if the name was
-   * previously persisted (e.g. during an alarm wake-up with no HTTP request).
+   * Hydrated from durable storage by #ensureInitialized() on every
+   * entry point (fetch, alarm, webSocketMessage/Close/Error).
    */
   get name(): string {
-    if (!this.#_name) {
-      const stored = this.ctx.storage.kv.get<string>(NAME_STORAGE_KEY);
-      if (stored) {
-        this.#_name = stored;
-      }
-    }
     if (!this.#_name) {
       throw new Error(
         `Attempting to read .name on ${this.#ParentClass.name} before it was set. The name can be set by explicitly calling .setName(name) on the stub, or by using routePartyKitRequest(). This is a known issue and will be fixed soon. Follow https://github.com/cloudflare/workerd/issues/2240 for more updates.`
@@ -631,7 +628,7 @@ Did you try connecting directly to this Durable Object? Try using getServerByNam
       );
     }
     this.#_name = name;
-    this.ctx.storage.kv.put(NAME_STORAGE_KEY, name);
+    await this.ctx.storage.put(NAME_STORAGE_KEY, name);
 
     await this.#ensureInitialized();
   }
