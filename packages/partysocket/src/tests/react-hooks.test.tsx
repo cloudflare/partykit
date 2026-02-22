@@ -1605,7 +1605,10 @@ describe.skipIf(!!process.env.GITHUB_ACTIONS)(
             host: `localhost:${WIRE_PORT}`,
             room: "wire-test",
             query,
-            enabled
+            enabled,
+            minReconnectionDelay: 50,
+            maxReconnectionDelay: 200,
+            connectionTimeout: 2000
           }),
         { initialProps: { enabled: true, query: { token: "old" } } }
       );
@@ -1664,7 +1667,10 @@ describe.skipIf(!!process.env.GITHUB_ACTIONS)(
             host: `localhost:${WIRE_PORT}`,
             room: "storm-wire-test",
             query,
-            enabled
+            enabled,
+            minReconnectionDelay: 50,
+            maxReconnectionDelay: 200,
+            connectionTimeout: 2000
           }),
         { initialProps: { enabled: true, query: { token: "t1" } } }
       );
