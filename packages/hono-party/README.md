@@ -91,7 +91,9 @@ const socket = usePartySocket({
       { "name": "Document", "class_name": "Document" }
     ]
   },
-  "migrations": [{ "tag": "v1", "new_classes": ["Chat", "Game", "Document"] }]
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["Chat", "Game", "Document"] }
+  ]
 }
 ```
 

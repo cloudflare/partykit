@@ -16,7 +16,7 @@
   "migrations": [
     {
       "tag": "v1",
-      "new_classes": ["LexicalDocument"]
+      "new_sqlite_classes": ["LexicalDocument"]
     }
   ]
 }

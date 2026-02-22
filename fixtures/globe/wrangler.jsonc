@@ -16,7 +16,7 @@
   "migrations": [
     {
       "tag": "v1", // Should be unique for each entry
-      "new_classes": ["Globe"]
+      "new_sqlite_classes": ["Globe"]
     }
   ]
 }
