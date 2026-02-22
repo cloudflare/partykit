@@ -16,7 +16,7 @@
   "migrations": [
     {
       "tag": "v1",
-      "new_classes": ["MonacoServer"]
+      "new_sqlite_classes": ["MonacoServer"]
     }
   ]
 }

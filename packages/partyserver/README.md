@@ -75,7 +75,7 @@ And configure your `wrangler.jsonc`:
   "migrations": [
     {
       "tag": "v1", // Should be unique for each entry
-      "new_classes": ["MyServer"]
+      "new_sqlite_classes": ["MyServer"]
     }
   ]
 }

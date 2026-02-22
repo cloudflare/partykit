@@ -13,7 +13,7 @@
   "migrations": [
     {
       "tag": "v1",
-      "new_classes": ["MyServer"]
+      "new_sqlite_classes": ["MyServer"]
     }
   ]
 }

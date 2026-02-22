@@ -809,7 +809,13 @@ describe.skipIf(!!process.env.GITHUB_ACTIONS)("usePartySocket", () => {
     // socket.reconnect() on the OLD socket and short-circuits past the
     // option-change detection that would create a new socket.
     const { result, rerender } = renderHook(
-      ({ enabled, query }: { enabled: boolean; query: Record<string, string> }) =>
+      ({
+        enabled,
+        query
+      }: {
+        enabled: boolean;
+        query: Record<string, string>;
+      }) =>
         usePartySocket({
           host: "example.com",
           room: "test-room",
@@ -833,6 +839,9 @@ describe.skipIf(!!process.env.GITHUB_ACTIONS)("usePartySocket", () => {
     // If this fails, the old socket was .reconnect()'d with stale params.
     await waitFor(() => {
       expect(result.current).not.toBe(firstSocket);
+      expect(result.current.partySocketOptions.query).toEqual({
+        token: "new-token"
+      });
     });
   });
 
@@ -861,6 +870,174 @@ describe.skipIf(!!process.env.GITHUB_ACTIONS)("usePartySocket", () => {
     unmount();
 
     expect(closeSpy).toHaveBeenCalled();
+  });
+
+  test("re-enable with same options preserves socket identity", async () => {
+    const { result, rerender } = renderHook(
+      ({ enabled }) =>
+        usePartySocket({
+          host: "example.com",
+          room: "test-room",
+          query: { token: "same-token" },
+          enabled,
+          startClosed: true
+        }),
+      { initialProps: { enabled: true } }
+    );
+
+    const firstSocket = result.current;
+
+    rerender({ enabled: false });
+    rerender({ enabled: true });
+
+    // Same options → should reconnect the same socket, not create a new one
+    expect(result.current).toBe(firstSocket);
+  });
+
+  test("multiple options changes while disabled uses final options", async () => {
+    const { result, rerender } = renderHook(
+      ({
+        enabled,
+        query
+      }: {
+        enabled: boolean;
+        query: Record<string, string>;
+      }) =>
+        usePartySocket({
+          host: "example.com",
+          room: "test-room",
+          query,
+          enabled,
+          startClosed: true
+        }),
+      { initialProps: { enabled: true, query: { token: "v1" } } }
+    );
+
+    const firstSocket = result.current;
+
+    // Disable, then change options twice while disabled
+    rerender({ enabled: false, query: { token: "v1" } });
+    rerender({ enabled: false, query: { token: "v2" } });
+    rerender({ enabled: false, query: { token: "v3" } });
+
+    // Re-enable — should get a new socket (options changed)
+    rerender({ enabled: true, query: { token: "v3" } });
+
+    await waitFor(() => {
+      expect(result.current).not.toBe(firstSocket);
+      expect(result.current.partySocketOptions.query).toEqual({
+        token: "v3"
+      });
+    });
+  });
+
+  test("cleans up pending socket on unmount during options change", async () => {
+    const { result, rerender, unmount } = renderHook(
+      ({ room }) =>
+        usePartySocket({
+          host: "example.com",
+          room,
+          startClosed: true
+        }),
+      { initialProps: { room: "room1" } }
+    );
+
+    const firstSocket = result.current;
+
+    // Change options to trigger setSocket(newSocket) in the optionsChanged branch
+    rerender({ room: "room2" });
+
+    await waitFor(() => {
+      expect(result.current).not.toBe(firstSocket);
+    });
+
+    const closeSpy = vitest.spyOn(result.current, "close");
+
+    unmount();
+
+    expect(closeSpy).toHaveBeenCalled();
+  });
+
+  test("does not call reconnect on stale socket during token refresh", async () => {
+    const { result, rerender } = renderHook(
+      ({
+        enabled,
+        query
+      }: {
+        enabled: boolean;
+        query: Record<string, string>;
+      }) =>
+        usePartySocket({
+          host: "example.com",
+          room: "test-room",
+          query,
+          enabled,
+          startClosed: true
+        }),
+      { initialProps: { enabled: true, query: { token: "t1" } } }
+    );
+
+    const oldSocket = result.current;
+    const reconnectSpy = vitest.spyOn(oldSocket, "reconnect");
+
+    // Disable (simulates auth failure / server close)
+    rerender({ enabled: false, query: { token: "t1" } });
+
+    // Re-enable with fresh token (simulates token refresh complete)
+    rerender({ enabled: true, query: { token: "t2" } });
+
+    // The old socket should NOT have been reconnected — it should have
+    // been replaced with a new socket that has the fresh token.
+    expect(reconnectSpy).not.toHaveBeenCalled();
+
+    await waitFor(() => {
+      expect(result.current).not.toBe(oldSocket);
+      expect(result.current.partySocketOptions.query).toEqual({
+        token: "t2"
+      });
+    });
+  });
+
+  test("does not create multiple sockets during single re-enable cycle", async () => {
+    const socketInstances: unknown[] = [];
+
+    const { result, rerender } = renderHook(
+      ({
+        enabled,
+        query
+      }: {
+        enabled: boolean;
+        query: Record<string, string>;
+      }) => {
+        const socket = usePartySocket({
+          host: "example.com",
+          room: "test-room",
+          query,
+          enabled,
+          startClosed: true
+        });
+        socketInstances.push(socket);
+        return socket;
+      },
+      { initialProps: { enabled: true, query: { token: "t1" } } }
+    );
+
+    const countBefore = new Set(socketInstances).size;
+
+    // Disable, then re-enable with new token
+    rerender({ enabled: false, query: { token: "t1" } });
+    rerender({ enabled: true, query: { token: "t2" } });
+
+    await waitFor(() => {
+      expect(result.current.partySocketOptions.query).toEqual({
+        token: "t2"
+      });
+    });
+
+    // Should have created at most 1 additional socket (the replacement).
+    // A reconnect storm would create many more.
+    const uniqueSockets = new Set(socketInstances).size;
+    expect(uniqueSockets - countBefore).toBeLessThanOrEqual(1);
   });
 });
 
@@ -1344,5 +1521,192 @@ describe.skipIf(!!process.env.GITHUB_ACTIONS)(
 
       expect(closeSpy).toHaveBeenCalled();
     });
+
+    test("re-enable with changed options creates new socket under StrictMode", async () => {
+      const { result, rerender } = renderHook(
+        ({
+          enabled,
+          query
+        }: {
+          enabled: boolean;
+          query: Record<string, string>;
+        }) =>
+          usePartySocket({
+            host: "example.com",
+            room: "test-room",
+            query,
+            enabled,
+            startClosed: true
+          }),
+        {
+          initialProps: { enabled: true, query: { token: "old" } },
+          wrapper: strictModeWrapper
+        }
+      );
+
+      const firstSocket = result.current;
+
+      // Disable, then re-enable with changed query under StrictMode's
+      // double-invoke. Should still produce exactly one new socket.
+      rerender({ enabled: false, query: { token: "old" } });
+      rerender({ enabled: true, query: { token: "new" } });
+
+      await waitFor(() => {
+        expect(result.current).not.toBe(firstSocket);
+        expect(result.current.partySocketOptions.query).toEqual({
+          token: "new"
+        });
+      });
+    });
+  }
+);
+
+const WIRE_PORT = 50145;
+
+describe.skipIf(!!process.env.GITHUB_ACTIONS)(
+  "Wire-level: usePartySocket enabled/disabled with real connections",
+  () => {
+    let wss: WebSocketServer;
+    let connectionUrls: string[];
+
+    beforeAll(() => {
+      connectionUrls = [];
+      return new Promise<void>((resolve) => {
+        wss = new WebSocketServer({ port: WIRE_PORT }, () => resolve());
+        wss.on("connection", (_ws, req) => {
+          connectionUrls.push(req.url ?? "");
+        });
+      });
+    });
+
+    afterAll(() => {
+      return new Promise<void>((resolve) => {
+        wss.clients.forEach((client) => {
+          client.terminate();
+        });
+        wss.close(() => {
+          resolve();
+        });
+      });
+    });
+
+    test("reconnects with fresh query params after disable/re-enable", async () => {
+      connectionUrls.length = 0;
+
+      const { result, rerender } = renderHook(
+        ({
+          enabled,
+          query
+        }: {
+          enabled: boolean;
+          query: Record<string, string>;
+        }) =>
+          usePartySocket({
+            host: `localhost:${WIRE_PORT}`,
+            room: "wire-test",
+            query,
+            enabled
+          }),
+        { initialProps: { enabled: true, query: { token: "old" } } }
+      );
+
+      // Wait for first connection to arrive at the server
+      await waitFor(
+        () => {
+          expect(connectionUrls.length).toBeGreaterThanOrEqual(1);
+        },
+        { timeout: 10000 }
+      );
+
+      const firstUrl = connectionUrls[connectionUrls.length - 1];
+      expect(firstUrl).toContain("token=old");
+
+      // Disable, then re-enable with a fresh token
+      const urlCountBeforeToggle = connectionUrls.length;
+      rerender({ enabled: false, query: { token: "old" } });
+
+      await waitFor(
+        () => {
+          expect(result.current.readyState).toBe(WebSocket.CLOSED);
+        },
+        { timeout: 3000 }
+      );
+
+      rerender({ enabled: true, query: { token: "fresh" } });
+
+      // Wait for the new connection with the fresh token
+      await waitFor(
+        () => {
+          expect(connectionUrls.length).toBeGreaterThan(urlCountBeforeToggle);
+        },
+        { timeout: 10000 }
+      );
+
+      const latestUrl = connectionUrls[connectionUrls.length - 1];
+      expect(latestUrl).toContain("token=fresh");
+      expect(latestUrl).not.toContain("token=old");
+
+      result.current.close();
+    }, 30000);
+
+    test("does not cause multiple connections on single re-enable", async () => {
+      connectionUrls.length = 0;
+
+      const { result, rerender } = renderHook(
+        ({
+          enabled,
+          query
+        }: {
+          enabled: boolean;
+          query: Record<string, string>;
+        }) =>
+          usePartySocket({
+            host: `localhost:${WIRE_PORT}`,
+            room: "storm-wire-test",
+            query,
+            enabled
+          }),
+        { initialProps: { enabled: true, query: { token: "t1" } } }
+      );
+
+      // Wait for initial connection
+      await waitFor(
+        () => {
+          expect(connectionUrls.length).toBeGreaterThanOrEqual(1);
+        },
+        { timeout: 10000 }
+      );
+
+      // Disable, then re-enable with new token
+      rerender({ enabled: false, query: { token: "t1" } });
+
+      await waitFor(
+        () => {
+          expect(result.current.readyState).toBe(WebSocket.CLOSED);
+        },
+        { timeout: 3000 }
+      );
+
+      const urlCountAfterClose = connectionUrls.length;
+
+      rerender({ enabled: true, query: { token: "t2" } });
+
+      // Wait for the new connection
+      await waitFor(
+        () => {
+          expect(connectionUrls.length).toBeGreaterThan(urlCountAfterClose);
+        },
+        { timeout: 10000 }
+      );
+
+      // Allow a brief window for any spurious extra connections
+      await new Promise((r) => setTimeout(r, 500));
+
+      // Should be exactly 1 new connection after re-enable, not a storm
+      const newConnections = connectionUrls.length - urlCountAfterClose;
+      expect(newConnections).toBe(1);
+
+      result.current.close();
+    }, 30000);
   }
 );

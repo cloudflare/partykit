@@ -29,7 +29,7 @@ export { Scheduler };
     "migrations": [
       {
         "tag": "v1",
-        "new_classes": ["Scheduler"]
+        "new_sqlite_classes": ["Scheduler"]
       }
     ]
   }

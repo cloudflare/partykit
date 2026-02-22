@@ -76,7 +76,7 @@ And setup your wrangler.jsonc:
   "migrations": [
     {
       "tag": "v1",
-      "new_classes": ["PubSubServer"]
+      "new_sqlite_classes": ["PubSubServer"]
     }
   ]
 }
