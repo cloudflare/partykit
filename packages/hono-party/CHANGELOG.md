@@ -1,5 +1,11 @@
 # hono-party
 
+## 2.0.1
+
+### Patch Changes
+
+- [#339](https://github.com/cloudflare/partykit/pull/339) [`d1906a9`](https://github.com/cloudflare/partykit/commit/d1906a9936c352ce0dcd669e5f4ed57fa9dfbcea) Thanks [@threepointone](https://github.com/threepointone)! - Expose Hono context as a third argument to `onBeforeConnect` and `onBeforeRequest` callbacks, giving access to `c.env`, `c.var`, `c.get()`, etc.
+
 ## 2.0.0
 
 ### Patch Changes

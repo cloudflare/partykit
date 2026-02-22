@@ -1,5 +1,11 @@
 # partysocket
 
+## 1.1.15
+
+### Patch Changes
+
+- [#340](https://github.com/cloudflare/partykit/pull/340) [`122376f`](https://github.com/cloudflare/partykit/commit/122376fa935ae8d8f4997981d4cc95ace0851daf) Thanks [@threepointone](https://github.com/threepointone)! - Declare `react` as an optional peer dependency so strict package managers like pnpm correctly resolve it for the `partysocket/react` and `partysocket/use-ws` subpath exports.
+
 ## 1.1.14
 
 ### Patch Changes
