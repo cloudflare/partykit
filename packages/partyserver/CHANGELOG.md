@@ -1,5 +1,15 @@
 # partyflare
 
+## 0.3.0
+
+### Minor Changes
+
+- [#337](https://github.com/cloudflare/partykit/pull/337) [`67685b9`](https://github.com/cloudflare/partykit/commit/67685b92b01c0b541c530b9f6d5e9b0f730e186c) Thanks [@threepointone](https://github.com/threepointone)! - Persist `Server.name` to durable storage so it survives cold starts without an HTTP request. Fixes `this.name` throwing inside `onAlarm()` and scheduled callbacks (cloudflare/agents#933).
+
+### Patch Changes
+
+- [`eec6607`](https://github.com/cloudflare/partykit/commit/eec6607d99f36eda773d028ac365e42c36f99761) Thanks [@threepointone](https://github.com/threepointone)! - Switch name persistence from sync `ctx.storage.kv` to async `ctx.storage.get/put`, removing the requirement for SQLite-backed Durable Objects.
+
 ## 0.2.0
 
 ### Minor Changes

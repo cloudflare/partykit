@@ -7,8 +7,8 @@
     "start": "vite dev"
   },
   "dependencies": {
-    "partyserver": "^0.2.0",
-    "partysocket": "^1.1.14",
+    "partyserver": "^0.3.0",
+    "partysocket": "^1.1.15",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
     "tldraw": "^4.2.1"
