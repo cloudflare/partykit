@@ -532,6 +532,172 @@ describe("Alarm (initialize without redundant blockConcurrencyWhile)", () => {
   });
 });
 
+describe("Name persistence via storage", () => {
+  it("persists name to storage when setName is called", async () => {
+    const id = env.Stateful.idFromName("storage-persist-test");
+    const stub = env.Stateful.get(id);
+
+    const res = await stub.fetch(
+      new Request("http://example.com/parties/stateful/storage-persist-test", {
+        headers: { "x-partykit-room": "storage-persist-test" }
+      })
+    );
+    const data = (await res.json()) as { name: string };
+    expect(data.name).toBe("storage-persist-test");
+  });
+
+  it("this.name is available inside onAlarm after normal setup", async () => {
+    const id = env.AlarmNameServer.idFromName("alarm-name-normal");
+    const stub = env.AlarmNameServer.get(id);
+
+    const setupRes = await stub.fetch(
+      new Request(
+        "http://example.com/parties/alarm-name-server/alarm-name-normal?setAlarm=1",
+        { headers: { "x-partykit-room": "alarm-name-normal" } }
+      )
+    );
+    expect(await setupRes.text()).toBe("alarm set");
+
+    const ran = await runDurableObjectAlarm(stub);
+    expect(ran).toBe(true);
+
+    const stateRes = await stub.fetch(
+      new Request("http://example.com/", {
+        headers: { "x-partykit-room": "alarm-name-normal" }
+      })
+    );
+    const state = (await stateRes.json()) as {
+      name: string;
+      alarmName: string | null;
+      onStartName: string | null;
+    };
+    expect(state.name).toBe("alarm-name-normal");
+    expect(state.alarmName).toBe("alarm-name-normal");
+  });
+
+  it("hydrates name from storage on cold alarm wake (bypassing setName)", async () => {
+    // Seed storage directly without calling setName — simulates a DO
+    // that was previously named, went to sleep, and wakes cold.
+    const id = env.AlarmNameServer.idFromName("alarm-cold-wake");
+    const stub = env.AlarmNameServer.get(id);
+
+    const seedRes = await stub.fetch(
+      new Request("http://example.com/?seed=1&name=alarm-cold-wake")
+    );
+    expect(await seedRes.text()).toBe("seeded");
+
+    const ran = await runDurableObjectAlarm(stub);
+    expect(ran).toBe(true);
+
+    const stateRes = await stub.fetch(
+      new Request("http://example.com/", {
+        headers: { "x-partykit-room": "alarm-cold-wake" }
+      })
+    );
+    const state = (await stateRes.json()) as {
+      alarmName: string | null;
+      onStartName: string | null;
+    };
+    expect(state.alarmName).toBe("alarm-cold-wake");
+  });
+
+  it("this.name is available inside onStart during alarm wake", async () => {
+    const id = env.AlarmNameServer.idFromName("alarm-onstart-name");
+    const stub = env.AlarmNameServer.get(id);
+
+    const seedRes = await stub.fetch(
+      new Request("http://example.com/?seed=1&name=alarm-onstart-name")
+    );
+    expect(await seedRes.text()).toBe("seeded");
+
+    const ran = await runDurableObjectAlarm(stub);
+    expect(ran).toBe(true);
+
+    const stateRes = await stub.fetch(
+      new Request("http://example.com/", {
+        headers: { "x-partykit-room": "alarm-onstart-name" }
+      })
+    );
+    const state = (await stateRes.json()) as {
+      onStartName: string | null;
+    };
+    expect(state.onStartName).toBe("alarm-onstart-name");
+  });
+
+  it("fetch() hydrates name from storage without requiring the header", async () => {
+    const id = env.AlarmNameServer.idFromName("fetch-no-header");
+    const stub = env.AlarmNameServer.get(id);
+
+    // First request sets the name via the header (normal path)
+    await stub.fetch(
+      new Request(
+        "http://example.com/parties/alarm-name-server/fetch-no-header",
+        { headers: { "x-partykit-room": "fetch-no-header" } }
+      )
+    );
+
+    // Second request: no x-partykit-room header.
+    // Should still work because the name is in storage.
+    const res = await stub.fetch(new Request("http://example.com/"));
+    const data = (await res.json()) as { name: string };
+    expect(data.name).toBe("fetch-no-header");
+  });
+
+  it("setName is idempotent for the same value", async () => {
+    const id = env.AlarmNameServer.idFromName("idempotent-test");
+    const stub = env.AlarmNameServer.get(id);
+
+    // First call
+    const res1 = await stub.fetch(
+      new Request(
+        "http://example.com/parties/alarm-name-server/idempotent-test",
+        { headers: { "x-partykit-room": "idempotent-test" } }
+      )
+    );
+    expect(res1.status).toBe(200);
+
+    // Second call with same name — should not throw
+    const res2 = await stub.fetch(
+      new Request("http://example.com/", {
+        headers: { "x-partykit-room": "idempotent-test" }
+      })
+    );
+    const data = (await res2.json()) as { name: string };
+    expect(data.name).toBe("idempotent-test");
+  });
+
+  it("throws when name was never set and is not in storage", async () => {
+    const id = env.NoNameServer.idFromName("no-name-test");
+    const stub = env.NoNameServer.get(id);
+
+    // Direct fetch without the header — name was never persisted
+    const res = await stub.fetch(new Request("http://example.com/"));
+    expect(res.status).toBe(500);
+    const body = await res.text();
+    expect(body).toContain("Missing namespace or room headers");
+  });
+
+  it("getServerByName persists the name for future access", async () => {
+    const ctx = createExecutionContext();
+
+    // Use routePartykitRequest to hit the DO and set its name
+    const request = new Request(
+      "http://example.com/parties/alarm-name-server/gsbn-test"
+    );
+    const response = await worker.fetch(request, env, ctx);
+    expect(response.status).toBe(200);
+    const data = (await response.json()) as { name: string };
+    expect(data.name).toBe("gsbn-test");
+
+    // Now fetch the same DO directly without the header
+    const id = env.AlarmNameServer.idFromName("gsbn-test");
+    const stub = env.AlarmNameServer.get(id);
+    const directRes = await stub.fetch(new Request("http://example.com/"));
+    const directData = (await directRes.json()) as { name: string };
+    expect(directData.name).toBe("gsbn-test");
+  });
+});
+
 describe("CORS", () => {
   it("returns CORS headers on OPTIONS preflight for matched routes", async () => {
     const ctx = createExecutionContext();

@@ -24,6 +24,8 @@ export * from "./types";
 
 export type WSMessage = ArrayBuffer | ArrayBufferView | string;
 
+const NAME_STORAGE_KEY = "__ps_name";
+
 // Let's cache the server namespace map
 // so we don't call it on every request
 const serverMapCache = new WeakMap<
@@ -390,31 +392,28 @@ export class Server<
         this.#_props = JSON.parse(props);
       }
       if (!this.#_name) {
-        // This is temporary while we solve https://github.com/cloudflare/workerd/issues/2240
-
-        // get namespace and room from headers
-        // const namespace = request.headers.get("x-partykit-namespace");
-        const room = request.headers.get("x-partykit-room");
-        if (
-          // !namespace ||
-          !room
-        ) {
-          throw new Error(`Missing namespace or room headers when connecting to ${this.#ParentClass.name}.
+        // Try hydrating from storage first (covers cold starts after
+        // a previous request already persisted the name).
+        const stored = this.ctx.storage.kv.get<string>(NAME_STORAGE_KEY);
+        if (stored) {
+          this.#_name = stored;
+        } else {
+          // First-time contact: name must come from the request header
+          // (set by routePartykitRequest or getServerByName).
+          const room = request.headers.get("x-partykit-room");
+          if (!room) {
+            throw new Error(`Missing namespace or room headers when connecting to ${this.#ParentClass.name}.
 Did you try connecting directly to this Durable Object? Try using getServerByName(namespace, id) instead.`);
+          }
+          await this.setName(room);
         }
-        await this.setName(room);
-      } else if (this.#status !== "started") {
-        // Name was set by a previous request but initialization failed.
-        // Retry initialization so the server can recover from transient
-        // onStart failures.
-        await this.#initialize();
       }
+
+      await this.#ensureInitialized();
+
       const url = new URL(request.url);
 
-      // TODO: this is a hack to set the server name,
-      // it'll be replaced with RPC later
       if (url.pathname === "/cdn-cgi/partyserver/set-name/") {
-        // we can just return a 200 for now
         return Response.json({ ok: true });
       }
 
@@ -496,9 +495,7 @@ Did you try connecting directly to this Durable Object? Try using getServerByNam
     try {
       const connection = createLazyConnection(ws);
 
-      // rehydrate the server name if it's woken up
-      await this.setName(connection.server);
-      // TODO: ^ this shouldn't be async
+      await this.#ensureInitialized();
 
       return this.onMessage(connection, message);
     } catch (e) {
@@ -522,9 +519,7 @@ Did you try connecting directly to this Durable Object? Try using getServerByNam
     try {
       const connection = createLazyConnection(ws);
 
-      // rehydrate the server name if it's woken up
-      await this.setName(connection.server);
-      // TODO: ^ this shouldn't be async
+      await this.#ensureInitialized();
 
       return this.onClose(connection, code, reason, wasClean);
     } catch (e) {
@@ -543,9 +538,7 @@ Did you try connecting directly to this Durable Object? Try using getServerByNam
     try {
       const connection = createLazyConnection(ws);
 
-      // rehydrate the server name if it's woken up
-      await this.setName(connection.server);
-      // TODO: ^ this shouldn't be async
+      await this.#ensureInitialized();
 
       return this.onError(connection, error);
     } catch (e) {
@@ -556,7 +549,8 @@ Did you try connecting directly to this Durable Object? Try using getServerByNam
     }
   }
 
-  async #initialize(): Promise<void> {
+  async #ensureInitialized(): Promise<void> {
+    if (this.#status === "started") return;
     let error: unknown;
     await this.ctx.blockConcurrencyWhile(async () => {
       this.#status = "starting";
@@ -607,29 +601,26 @@ Did you try connecting directly to this Durable Object? Try using getServerByNam
 
   #_name: string | undefined;
 
-  #_longErrorAboutNameThrown = false;
   /**
    * The name for this server. Write-once-only.
+   * Hydrates from durable storage on first access if the name was
+   * previously persisted (e.g. during an alarm wake-up with no HTTP request).
    */
   get name(): string {
     if (!this.#_name) {
-      if (!this.#_longErrorAboutNameThrown) {
-        this.#_longErrorAboutNameThrown = true;
-        throw new Error(
-          `Attempting to read .name on ${this.#ParentClass.name} before it was set. The name can be set by explicitly calling .setName(name) on the stub, or by using routePartyKitRequest(). This is a known issue and will be fixed soon. Follow https://github.com/cloudflare/workerd/issues/2240 for more updates.`
-        );
-      } else {
-        throw new Error(
-          `Attempting to read .name on ${this.#ParentClass.name} before it was set.`
-        );
+      const stored = this.ctx.storage.kv.get<string>(NAME_STORAGE_KEY);
+      if (stored) {
+        this.#_name = stored;
       }
+    }
+    if (!this.#_name) {
+      throw new Error(
+        `Attempting to read .name on ${this.#ParentClass.name} before it was set. The name can be set by explicitly calling .setName(name) on the stub, or by using routePartyKitRequest(). This is a known issue and will be fixed soon. Follow https://github.com/cloudflare/workerd/issues/2240 for more updates.`
+      );
     }
     return this.#_name;
   }
 
-  // We won't have an await inside this function
-  // but it will be called remotely,
-  // so we need to mark it as async
   async setName(name: string) {
     if (!name) {
       throw new Error("A name is required.");
@@ -640,10 +631,9 @@ Did you try connecting directly to this Durable Object? Try using getServerByNam
       );
     }
     this.#_name = name;
+    this.ctx.storage.kv.put(NAME_STORAGE_KEY, name);
 
-    if (this.#status !== "started") {
-      await this.#initialize();
-    }
+    await this.#ensureInitialized();
   }
 
   #sendMessageToConnection(connection: Connection, message: WSMessage): void {
@@ -793,11 +783,7 @@ Did you try connecting directly to this Durable Object? Try using getServerByNam
   }
 
   async alarm(): Promise<void> {
-    if (this.#status !== "started") {
-      // This means the server "woke up" after hibernation
-      // so we need to hydrate it again
-      await this.#initialize();
-    }
+    await this.#ensureInitialized();
     await this.onAlarm();
   }
 }
