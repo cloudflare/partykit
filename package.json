@@ -3,6 +3,13 @@
   "version": "0.0.0",
   "private": true,
   "description": "Everything's better with friends",
+  "license": "ISC",
+  "author": "Sunil Pai <spai@cloudflare.com>",
+  "workspaces": [
+    "packages/*",
+    "fixtures/*"
+  ],
+  "type": "module",
   "scripts": {
     "build": "npm run build -w partyserver -w partysocket -w y-partyserver -w partysub -w partyfn -w partysync -w partywhen -w partytracks -w hono-party && tsx scripts/check-exports.ts",
     "check": "npm run check:repo && npm run check:format && npm run check:lint && npm run check:type && npm run check:test",
@@ -10,16 +17,10 @@
     "check:format": "prettier . --check --ignore-unknown",
     "check:lint": "biome check",
     "check:repo": "sherif",
-    "check:test": "npm run check:test -w partyserver -w partysocket -w partysub -w partywhen -w partytracks",
+    "check:test": "npm run check:test -w partyserver -w partysocket -w partysub -w partywhen -w partytracks -w y-partyserver",
     "check:type": "tsx scripts/typecheck.ts",
     "all": "npm i && npm run build && npm run check"
   },
-  "author": "Sunil Pai <spai@cloudflare.com>",
-  "license": "ISC",
-  "workspaces": [
-    "packages/*",
-    "fixtures/*"
-  ],
   "devDependencies": {
     "@biomejs/biome": "^2.3.10",
     "@changesets/changelog-github": "^0.5.2",
@@ -46,18 +47,17 @@
     "wrangler": "^4.56.0"
   },
   "overrides": {
-    "esbuild": "0.25.0",
     "@types/node": "25.0.3",
+    "esbuild": "0.25.0",
     "prosemirror-model": "1.22.2",
     "react": "19.2.3",
     "react-dom": "19.2.3"
   },
+  "packageManager": "npm@11.7.0",
   "trustedDependencies": [
     "@biomejs/biome",
     "core-js",
     "esbuild",
     "workerd"
-  ],
-  "packageManager": "npm@11.7.0",
-  "type": "module"
+  ]
 }
