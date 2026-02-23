@@ -182,7 +182,7 @@ export class YServer<
   #ParentClass: typeof YServer = Object.getPrototypeOf(this).constructor;
   readonly document: WSSharedDoc = new WSSharedDoc();
 
-  async onLoad(): Promise<void> {
+  async onLoad(): Promise<YDoc | void> {
     // to be implemented by the user
     return;
   }

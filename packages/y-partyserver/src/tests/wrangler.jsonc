@@ -1,0 +1,52 @@
+{
+  "main": "/worker.ts",
+  "compatibility_date": "2026-01-28",
+  "compatibility_flags": [
+    "nodejs_compat",
+    "enable_nodejs_tty_module",
+    "enable_nodejs_fs_module",
+    "enable_nodejs_http_modules",
+    "enable_nodejs_perf_hooks_module"
+  ],
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "YBasic",
+        "class_name": "YBasic"
+      },
+      {
+        "name": "YPersistent",
+        "class_name": "YPersistent"
+      },
+      {
+        "name": "YReadOnly",
+        "class_name": "YReadOnly"
+      },
+      {
+        "name": "YCustomMessage",
+        "class_name": "YCustomMessage"
+      },
+      {
+        "name": "YOnLoadReturnsDoc",
+        "class_name": "YOnLoadReturnsDoc"
+      },
+      {
+        "name": "YCallbackOptions",
+        "class_name": "YCallbackOptions"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": [
+        "YBasic",
+        "YPersistent",
+        "YReadOnly",
+        "YCustomMessage",
+        "YOnLoadReturnsDoc",
+        "YCallbackOptions"
+      ]
+    }
+  ]
+}

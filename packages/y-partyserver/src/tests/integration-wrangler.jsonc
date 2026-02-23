@@ -1,0 +1,47 @@
+{
+  "name": "y-partyserver-integration",
+  "main": "./worker.ts",
+  "compatibility_date": "2025-12-10",
+  "compatibility_flags": ["nodejs_compat"],
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "YBasic",
+        "class_name": "YBasic"
+      },
+      {
+        "name": "YPersistent",
+        "class_name": "YPersistent"
+      },
+      {
+        "name": "YReadOnly",
+        "class_name": "YReadOnly"
+      },
+      {
+        "name": "YCustomMessage",
+        "class_name": "YCustomMessage"
+      },
+      {
+        "name": "YOnLoadReturnsDoc",
+        "class_name": "YOnLoadReturnsDoc"
+      },
+      {
+        "name": "YCallbackOptions",
+        "class_name": "YCallbackOptions"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": [
+        "YBasic",
+        "YPersistent",
+        "YReadOnly",
+        "YCustomMessage",
+        "YOnLoadReturnsDoc",
+        "YCallbackOptions"
+      ]
+    }
+  ]
+}

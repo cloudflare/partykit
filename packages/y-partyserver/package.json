@@ -1,11 +1,23 @@
 {
   "name": "y-partyserver",
   "version": "2.0.0",
+  "description": "",
+  "keywords": [
+    "collaboration",
+    "text-editors",
+    "yjs"
+  ],
+  "homepage": "https://github.com/cloudflare/partykit/tree/main/packages/y-partyserver",
+  "license": "ISC",
+  "author": "Sunil Pai <spai@cloudflare.com>",
   "repository": {
     "type": "git",
     "url": "git://github.com/cloudflare/partykit.git"
   },
-  "homepage": "https://github.com/cloudflare/partykit/tree/main/packages/y-partyserver",
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "type": "module",
   "exports": {
     ".": {
@@ -25,30 +37,16 @@
     }
   },
   "scripts": {
-    "build": "tsx scripts/build.ts"
+    "build": "tsx scripts/build.ts",
+    "check:test": "vitest -r src/tests --watch false",
+    "test": "vitest -r src/tests",
+    "test:integration": "vitest -r src/tests --config vitest.integration.config.ts --watch false"
   },
-  "files": [
-    "dist",
-    "README.md"
-  ],
-  "keywords": [
-    "yjs",
-    "collaboration",
-    "text-editors"
-  ],
-  "author": "Sunil Pai <spai@cloudflare.com>",
-  "license": "ISC",
-  "description": "",
   "dependencies": {
     "lib0": "^0.2.115",
     "lodash.debounce": "^4.0.8",
     "nanoid": "^5.1.6",
     "y-protocols": "^1.0.7"
-  },
-  "peerDependencies": {
-    "@cloudflare/workers-types": "^4.20240729.0",
-    "partyserver": ">=0.2.0 <1.0.0",
-    "yjs": "^13.6.14"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20251218.0",
@@ -56,5 +54,10 @@
     "partyserver": ">=0.2.0 <1.0.0",
     "ws": "^8.18.3",
     "yjs": "^13.6.28"
+  },
+  "peerDependencies": {
+    "@cloudflare/workers-types": "^4.20240729.0",
+    "partyserver": ">=0.2.0 <1.0.0",
+    "yjs": "^13.6.14"
   }
 }
