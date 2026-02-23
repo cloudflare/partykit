@@ -165,13 +165,19 @@ function setupWS(provider: WebsocketProvider) {
         provider.wsconnected = false;
         provider.synced = false;
         // update awareness (all users except local left)
+        const removedClients = Array.from(
+          provider.awareness.getStates().keys()
+        ).filter((client) => client !== provider.doc.clientID);
         awarenessProtocol.removeAwarenessStates(
           provider.awareness,
-          Array.from(provider.awareness.getStates().keys()).filter(
-            (client) => client !== provider.doc.clientID
-          ),
+          removedClients,
           provider
         );
+        // Clear stale meta for remote clients so their awareness
+        // updates are accepted on reconnect (clock check starts fresh)
+        for (const clientID of removedClients) {
+          provider.awareness.meta.delete(clientID);
+        }
         provider.emit("status", [
           {
             status: "disconnected"
@@ -208,6 +214,9 @@ function setupWS(provider: WebsocketProvider) {
       websocket.send(encoding.toUint8Array(encoder));
       // broadcast local awareness state
       if (provider.awareness.getLocalState() !== null) {
+        // Re-set local state to bump the awareness clock, ensuring
+        // remote clients accept the update even if they have stale meta
+        provider.awareness.setLocalState(provider.awareness.getLocalState());
         const encoderAwarenessState = encoding.createEncoder();
         encoding.writeVarUint(encoderAwarenessState, messageAwareness);
         encoding.writeVarUint8Array(

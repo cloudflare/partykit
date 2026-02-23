@@ -37,71 +37,45 @@ const messageAwareness = 1;
 // biome-ignore lint/correctness/noUnusedVariables: it's fine
 const messageAuth = 2;
 
-function updateHandler(update: Uint8Array, _origin: unknown, doc: WSSharedDoc) {
-  const encoder = encoding.createEncoder();
-  encoding.writeVarUint(encoder, messageSync);
-  syncProtocol.writeUpdate(encoder, update);
-  const message = encoding.toUint8Array(encoder);
-  doc.conns.forEach((_, conn) => {
-    send(doc, conn, message);
-  });
+/**
+ * Internal key used in connection.setState() to track which awareness
+ * client IDs are controlled by each connection. This survives hibernation
+ * because connection state is persisted to WebSocket attachments.
+ */
+const AWARENESS_IDS_KEY = "__ypsAwarenessIds";
+
+type YServerConnectionState = {
+  [AWARENESS_IDS_KEY]?: number[];
+  [key: string]: unknown;
+};
+
+function getAwarenessIds(conn: Connection): number[] {
+  try {
+    const state = conn.state as YServerConnectionState | null;
+    return state?.[AWARENESS_IDS_KEY] ?? [];
+  } catch {
+    return [];
+  }
+}
+
+function setAwarenessIds(conn: Connection, ids: number[]): void {
+  try {
+    conn.setState((prev: YServerConnectionState | null) => ({
+      ...prev,
+      [AWARENESS_IDS_KEY]: ids
+    }));
+  } catch {
+    // ignore — may fail if connection is already closed
+  }
 }
 
 class WSSharedDoc extends YDoc {
-  conns: Map<Connection, Set<number>>;
   awareness: awarenessProtocol.Awareness;
 
   constructor() {
     super({ gc: true });
-
-    /**
-     * Maps from conn to set of controlled user ids. Delete all user ids from awareness when this conn is closed
-     */
-    this.conns = new Map();
-
     this.awareness = new awarenessProtocol.Awareness(this);
     this.awareness.setLocalState(null);
-
-    const awarenessChangeHandler = (
-      {
-        added,
-        updated,
-        removed
-      }: {
-        added: Array<number>;
-        updated: Array<number>;
-        removed: Array<number>;
-      },
-      conn: Connection | null // Origin is the connection that made the change
-    ) => {
-      const changedClients = added.concat(updated, removed);
-      if (conn !== null) {
-        const connControlledIDs =
-          /** @type {Set<number>} */ this.conns.get(conn);
-        if (connControlledIDs !== undefined) {
-          added.forEach((clientID) => {
-            connControlledIDs.add(clientID);
-          });
-          removed.forEach((clientID) => {
-            connControlledIDs.delete(clientID);
-          });
-        }
-      }
-      // broadcast awareness update
-      const encoder = encoding.createEncoder();
-      encoding.writeVarUint(encoder, messageAwareness);
-      encoding.writeVarUint8Array(
-        encoder,
-        awarenessProtocol.encodeAwarenessUpdate(this.awareness, changedClients)
-      );
-      const buff = encoding.toUint8Array(encoder);
-      this.conns.forEach((_, c) => {
-        send(this, c, buff);
-      });
-    };
-    this.awareness.on("update", awarenessChangeHandler);
-    // @ts-expect-error - TODO: fix this
-    this.on("update", updateHandler);
   }
 }
 
@@ -136,35 +110,18 @@ function readSyncMessage(
   return messageType;
 }
 
-function closeConn(doc: WSSharedDoc, conn: Connection): void {
-  if (doc.conns.has(conn)) {
-    const controlledIds: Set<number> = doc.conns.get(conn)!;
-    doc.conns.delete(conn);
-    awarenessProtocol.removeAwarenessStates(
-      doc.awareness,
-      Array.from(controlledIds),
-      null
-    );
-  }
-  try {
-    conn.close();
-  } catch (e) {
-    console.warn("failed to close connection", e);
-  }
-}
-
-function send(doc: WSSharedDoc, conn: Connection, m: Uint8Array) {
+function send(conn: Connection, m: Uint8Array): void {
   if (
     conn.readyState !== undefined &&
     conn.readyState !== wsReadyStateConnecting &&
     conn.readyState !== wsReadyStateOpen
   ) {
-    closeConn(doc, conn);
+    return;
   }
   try {
     conn.send(m);
-  } catch (_e) {
-    closeConn(doc, conn);
+  } catch {
+    // connection is broken, ignore
   }
 }
 
@@ -260,6 +217,70 @@ export class YServer<
       applyUpdate(this.document, state);
     }
 
+    // Broadcast doc updates to all connections.
+    // Uses this.getConnections() which works for both hibernate and non-hibernate
+    // modes and survives DO hibernation (unlike an in-memory Map).
+    this.document.on("update", (update: Uint8Array) => {
+      const encoder = encoding.createEncoder();
+      encoding.writeVarUint(encoder, messageSync);
+      syncProtocol.writeUpdate(encoder, update);
+      const message = encoding.toUint8Array(encoder);
+      for (const conn of this.getConnections()) {
+        send(conn, message);
+      }
+    });
+
+    // Track which awareness clientIDs each connection controls.
+    // Stored in connection.setState() so it survives hibernation.
+    // When conn is null (internal changes like removeAwarenessStates on close),
+    // broadcast the update to remaining connections.
+    // When conn is non-null (client message), handleMessage broadcasts directly.
+    this.document.awareness.on(
+      "update",
+      (
+        {
+          added,
+          updated,
+          removed
+        }: {
+          added: Array<number>;
+          updated: Array<number>;
+          removed: Array<number>;
+        },
+        conn: Connection | null
+      ) => {
+        if (conn !== null) {
+          // Track which clientIDs this connection controls
+          try {
+            const currentIds = new Set(getAwarenessIds(conn));
+            for (const clientID of added) currentIds.add(clientID);
+            for (const clientID of removed) currentIds.delete(clientID);
+            setAwarenessIds(conn, [...currentIds]);
+          } catch (_e) {
+            // ignore — best-effort tracking
+          }
+        } else {
+          // Internal awareness change (e.g. removeAwarenessStates on close)
+          // — broadcast to all remaining connections
+          const changedClients = added.concat(updated, removed);
+          const encoder = encoding.createEncoder();
+          encoding.writeVarUint(encoder, messageAwareness);
+          encoding.writeVarUint8Array(
+            encoder,
+            awarenessProtocol.encodeAwarenessUpdate(
+              this.document.awareness,
+              changedClients
+            )
+          );
+          const buff = encoding.toUint8Array(encoder);
+          for (const c of this.getConnections()) {
+            send(c, buff);
+          }
+        }
+      }
+    );
+
+    // Debounced persistence handler
     this.document.on(
       "update",
       debounce(
@@ -334,23 +355,23 @@ export class YServer<
     excludeConnection?: Connection
   ): void {
     const formattedMessage = `__YPS:${message}`;
-    this.document.conns.forEach((_, conn) => {
+    for (const conn of this.getConnections()) {
       if (excludeConnection && conn === excludeConnection) {
-        return;
+        continue;
       }
       if (
         conn.readyState !== undefined &&
         conn.readyState !== wsReadyStateConnecting &&
         conn.readyState !== wsReadyStateOpen
       ) {
-        return;
+        continue;
       }
       try {
         conn.send(formattedMessage);
       } catch (e) {
         console.warn("Failed to broadcast custom message", e);
       }
-    });
+    }
   }
 
   handleMessage(connection: Connection, message: WSMessage) {
@@ -396,15 +417,24 @@ export class YServer<
           // message, there is no need to send the message. When `encoder` only
           // contains the type of reply, its length is 1.
           if (encoding.length(encoder) > 1) {
-            send(this.document, connection, encoding.toUint8Array(encoder));
+            send(connection, encoding.toUint8Array(encoder));
           }
           break;
         case messageAwareness: {
+          const awarenessData = decoding.readVarUint8Array(decoder);
           awarenessProtocol.applyAwarenessUpdate(
             this.document.awareness,
-            decoding.readVarUint8Array(decoder),
+            awarenessData,
             connection
           );
+          // Forward raw awareness bytes to all connections
+          const awarenessEncoder = encoding.createEncoder();
+          encoding.writeVarUint(awarenessEncoder, messageAwareness);
+          encoding.writeVarUint8Array(awarenessEncoder, awarenessData);
+          const awarenessBuff = encoding.toUint8Array(awarenessEncoder);
+          for (const c of this.getConnections()) {
+            send(c, awarenessBuff);
+          }
           break;
         }
       }
@@ -425,7 +455,16 @@ export class YServer<
     _reason: string,
     _wasClean: boolean
   ): void | Promise<void> {
-    closeConn(this.document, connection);
+    // Read controlled awareness clientIDs from connection state
+    // (survives hibernation unlike an in-memory Map)
+    const controlledIds = getAwarenessIds(connection);
+    if (controlledIds.length > 0) {
+      awarenessProtocol.removeAwarenessStates(
+        this.document.awareness,
+        controlledIds,
+        null
+      );
+    }
   }
 
   // TODO: explore why onError gets triggered when a connection closes
@@ -434,15 +473,14 @@ export class YServer<
     conn: Connection<unknown>,
     _ctx: ConnectionContext
   ): void | Promise<void> {
-    // conn.binaryType = "arraybuffer"; // from y-websocket, breaks in our runtime
-
-    this.document.conns.set(conn, new Set());
+    // Note: awareness IDs are lazily initialized when the first awareness
+    // message is received — no need to call setAwarenessIds(conn, []) here
 
     // send sync step 1
     const encoder = encoding.createEncoder();
     encoding.writeVarUint(encoder, messageSync);
     syncProtocol.writeSyncStep1(encoder, this.document);
-    send(this.document, conn, encoding.toUint8Array(encoder));
+    send(conn, encoding.toUint8Array(encoder));
     const awarenessStates = this.document.awareness.getStates();
     if (awarenessStates.size > 0) {
       const encoder = encoding.createEncoder();
@@ -454,7 +492,7 @@ export class YServer<
           Array.from(awarenessStates.keys())
         )
       );
-      send(this.document, conn, encoding.toUint8Array(encoder));
+      send(conn, encoding.toUint8Array(encoder));
     }
   }
 }

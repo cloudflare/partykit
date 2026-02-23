@@ -40,7 +40,8 @@
     "build": "tsx scripts/build.ts",
     "check:test": "vitest -r src/tests --watch false",
     "test": "vitest -r src/tests",
-    "test:integration": "vitest -r src/tests --config vitest.integration.config.ts --watch false"
+    "test:integration": "vitest -r src/tests --config vitest.integration.config.ts --watch false",
+    "test:hibernation": "vitest -r src/tests --config vitest.hibernation.config.ts --watch false"
   },
   "dependencies": {
     "lib0": "^0.2.115",

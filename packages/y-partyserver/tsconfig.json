@@ -1,0 +1,12 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["@cloudflare/workers-types"]
+  },
+  "exclude": [
+    "src/tests/**/*.ts",
+    "src/provider/**/*.ts",
+    "src/provider/**/*.tsx",
+    "scripts/**/*.ts"
+  ]
+}

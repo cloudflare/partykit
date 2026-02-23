@@ -254,11 +254,14 @@ describe("Integration — awareness", () => {
       user: { name: "Alice", color: "#ff0000" }
     });
 
-    // Wait for awareness to propagate
+    // Wait for the actual awareness state to propagate (not just the
+    // default {} from the Awareness constructor)
     await new Promise<void>((resolve) => {
       const check = () => {
-        const stateA = providerB.awareness.getStates().get(docA.clientID);
-        if (stateA) {
+        const stateA = providerB.awareness.getStates().get(docA.clientID) as
+          | { user?: { name: string } }
+          | undefined;
+        if (stateA?.user) {
           resolve();
         } else {
           setTimeout(check, 100);
@@ -439,17 +442,28 @@ describe("Integration — reconnection", () => {
     doc.getText("shared").insert(0, "before-disconnect");
     await new Promise((r) => setTimeout(r, 300));
 
-    // Disconnect and wait for the status change
-    const disconnected = new Promise<void>((resolve) => {
-      provider.on("status", (event: { status: string }) => {
-        if (event.status === "disconnected") {
-          resolve();
-        }
-      });
-    });
+    // Disconnect — with hibernate: true and the ws library, the close
+    // handshake may not complete (no close event), so we force-terminate
+    // the underlying WebSocket and wait for the provider to notice.
+    const ws = provider.ws as unknown as {
+      terminate?: () => void;
+      CLOSED?: number;
+    };
     provider.disconnect();
-    await disconnected;
-    expect(provider.wsconnected).toBe(false);
+    if (ws && typeof ws.terminate === "function") {
+      ws.terminate();
+    }
+    // Wait for provider to process the disconnect
+    await new Promise<void>((resolve) => {
+      const check = () => {
+        if (!provider.wsconnected && provider.ws === null) {
+          resolve();
+        } else {
+          setTimeout(check, 50);
+        }
+      };
+      setTimeout(check, 100);
+    });
 
     // Reconnect
     provider.connect();
