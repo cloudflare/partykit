@@ -567,7 +567,7 @@ export default class YProvider extends WebsocketProvider {
 
     // strip trailing slash from host if any
     if (host.endsWith("/")) {
-      host.slice(0, -1);
+      host = host.slice(0, -1);
     }
 
     const serverUrl = `${
