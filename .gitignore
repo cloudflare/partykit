@@ -131,6 +131,7 @@ dist
 
 
 .wrangler
+.wrangler-persist-*
 .DS_Store
 .env
 .dev.vars
