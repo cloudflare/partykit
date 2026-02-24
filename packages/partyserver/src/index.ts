@@ -364,7 +364,7 @@ export class Server<
     }
   }
 
-  // biome-ignore lint/complexity/noUselessConstructor: it's fine
+  // oxlint-disable-next-line no-useless-constructor
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
 
@@ -665,9 +665,9 @@ Did you try connecting directly to this Durable Object? Try using getServerByNam
    * Each connection supports up to 9 tags, each tag max length is 256 characters.
    */
   getConnectionTags(
-    // biome-ignore lint/correctness/noUnusedFunctionParameters: for autocomplete
+    // oxlint-disable-next-line no-unused-vars
     connection: Connection,
-    // biome-ignore lint/correctness/noUnusedFunctionParameters: for autocomplete
+    // oxlint-disable-next-line no-unused-vars
     context: ConnectionContext
   ): string[] | Promise<string[]> {
     return [];
@@ -680,7 +680,7 @@ Did you try connecting directly to this Durable Object? Try using getServerByNam
   /**
    * Called when the server is started for the first time.
    */
-  // biome-ignore lint/correctness/noUnusedFunctionParameters: for autocomplete
+  // oxlint-disable-next-line no-unused-vars
   onStart(props?: Props): void | Promise<void> {}
 
   /**
@@ -688,7 +688,7 @@ Did you try connecting directly to this Durable Object? Try using getServerByNam
    */
   onConnect(
     connection: Connection,
-    // biome-ignore lint/correctness/noUnusedFunctionParameters: for autocomplete
+    // oxlint-disable-next-line no-unused-vars
     ctx: ConnectionContext
   ): void | Promise<void> {
     console.log(
@@ -702,7 +702,7 @@ Did you try connecting directly to this Durable Object? Try using getServerByNam
   /**
    * Called when a message is received from a connection.
    */
-  // biome-ignore lint/correctness/noUnusedFunctionParameters: for autocomplete
+  // oxlint-disable-next-line no-unused-vars
   onMessage(connection: Connection, message: WSMessage): void | Promise<void> {
     console.log(
       `Received message on connection ${this.#ParentClass.name}:${connection.id}`
@@ -716,13 +716,13 @@ Did you try connecting directly to this Durable Object? Try using getServerByNam
    * Called when a connection is closed.
    */
   onClose(
-    // biome-ignore lint/correctness/noUnusedFunctionParameters: for autocomplete
+    // oxlint-disable-next-line no-unused-vars
     connection: Connection,
-    // biome-ignore lint/correctness/noUnusedFunctionParameters: for autocomplete
+    // oxlint-disable-next-line no-unused-vars
     code: number,
-    // biome-ignore lint/correctness/noUnusedFunctionParameters: for autocomplete
+    // oxlint-disable-next-line no-unused-vars
     reason: string,
-    // biome-ignore lint/correctness/noUnusedFunctionParameters: for autocomplete
+    // oxlint-disable-next-line no-unused-vars
     wasClean: boolean
   ): void | Promise<void> {}
 

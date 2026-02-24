@@ -16,7 +16,7 @@ await build({
   fixedExtension: false
 });
 
-// then run prettier on the generated .d.ts files
-execSync("prettier --write ./dist/**/*.d.ts");
+// then run oxfmt on the generated .d.ts files
+execSync("oxfmt ./dist/**/*.d.ts");
 
 process.exit(0);

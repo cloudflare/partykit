@@ -46,7 +46,7 @@ beforeAll(() => {
 });
 
 beforeEach(() => {
-  // biome-ignore lint/suspicious/noExplicitAny: legacy
+  // oxlint-disable-next-line no-explicit-any
   (global as any).WebSocket = originalWebSocket;
 });
 
@@ -91,7 +91,7 @@ afterAll(() => {
 // });
 
 testDone("pass WebSocket via options", (done) => {
-  // biome-ignore lint/suspicious/noExplicitAny: legacy
+  // oxlint-disable-next-line no-explicit-any
   delete (global as any).WebSocket;
   const ws = new ReconnectingWebSocket(URL, undefined, {
     WebSocket: NodeWebSocket,

@@ -66,7 +66,7 @@ describe("Hello World worker", () => {
     const debug = await stub.getAllTasks();
     expect(debug.result).toHaveLength(1);
 
-    const { created_at, ...rest } = (debug.result || [])[0];
+    const { created_at: _created_at, ...rest } = (debug.result || [])[0];
 
     expect(rest).toMatchInlineSnapshot(`
       {
@@ -128,7 +128,7 @@ describe("Hello World worker", () => {
     const debug = await stub.getAllTasks();
     expect(debug.result).toHaveLength(1);
 
-    const { created_at, ...rest } = (debug.result || [])[0];
+    const { created_at: _created_at, ...rest } = (debug.result || [])[0];
 
     expect(rest).toMatchInlineSnapshot(`
       {
@@ -183,7 +183,7 @@ describe("Hello World worker", () => {
     const debug = await stub.getAllTasks();
     expect(debug.result).toHaveLength(1);
 
-    const { created_at, ...rest } = (debug.result || [])[0];
+    const { created_at: _created_at, ...rest } = (debug.result || [])[0];
 
     expect(rest).toMatchInlineSnapshot(`
       {
@@ -240,7 +240,7 @@ describe("Hello World worker", () => {
     const debug = await stub.getAllTasks();
     expect(debug.result).toHaveLength(1);
 
-    const { created_at, ...rest } = (debug.result || [])[0];
+    const { created_at: _created_at, ...rest } = (debug.result || [])[0];
 
     expect(rest).toMatchInlineSnapshot(`
       {

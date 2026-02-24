@@ -31,7 +31,7 @@ beforeAll(() => {
 });
 
 beforeEach(() => {
-  // biome-ignore lint/suspicious/noExplicitAny: legacy
+  // oxlint-disable-next-line no-explicit-any
   (global as any).WebSocket = originalWebSocket;
 });
 

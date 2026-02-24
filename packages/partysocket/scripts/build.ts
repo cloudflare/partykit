@@ -18,11 +18,11 @@ async function run() {
     fixedExtension: false
   });
 
-  // then run prettier on the generated files
-  execSync("prettier --write ./dist/**/*.d.cts");
-  execSync("prettier --write ./dist/**/*.d.ts");
-  execSync("prettier --write ./dist/**/*.cjs");
-  execSync("prettier --write ./dist/**/*.js");
+  // then run oxfmt on the generated files
+  execSync("oxfmt ./dist/**/*.d.cts");
+  execSync("oxfmt ./dist/**/*.d.ts");
+  execSync("oxfmt ./dist/**/*.cjs");
+  execSync("oxfmt ./dist/**/*.js");
 
   process.exit(0);
 }

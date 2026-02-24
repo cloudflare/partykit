@@ -1,0 +1,34 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["react", "jsx-a11y", "typescript", "react-hooks"],
+  "categories": {
+    "correctness": "error"
+  },
+  "rules": {
+    "no-explicit-any": "off",
+    "no-unused-expressions": "off",
+    "no-this-alias": "off",
+    "no-non-null-assertion": "off",
+    "no-redeclare": "off",
+    "react-hooks/exhaustive-deps": "warn",
+    "jsx-a11y/no-autofocus": "off",
+    "no-unused-vars": [
+      "error",
+      {
+        "argsIgnorePattern": "^_",
+        "varsIgnorePattern": "^_",
+        "caughtErrorsIgnorePattern": "^_"
+      }
+    ]
+  },
+  "ignorePatterns": [
+    "**/dist",
+    "**/coverage",
+    "**/*.d.ts",
+    "**/*.d.mts",
+    "**/*.d.cts",
+    "**/env.d.ts",
+    "**/.wrangler",
+    "**/node_modules"
+  ]
+}

@@ -48,9 +48,10 @@ export function useStableSocket<
   // an inline options object (new reference each time) whose values haven't
   // actually changed.
   const shouldReconnect = createOptionsMemoKey(options);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: shouldReconnect is a serialized key derived from options — we intentionally memo on the key, not the object reference
+
   const socketOptions = useMemo(() => {
     return options;
+    // oxlint-disable-next-line react-hooks/exhaustive-deps -- shouldReconnect is a serialized key derived from options — we intentionally memo on the key, not the object reference
   }, [shouldReconnect]);
 
   // this is the socket we return

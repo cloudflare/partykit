@@ -24,7 +24,7 @@ if (!globalThis.EventTarget || !globalThis.Event) {
 export class ErrorEvent extends Event {
   public message: string;
   public error: Error;
-  // biome-ignore lint/suspicious/noExplicitAny: vibes
+  // oxlint-disable-next-line no-explicit-any
   constructor(error: Error, target: any) {
     super("error", target);
     this.message = error.message;
@@ -36,7 +36,7 @@ export class CloseEvent extends Event {
   public code: number;
   public reason: string;
   public wasClean = true;
-  // biome-ignore lint/suspicious/noExplicitAny: legacy
+  // oxlint-disable-next-line no-explicit-any
   constructor(code = 1000, reason = "", target: any) {
     super("close", target);
     this.code = code;
@@ -63,7 +63,7 @@ function assert(condition: unknown, msg?: string): asserts condition {
 }
 
 function cloneEventBrowser(e: Event) {
-  // biome-ignore lint/suspicious/noExplicitAny: legacy
+  // oxlint-disable-next-line no-explicit-any
   return new (e as any).constructor(e.type, e) as Event;
 }
 
@@ -107,7 +107,7 @@ const isReactNative =
 const cloneEvent = isNode || isReactNative ? cloneEventNode : cloneEventBrowser;
 
 export type Options = {
-  // biome-ignore lint/suspicious/noExplicitAny: legacy
+  // oxlint-disable-next-line no-explicit-any
   WebSocket?: any;
   maxReconnectionDelay?: number;
   minReconnectionDelay?: number;
@@ -118,7 +118,7 @@ export type Options = {
   maxEnqueuedMessages?: number;
   startClosed?: boolean;
   debug?: boolean;
-  // biome-ignore lint/suspicious/noExplicitAny: legacy
+  // oxlint-disable-next-line no-explicit-any
   debugLogger?: (...args: any[]) => void;
 };
 

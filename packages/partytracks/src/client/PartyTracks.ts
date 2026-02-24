@@ -667,7 +667,7 @@ function waitForTransceiverToSendData(
   onDataSent: () => void
 ): () => void {
   let delay = 1; // Start at 5ms
-  // biome-ignore lint/correctness/noUnusedVariables: why is this unused?
+  // oxlint-disable-next-line no-unused-vars
   let checks = 0;
   const maxDelay = 100; // Max delay of 100ms
   let timeoutId: number | undefined;
