@@ -95,8 +95,7 @@ function cloneEventNode(e: Event) {
 
 const isNode =
   typeof process !== "undefined" &&
-  typeof process.versions?.node !== "undefined" &&
-  typeof document === "undefined";
+  typeof process.versions?.node !== "undefined";
 
 // React Native has process and document polyfilled but not process.versions.node
 // It needs Node-style event cloning because browser-style cloning produces
