@@ -9,7 +9,7 @@ export class MonacoServer extends YServer {
   };
   async onStart(): Promise<void> {
     console.log("onStart");
-    super.onStart();
+    await super.onStart();
   }
 }
 
