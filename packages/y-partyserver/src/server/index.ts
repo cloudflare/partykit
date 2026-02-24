@@ -76,6 +76,18 @@ class WSSharedDoc extends YDoc {
     super({ gc: true });
     this.awareness = new awarenessProtocol.Awareness(this);
     this.awareness.setLocalState(null);
+
+    // Disable the awareness protocol's built-in check interval.
+    // It renews the local clock every 15s and removes peers after 30s,
+    // but we handle peer cleanup via onClose instead. Clearing it here
+    // prevents it from defeating Durable Object hibernation.
+    clearInterval(
+      (
+        this.awareness as unknown as {
+          _checkInterval: ReturnType<typeof setInterval>;
+        }
+      )._checkInterval
+    );
   }
 }
 
@@ -302,6 +314,18 @@ export class YServer<
         }
       )
     );
+
+    // After hibernation wake-up, the doc is empty but existing connections
+    // survive. Re-sync by sending sync step 1 to all connections — they'll
+    // respond with sync step 2 containing their full state.
+    // On first start there are no connections, so this is a no-op.
+    const syncEncoder = encoding.createEncoder();
+    encoding.writeVarUint(syncEncoder, messageSync);
+    syncProtocol.writeSyncStep1(syncEncoder, this.document);
+    const syncMessage = encoding.toUint8Array(syncEncoder);
+    for (const conn of this.getConnections()) {
+      send(conn, syncMessage);
+    }
   }
 
   // biome-ignore lint/correctness/noUnusedFunctionParameters: so autocomplete works
