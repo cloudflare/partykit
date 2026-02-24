@@ -25,3 +25,22 @@ This is the main repository for PartyServer. It contains the following packages:
 We have a set of small examples for PartyServer in the [`fixtures`](/fixtures/) directory. These are small, self-contained examples that demonstrate how to use PartyServer in different ways. We will expand this repository with broader (and deeper!) examples in the future.
 
 Reach out to [@threepointone on twitter](https://twitter.com/threepointone) or the [Cloudflare Workers Discord](https://discord.com/invite/cloudflaredev) to follow progress, and if you have any questions or feedback.
+
+
+## Installation
+
+```bash
+# Installation instructions
+```
+
+
+## Usage
+
+```python
+# Usage examples
+```
+
+
+## Contributing
+
+Contributions are welcome!
