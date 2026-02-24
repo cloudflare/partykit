@@ -27,14 +27,14 @@ type YjsRootType =
 
 const wsReadyStateConnecting = 0;
 const wsReadyStateOpen = 1;
-// biome-ignore lint/correctness/noUnusedVariables: it's fine
+// oxlint-disable-next-line no-unused-vars
 const wsReadyStateClosing = 2;
-// biome-ignore lint/correctness/noUnusedVariables: it's fine
+// oxlint-disable-next-line no-unused-vars
 const wsReadyStateClosed = 3;
 
 const messageSync = 0;
 const messageAwareness = 1;
-// biome-ignore lint/correctness/noUnusedVariables: it's fine
+// oxlint-disable-next-line no-unused-vars
 const messageAuth = 2;
 
 /**
@@ -328,7 +328,7 @@ export class YServer<
     }
   }
 
-  // biome-ignore lint/correctness/noUnusedFunctionParameters: so autocomplete works
+  // oxlint-disable-next-line no-unused-vars
   isReadOnly(connection: Connection): boolean {
     // to be implemented by the user
     return false;
@@ -340,7 +340,7 @@ export class YServer<
    * @param connection - The connection that sent the message
    * @param message - The custom message string (without the __YPS: prefix)
    */
-  // biome-ignore lint/correctness/noUnusedFunctionParameters: so autocomplete works
+  // oxlint-disable-next-line no-unused-vars
   onCustomMessage(connection: Connection, message: string): void {
     // to be implemented by the user
     console.warn(

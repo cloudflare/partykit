@@ -124,7 +124,6 @@ export const createLazyConnection = (
 
   // if state was set on the socket before initializing the connection,
   // capture it here so we can persist it again
-  // biome-ignore lint/suspicious/noImplicitAnyLet: it's fine
   let initialState;
   if ("state" in ws) {
     initialState = ws.state;
@@ -214,11 +213,9 @@ class HibernatingConnectionIterator<T> implements IterableIterator<
 
   next(): IteratorResult<Connection<T>, number | undefined> {
     const sockets =
-      // biome-ignore lint/suspicious/noAssignInExpressions: it's fine
       this.sockets ?? (this.sockets = this.state.getWebSockets(this.tag));
 
     let socket: WebSocket;
-    // biome-ignore lint/suspicious/noAssignInExpressions: it's fine
     while ((socket = sockets[this.index++])) {
       // only yield open sockets to match non-hibernating behaviour
       if (socket.readyState === WebSocket.READY_STATE_OPEN) {

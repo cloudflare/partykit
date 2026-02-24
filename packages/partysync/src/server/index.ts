@@ -27,9 +27,9 @@ export class SyncServer<
   };
 
   onAction<Channel extends keyof TChannels>(
-    // biome-ignore lint/correctness/noUnusedFunctionParameters: for autocomplete
+    // oxlint-disable-next-line no-unused-vars
     channel: Channel,
-    // biome-ignore lint/correctness/noUnusedFunctionParameters: for autocomplete
+    // oxlint-disable-next-line no-unused-vars
     action: TChannels[typeof channel]["action"]
   ): TChannels[Channel]["record"][] | Promise<TChannels[Channel]["record"][]> {
     throw new Error(

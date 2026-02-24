@@ -5,7 +5,7 @@
     "check:test": "(cd tests; vitest --no-watch)",
     "prebuild": "rm -rf dist",
     "build": "tsx scripts/build.ts",
-    "postbuild": "prettier --write ./dist/*/**.d.ts"
+    "postbuild": "oxfmt ./dist/*/**.d.ts"
   },
   "exports": {
     "./client": {

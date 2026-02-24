@@ -16,7 +16,7 @@ import usePartySocket, { useWebSocket } from "../react";
 // jsdom 28 replaces the global Event class, which breaks Node's native
 // WebSocket (undici) dispatchEvent. Override the global WebSocket with the
 // `ws` package so all sockets in this file bypass the conflict.
-// biome-ignore lint/suspicious/noExplicitAny: test-only override
+// oxlint-disable-next-line no-explicit-any
 globalThis.WebSocket = WS as any;
 
 const PORT = 50128;

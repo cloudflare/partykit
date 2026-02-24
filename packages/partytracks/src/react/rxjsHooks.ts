@@ -26,6 +26,7 @@ export function useObservableAsValue<T>(
   const [state, setState] = useState(defaultValue);
   useEffect(() => {
     setState(defaultValue);
+    // oxlint-disable-next-line react-hooks/exhaustive-deps -- observable is stable
   }, [observable]);
   useObservable(observable, { next: setState });
   return state!;

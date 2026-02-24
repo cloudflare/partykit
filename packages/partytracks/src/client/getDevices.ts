@@ -57,7 +57,7 @@ const getDevice = ({
 }: GetDeviceOptions) => {
   return ({
     activateSource = true,
-    transformations,
+    transformations: _transformations,
     retainIdleTrack,
     onDeviceFailure,
     broadcasting,

@@ -43,7 +43,7 @@ function generateUUID(): string {
   }
   let d = Date.now(); //Timestamp
   let d2 = (performance?.now && performance.now() * 1000) || 0; //Time in microseconds since page-load or 0 if unsupported
-  // biome-ignore lint/complexity/useArrowFunction: it's fine
+  // oxlint-disable-next-line func-style
   return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (c) {
     let r = Math.random() * 16; //random number between 0 and 16
     if (d > 0) {

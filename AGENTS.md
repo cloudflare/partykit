@@ -22,9 +22,9 @@ PartyServer is a **monorepo** using npm workspaces with multiple packages:
 ```bash
 npm run build              # Build all packages
 npm run check              # Run all checks (format, lint, type, test)
-npm run format             # Format code with Prettier
-npm run check:format       # Check code formatting
-npm run check:lint         # Run Biome linter
+npm run format             # Format code with Oxfmt
+npm run check:format       # Check code formatting with Oxfmt
+npm run check:lint         # Run Oxlint linter
 npm run check:type         # Type-check all packages
 npm run check:test         # Run all tests
 npm run check:repo         # Run sherif (monorepo consistency)
@@ -57,20 +57,22 @@ npx vitest reconnecting
 
 ### Formatting
 
-- **Formatter**: Prettier (NOT Biome formatter - it's disabled)
+- **Formatter**: Oxfmt (configured in `.oxfmtrc.json`)
 - **Quote style**: Double quotes (`"`)
 - **Trailing commas**: None
-- **Line length**: Default Prettier settings
+- **Print width**: 80
 - Run `npm run format` before committing
 
 ### Linting
 
-- **Linter**: Biome (configured in `biome.json`)
-- Recommended rules enabled with specific overrides:
-  - `noNonNullAssertion`: off (non-null assertions allowed)
-  - `noParameterAssign`: off (parameter reassignment allowed)
-  - `noForEach`: off (forEach allowed)
-  - `noRedeclare`: off
+- **Linter**: Oxlint (configured in `.oxlintrc.json`)
+- Plugins: `react`, `jsx-a11y`, `typescript`, `react-hooks`
+- Key rules:
+  - `no-explicit-any`: off
+  - `no-non-null-assertion`: off
+  - `no-redeclare`: off
+  - `no-unused-vars`: error (with `^_` ignore patterns for args/vars/caught)
+  - `react-hooks/exhaustive-deps`: warn
 - Run `npm run check:lint` to verify
 
 ### TypeScript
@@ -139,9 +141,9 @@ function assert(condition: unknown, msg?: string): asserts condition {
 - Use `// TODO:` for action items
 - Use JSDoc for public API documentation
 - Prefer descriptive names over comments
-- Use `biome-ignore` or `@ts-expect-error` with explanations when necessary:
+- Use `oxlint-disable-next-line` or `@ts-expect-error` with explanations when necessary:
   ```typescript
-  // biome-ignore lint/suspicious/noExplicitAny: legacy code
+  // oxlint-disable-next-line no-explicit-any
   // @ts-expect-error ws types are weird
   ```
 
@@ -173,7 +175,7 @@ function assert(condition: unknown, msg?: string): asserts condition {
 
 - Dual format: ESM and CommonJS
 - Generate both `.d.ts` and `.d.cts` declaration files
-- Run prettier on generated output files (handled by build scripts)
+- Run oxfmt on generated output files (handled by build scripts)
 - Use `tsdown` for building packages
 - Verify exports with `scripts/check-exports.ts`
 
