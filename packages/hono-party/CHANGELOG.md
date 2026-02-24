@@ -1,5 +1,11 @@
 # hono-party
 
+## 2.0.2
+
+### Patch Changes
+
+- [#343](https://github.com/cloudflare/partykit/pull/343) [`c59d33d`](https://github.com/cloudflare/partykit/commit/c59d33d3296983e94a51126cf5bdb650679bb002) Thanks [@threepointone](https://github.com/threepointone)! - update deps
+
 ## 2.0.1
 
 ### Patch Changes

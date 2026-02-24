@@ -10,9 +10,9 @@
   "dependencies": {
     "nanoid": "^5.1.6",
     "partyfn": "^0.1.0",
-    "partyserver": "^0.3.0",
-    "partysocket": "^1.1.15",
-    "partysync": "^2.0.0",
+    "partyserver": "^0.3.1",
+    "partysocket": "^1.1.16",
+    "partysync": "^2.0.1",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "valibot": "^1.2.0"

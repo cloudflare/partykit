@@ -1,6 +1,6 @@
 {
   "name": "y-partyserver",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "",
   "keywords": [
     "collaboration",
@@ -52,7 +52,7 @@
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20260303.0",
     "@types/lodash.debounce": "^4.0.9",
-    "partyserver": ">=0.2.0 <1.0.0",
+    "partyserver": ">=0.3.1",
     "ws": "^8.19.0",
     "yjs": "^13.6.29"
   },
