@@ -1,6 +1,6 @@
 {
   "name": "partysub",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "repository": {
     "type": "git",
     "url": "git://github.com/cloudflare/partykit.git"
@@ -46,7 +46,7 @@
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20260303.0",
-    "partyserver": ">=0.2.0 <1.0.0",
-    "partysocket": "^1.1.15"
+    "partyserver": ">=0.3.1",
+    "partysocket": "^1.1.16"
   }
 }

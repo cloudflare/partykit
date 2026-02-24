@@ -1,5 +1,11 @@
 # partyflare
 
+## 0.3.1
+
+### Patch Changes
+
+- [#343](https://github.com/cloudflare/partykit/pull/343) [`c59d33d`](https://github.com/cloudflare/partykit/commit/c59d33d3296983e94a51126cf5bdb650679bb002) Thanks [@threepointone](https://github.com/threepointone)! - update deps
+
 ## 0.3.0
 
 ### Minor Changes
@@ -274,12 +280,14 @@
 ### Patch Changes
 
 - [`528adea`](https://github.com/threepointone/partyserver/commit/528adeaced6dce6e888d2f54cc75c3569bf2c277) Thanks [@threepointone](https://github.com/threepointone)! - some fixes and tweaks
+
   - getServerByName was throwing on all requests
   - `Env` is now an optional arg when defining `Server`
   - `y-partyserver/provider` can now take an optional `prefix` arg to use a custom url to connect
   - `routePartyKitRequest`/`getServerByName` now accepts `jurisdiction`
 
   bonus:
+
   - added a bunch of fixtures
   - added stubs for docs
 
