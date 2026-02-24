@@ -507,6 +507,139 @@ describe("Server restart — custom messages (hibernate: true)", () => {
   });
 });
 
+describe("Server restart — onStart re-sync (hibernate: true)", () => {
+  it("onStartCount increments on each restart", async () => {
+    const room = `tracker-restart-${Date.now()}`;
+
+    const doc = new Y.Doc();
+    const provider = createProvider(room, {
+      doc,
+      party: "y-hibernate-tracker"
+    });
+    await waitForSync(provider);
+
+    // Initial onStart should have been called once
+    const res1 = await fetch(
+      `http://localhost:${PORT}/parties/y-hibernate-tracker/${room}`
+    );
+    const data1 = (await res1.json()) as { onStartCount: number };
+    expect(data1.onStartCount).toBe(1);
+
+    doc.getText("shared").insert(0, "before-restart");
+    await new Promise((r) => setTimeout(r, 300));
+
+    const reconnect = waitForReconnectAndSync(provider);
+    await server.restart();
+    await reconnect;
+
+    // After restart, onStartCount should be 2
+    const res2 = await fetch(
+      `http://localhost:${PORT}/parties/y-hibernate-tracker/${room}`
+    );
+    const data2 = (await res2.json()) as { onStartCount: number };
+    expect(data2.onStartCount).toBe(2);
+
+    // Data should have survived via client re-sync
+    expect(doc.getText("shared").toString()).toBe("before-restart");
+
+    // New client should also see the re-synced data
+    const doc2 = new Y.Doc();
+    const provider2 = createProvider(room, {
+      doc: doc2,
+      party: "y-hibernate-tracker"
+    });
+    await waitForSync(provider2);
+    await new Promise((r) => setTimeout(r, 500));
+    expect(doc2.getText("shared").toString()).toBe("before-restart");
+  });
+
+  it("multiple clients re-sync and stay converged after restart", async () => {
+    const room = `tracker-multi-restart-${Date.now()}`;
+
+    const docA = new Y.Doc();
+    const providerA = createProvider(room, {
+      doc: docA,
+      party: "y-hibernate-tracker"
+    });
+    await waitForSync(providerA);
+
+    const docB = new Y.Doc();
+    const providerB = createProvider(room, {
+      doc: docB,
+      party: "y-hibernate-tracker"
+    });
+    await waitForSync(providerB);
+    await new Promise((r) => setTimeout(r, 300));
+
+    // Both edit
+    docA.getText("shared").insert(0, "A-data");
+    await new Promise((r) => setTimeout(r, 200));
+    docB.getText("shared").insert(docB.getText("shared").length, "+B-data");
+    await new Promise((r) => setTimeout(r, 500));
+
+    const beforeA = docA.getText("shared").toString();
+    expect(beforeA).toBe(docB.getText("shared").toString());
+
+    const reconnectA = waitForReconnectAndSync(providerA);
+    const reconnectB = waitForReconnectAndSync(providerB);
+    await server.restart();
+    await Promise.all([reconnectA, reconnectB]);
+    await new Promise((r) => setTimeout(r, 1000));
+
+    // Both should still have the same converged content
+    expect(docA.getText("shared").toString()).toContain("A-data");
+    expect(docA.getText("shared").toString()).toContain("B-data");
+    expect(docA.getText("shared").toString()).toBe(
+      docB.getText("shared").toString()
+    );
+
+    // Continue collaborating after restart
+    const updateReceived = new Promise<void>((resolve) => {
+      docB.on("update", () => {
+        if (docB.getText("shared").toString().includes("post-restart")) {
+          resolve();
+        }
+      });
+    });
+    docA
+      .getText("shared")
+      .insert(docA.getText("shared").length, "+post-restart");
+    await updateReceived;
+
+    expect(docB.getText("shared").toString()).toContain("post-restart");
+  });
+
+  it("new client gets re-synced state after restart", async () => {
+    const room = `tracker-newclient-restart-${Date.now()}`;
+
+    const doc = new Y.Doc();
+    const provider = createProvider(room, {
+      doc,
+      party: "y-hibernate-tracker"
+    });
+    await waitForSync(provider);
+
+    doc.getText("shared").insert(0, "existing-data");
+    await new Promise((r) => setTimeout(r, 300));
+
+    const reconnect = waitForReconnectAndSync(provider);
+    await server.restart();
+    await reconnect;
+
+    // New client connects after restart — should get state
+    // re-synced from the surviving provider
+    const doc2 = new Y.Doc();
+    const provider2 = createProvider(room, {
+      doc: doc2,
+      party: "y-hibernate-tracker"
+    });
+    await waitForSync(provider2);
+    await new Promise((r) => setTimeout(r, 500));
+
+    expect(doc2.getText("shared").toString()).toBe("existing-data");
+  });
+});
+
 describe("Server restart — seeded documents (hibernate: true)", () => {
   it("onLoad-returned YDoc is re-seeded after restart", async () => {
     const room = `restart-seeded-${Date.now()}`;

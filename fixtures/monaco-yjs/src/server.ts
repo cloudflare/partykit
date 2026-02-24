@@ -1,7 +1,17 @@
 import { routePartykitRequest } from "partyserver";
 import { YServer } from "y-partyserver";
 
-export { YServer as MonacoServer };
+// export { YServer as MonacoServer };
+
+export class MonacoServer extends YServer {
+  static options = {
+    hibernate: true
+  };
+  async onStart(): Promise<void> {
+    console.log("onStart");
+    super.onStart();
+  }
+}
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {

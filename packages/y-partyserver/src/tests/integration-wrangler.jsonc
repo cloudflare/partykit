@@ -28,6 +28,10 @@
       {
         "name": "YCallbackOptions",
         "class_name": "YCallbackOptions"
+      },
+      {
+        "name": "YHibernateTracker",
+        "class_name": "YHibernateTracker"
       }
     ]
   },
@@ -42,6 +46,10 @@
         "YOnLoadReturnsDoc",
         "YCallbackOptions"
       ]
+    },
+    {
+      "tag": "v2",
+      "new_sqlite_classes": ["YHibernateTracker"]
     }
   ]
 }

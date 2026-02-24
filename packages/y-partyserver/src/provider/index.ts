@@ -19,12 +19,6 @@ export const messageAuth = 2;
 // Disable BroadcastChannel by default in Cloudflare Workers / Node
 const DEFAULT_DISABLE_BC = typeof window === "undefined";
 
-function assert(condition: unknown, message: string): asserts condition {
-  if (!condition) {
-    throw new Error(message);
-  }
-}
-
 const messageHandlers: Array<
   (
     encoder: encoding.Encoder,
@@ -100,9 +94,6 @@ messageHandlers[messageAuth] = (
     permissionDeniedHandler(provider, reason)
   );
 };
-
-// @todo - this should depend on awareness.outdatedTime
-const messageReconnectTimeout = 30000;
 
 function permissionDeniedHandler(provider: WebsocketProvider, reason: string) {
   console.warn(`Permission denied to access ${provider.url}.\n${reason}`);
@@ -290,7 +281,6 @@ export class WebsocketProvider extends Observable<string> {
   _updateHandler: (update: Uint8Array, origin: unknown) => void;
   _awarenessUpdateHandler: (update: AwarenessUpdate, origin: unknown) => void;
   _unloadHandler: () => void;
-  _checkInterval: ReturnType<typeof setInterval> | number;
 
   constructor(
     serverUrl: string,
@@ -407,19 +397,23 @@ export class WebsocketProvider extends Observable<string> {
     ) {
       process.on("exit", this._unloadHandler);
     }
-    awareness.on("update", this._awarenessUpdateHandler);
-    this._checkInterval = /** @type {any} */ setInterval(() => {
-      if (
-        this.wsconnected &&
-        messageReconnectTimeout <
-          time.getUnixTime() - this.wsLastMessageReceived
-      ) {
-        assert(this.ws !== null, "ws must not be null");
-        // no message received in a long time - not even your own awareness
-        // updates (which are updated every 15 seconds)
-        this.ws.close();
-      }
-    }, messageReconnectTimeout / 10);
+    // Listen on 'change' (not 'update') so that clock-only awareness
+    // renewals (the 15-second heartbeat) do NOT produce network traffic.
+    // Only actual state changes (cursor moved, name changed, etc.) are sent.
+    // This allows Durable Objects to hibernate when sessions are idle.
+    awareness.on("change", this._awarenessUpdateHandler);
+
+    // Disable the awareness protocol's built-in check interval.
+    // It renews the local clock every 15s (causing wire traffic that defeats
+    // DO hibernation) and removes remote peers after 30s of inactivity.
+    // We handle peer cleanup via WebSocket close events instead.
+    clearInterval(
+      (
+        awareness as unknown as {
+          _checkInterval: ReturnType<typeof setInterval>;
+        }
+      )._checkInterval
+    );
     if (connect) {
       this.connect();
     }
@@ -444,7 +438,6 @@ export class WebsocketProvider extends Observable<string> {
     if (this._resyncInterval !== 0) {
       clearInterval(this._resyncInterval);
     }
-    clearInterval(this._checkInterval);
     this.disconnect();
     if (typeof window !== "undefined") {
       window.removeEventListener("unload", this._unloadHandler);
@@ -454,7 +447,7 @@ export class WebsocketProvider extends Observable<string> {
     ) {
       process.off("exit", this._unloadHandler);
     }
-    this.awareness.off("update", this._awarenessUpdateHandler);
+    this.awareness.off("change", this._awarenessUpdateHandler);
     this.doc.off("update", this._updateHandler);
     super.destroy();
   }

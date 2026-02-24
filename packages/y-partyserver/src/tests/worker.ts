@@ -15,6 +15,7 @@ export type Env = {
   YCustomMessage: DurableObjectNamespace<YCustomMessage>;
   YOnLoadReturnsDoc: DurableObjectNamespace<YOnLoadReturnsDoc>;
   YCallbackOptions: DurableObjectNamespace<YCallbackOptions>;
+  YHibernateTracker: DurableObjectNamespace<YHibernateTracker>;
 };
 
 // ---------------------------------------------------------------------------
@@ -160,6 +161,26 @@ export class YCallbackOptions extends YServer {
   // Expose saveCount via HTTP for testing
   onRequest(): Response {
     return Response.json({ saveCount: this.saveCount });
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 7. YServer that tracks onStart calls via storage — detects hibernation
+// ---------------------------------------------------------------------------
+export class YHibernateTracker extends YServer {
+  static options = {
+    hibernate: true
+  };
+
+  async onStart() {
+    const count = (await this.ctx.storage.get<number>("onStartCount")) ?? 0;
+    await this.ctx.storage.put("onStartCount", count + 1);
+    return super.onStart();
+  }
+
+  async onRequest(): Promise<Response> {
+    const count = (await this.ctx.storage.get<number>("onStartCount")) ?? 0;
+    return Response.json({ onStartCount: count });
   }
 }
 

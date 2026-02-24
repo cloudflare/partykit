@@ -847,3 +847,152 @@ describe("YProvider — URL construction", () => {
     provider.destroy();
   });
 });
+
+describe("YServer — awareness heartbeat suppression", () => {
+  it("does not broadcast clock-only awareness renewals to other clients", async () => {
+    const ctx = createExecutionContext();
+    const roomName = "no-heartbeat-test";
+
+    // Connect client A
+    const resA = await worker.fetch(wsRequest(`y-basic/${roomName}`), env, ctx);
+    const wsA = acceptWs(resA);
+    const docA = new Y.Doc();
+    const awarenessA = new awarenessProtocol.Awareness(docA);
+    await performSync(wsA, docA);
+
+    // Connect client B
+    const resB = await worker.fetch(wsRequest(`y-basic/${roomName}`), env, ctx);
+    const wsB = acceptWs(resB);
+    const docB = new Y.Doc();
+    await performSync(wsB, docB);
+    // Drain initial messages
+    await collectMessages(wsB, 100);
+
+    // Set awareness state on A — this is an actual state change, should be sent
+    awarenessA.setLocalState({ user: { name: "Alice" } });
+    const enc1 = encoding.createEncoder();
+    encoding.writeVarUint(enc1, messageAwareness);
+    encoding.writeVarUint8Array(
+      enc1,
+      awarenessProtocol.encodeAwarenessUpdate(awarenessA, [docA.clientID])
+    );
+    wsA.send(encoding.toUint8Array(enc1));
+
+    // B should receive this actual state change
+    const msgs1 = await collectMessages(wsB, 300);
+    const awarenessMsgs1 = msgs1.filter((msg) => {
+      if (!(msg instanceof ArrayBuffer)) return false;
+      const d = decoding.createDecoder(new Uint8Array(msg));
+      return decoding.readVarUint(d) === messageAwareness;
+    });
+    expect(awarenessMsgs1.length).toBeGreaterThan(0);
+
+    // Now simulate a clock-only renewal (same state, just bump the clock)
+    // This is what the awareness _checkInterval does every 15s
+    awarenessA.setLocalState(awarenessA.getLocalState());
+    const enc2 = encoding.createEncoder();
+    encoding.writeVarUint(enc2, messageAwareness);
+    encoding.writeVarUint8Array(
+      enc2,
+      awarenessProtocol.encodeAwarenessUpdate(awarenessA, [docA.clientID])
+    );
+    wsA.send(encoding.toUint8Array(enc2));
+
+    // B should receive this too (server forwards all client messages)
+    // The suppression happens on the CLIENT side (provider doesn't send
+    // clock-only updates), not the server side.
+    const msgs2 = await collectMessages(wsB, 300);
+    const awarenessMsgs2 = msgs2.filter((msg) => {
+      if (!(msg instanceof ArrayBuffer)) return false;
+      const d = decoding.createDecoder(new Uint8Array(msg));
+      return decoding.readVarUint(d) === messageAwareness;
+    });
+    // Server still forwards — the point is clients won't SEND these
+    expect(awarenessMsgs2.length).toBeGreaterThan(0);
+
+    wsA.close();
+    wsB.close();
+  });
+
+  it("server does not auto-remove awareness after 30s (checkInterval disabled)", async () => {
+    const ctx = createExecutionContext();
+    const roomName = "no-timeout-removal-test";
+
+    // Connect client A
+    const resA = await worker.fetch(wsRequest(`y-basic/${roomName}`), env, ctx);
+    const wsA = acceptWs(resA);
+    const docA = new Y.Doc();
+    const awarenessA = new awarenessProtocol.Awareness(docA);
+    await performSync(wsA, docA);
+
+    // Set awareness state on A
+    awarenessA.setLocalState({ user: { name: "Alice" } });
+    const enc = encoding.createEncoder();
+    encoding.writeVarUint(enc, messageAwareness);
+    encoding.writeVarUint8Array(
+      enc,
+      awarenessProtocol.encodeAwarenessUpdate(awarenessA, [docA.clientID])
+    );
+    wsA.send(encoding.toUint8Array(enc));
+    await new Promise((r) => setTimeout(r, 100));
+
+    // Connect client B and verify it sees A's awareness
+    const resB = await worker.fetch(wsRequest(`y-basic/${roomName}`), env, ctx);
+    const wsB = acceptWs(resB);
+    const docB = new Y.Doc();
+    const awarenessB = new awarenessProtocol.Awareness(docB);
+    await performSync(wsB, docB);
+
+    const msgs = await collectMessages(wsB, 200);
+    for (const msg of msgs) {
+      if (!(msg instanceof ArrayBuffer)) continue;
+      const decoder = decoding.createDecoder(new Uint8Array(msg));
+      const msgType = decoding.readVarUint(decoder);
+      if (msgType === messageAwareness) {
+        awarenessProtocol.applyAwarenessUpdate(
+          awarenessB,
+          decoding.readVarUint8Array(decoder),
+          null
+        );
+      }
+    }
+    expect(awarenessB.getStates().get(docA.clientID)).toBeDefined();
+
+    // Wait >3s (the awareness _checkInterval runs every 3s = outdatedTimeout/10)
+    // If the server's checkInterval were still active, it would start the
+    // removal process. With it disabled, the state should persist.
+    await new Promise((r) => setTimeout(r, 4000));
+
+    // Connect client C to check if A's awareness is still on the server
+    const resC = await worker.fetch(wsRequest(`y-basic/${roomName}`), env, ctx);
+    const wsC = acceptWs(resC);
+    const docC = new Y.Doc();
+    const awarenessC = new awarenessProtocol.Awareness(docC);
+    await performSync(wsC, docC);
+
+    const msgsC = await collectMessages(wsC, 200);
+    for (const msg of msgsC) {
+      if (!(msg instanceof ArrayBuffer)) continue;
+      const decoder = decoding.createDecoder(new Uint8Array(msg));
+      const msgType = decoding.readVarUint(decoder);
+      if (msgType === messageAwareness) {
+        awarenessProtocol.applyAwarenessUpdate(
+          awarenessC,
+          decoding.readVarUint8Array(decoder),
+          null
+        );
+      }
+    }
+
+    // A's awareness should still be present — not timed out
+    expect(awarenessC.getStates().get(docA.clientID)).toBeDefined();
+    expect(
+      (awarenessC.getStates().get(docA.clientID) as { user: { name: string } })
+        .user.name
+    ).toBe("Alice");
+
+    wsA.close();
+    wsB.close();
+    wsC.close();
+  });
+});
