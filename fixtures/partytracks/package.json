@@ -8,11 +8,11 @@
     "types": "wrangler types env.d.ts --include-runtime false"
   },
   "dependencies": {
-    "hono": "^4.11.1",
+    "hono": "^4.12.2",
     "partytracks": "^0.0.55",
     "rxjs": "^7.8.2"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20251218.0"
+    "@cloudflare/workers-types": "^4.20260303.0"
   }
 }

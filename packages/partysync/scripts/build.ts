@@ -8,7 +8,7 @@ await build({
     "src/react/index.tsx",
     "src/agent/index.ts"
   ],
-  external: ["cloudflare:workers"],
+  external: ["cloudflare:workers", "partysocket", "partyfn"],
   sourcemap: true,
   clean: true,
   format: "esm",

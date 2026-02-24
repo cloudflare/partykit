@@ -23,18 +23,20 @@
   <body>
     <video muted autoplay id="local-video"></video>
     <video muted autoplay id="remote-video"></video>
-    <audio id="audio"></audio>
+    <audio id="audio">
+      <track kind="captions" src="" srclang="en" label="English" />
+    </audio>
     <select id="mic-select"></select>
     <select id="camera-select"></select>
-    <button id="mic-broadcast-button"></button>
-    <button id="mic-enabled-button"></button>
-    <button id="camera-broadcast-button"></button>
-    <button id="camera-enabled-button"></button>
+    <button id="mic-broadcast-button" type="button"></button>
+    <button id="mic-enabled-button" type="button"></button>
+    <button id="camera-broadcast-button" type="button"></button>
+    <button id="camera-enabled-button" type="button"></button>
     <hr />
     <video muted autoplay id="local-screenshare-video"></video>
     <video muted autoplay id="remote-screenshare-video"></video>
-    <button id="screenshare-broadcast-button"></button>
-    <button id="screenshare-source-enabled-button"></button>
+    <button id="screenshare-broadcast-button" type="button"></button>
+    <button id="screenshare-source-enabled-button" type="button"></button>
     <script type="module" src="/src/client.tsx"></script>
   </body>
 </html>

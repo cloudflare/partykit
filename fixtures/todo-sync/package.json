@@ -1,7 +1,7 @@
 {
   "name": "@partyserver/fixture-todo-sync",
-  "private": true,
   "version": "0.0.11",
+  "private": true,
   "type": "module",
   "scripts": {
     "start": "vite dev",
@@ -9,15 +9,17 @@
   },
   "dependencies": {
     "nanoid": "^5.1.6",
+    "partyfn": "^0.1.0",
     "partyserver": "^0.3.0",
     "partysocket": "^1.1.15",
-    "react": "^19.2.3",
-    "react-dom": "^19.2.3",
+    "partysync": "^2.0.0",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
     "valibot": "^1.2.0"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20251218.0",
-    "@types/react": "^19.2.7",
+    "@cloudflare/workers-types": "^4.20260303.0",
+    "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3"
   }
 }
