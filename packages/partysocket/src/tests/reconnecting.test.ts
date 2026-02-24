@@ -862,15 +862,17 @@ testDone("reconnection delay grow factor", (done) => {
   });
 });
 
-testDone("minUptime", (done) => {
+testDone("minUptime", (done, fail) => {
   const ws = new ReconnectingWebSocket(URL, [], {
     minReconnectionDelay: 50,
     maxReconnectionDelay: 1000,
     reconnectionDelayGrowFactor: 2,
-    minUptime: 250
+    minUptime: 75
   });
-  const expectedDelays = [50, 100, 100, 200, 50, 50];
-  const expectedRetryCount = [1, 2, 3, 4, 1, 1];
+  // Connections 1-3 last 20/40/60ms (< 75ms minUptime) → retries grow.
+  // Connections 4-6 last 80/100/120ms (> 75ms) → _acceptOpen resets retryCount.
+  const expectedDelays = [50, 100, 200, 50, 50, 50];
+  const expectedRetryCount = [1, 2, 3, 1, 1, 1];
   let connectionCount = 0;
 
   function onConnection(client: NodeWebSocket) {
@@ -895,10 +897,15 @@ testDone("minUptime", (done) => {
   let closeCount = 0;
   ws.addEventListener("close", () => {
     if (closeCount < expectedDelays.length) {
-      // @ts-expect-error - accessing private field
-      expect(ws._getNextDelay()).toBe(expectedDelays[closeCount]);
-      // @ts-expect-error - accessing private field
-      expect(ws._retryCount).toBe(expectedRetryCount[closeCount]);
+      try {
+        // @ts-expect-error - accessing private field
+        expect(ws._getNextDelay()).toBe(expectedDelays[closeCount]);
+        // @ts-expect-error - accessing private field
+        expect(ws._retryCount).toBe(expectedRetryCount[closeCount]);
+      } catch (e) {
+        fail(e);
+        return;
+      }
       closeCount++;
     }
   });
