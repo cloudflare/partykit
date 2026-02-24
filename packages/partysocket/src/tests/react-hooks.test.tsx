@@ -5,13 +5,24 @@
 import { renderHook, waitFor } from "@testing-library/react";
 import React from "react";
 import { afterAll, beforeAll, describe, expect, test, vitest } from "vitest";
-import { type WebSocket as WsWebSocket, WebSocketServer } from "ws";
+import {
+  WebSocket as WS,
+  type WebSocket as WsWebSocket,
+  WebSocketServer
+} from "ws";
 
 import usePartySocket, { useWebSocket } from "../react";
+
+// jsdom 28 replaces the global Event class, which breaks Node's native
+// WebSocket (undici) dispatchEvent. Override the global WebSocket with the
+// `ws` package so all sockets in this file bypass the conflict.
+// biome-ignore lint/suspicious/noExplicitAny: test-only override
+globalThis.WebSocket = WS as any;
 
 const PORT = 50128;
 
 const FAST_RECONNECT = {
+  WebSocket: WS,
   minReconnectionDelay: 50,
   maxReconnectionDelay: 200,
   connectionTimeout: 2000
@@ -1401,7 +1412,8 @@ describe.skipIf(!!process.env.GITHUB_ACTIONS)(
         () =>
           usePartySocket({
             host: "example.com",
-            room: "test-room"
+            room: "test-room",
+            WebSocket: WS
           }),
         { wrapper: strictModeWrapper }
       );

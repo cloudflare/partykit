@@ -1,5 +1,5 @@
 /**
- * @vitest-environment jsdom
+ * @vitest-environment node
  */
 
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
