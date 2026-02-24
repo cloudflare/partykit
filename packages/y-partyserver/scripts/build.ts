@@ -10,13 +10,16 @@ await build({
   external: ["cloudflare:workers"],
   sourcemap: true,
   clean: true,
-  format: "esm",
+  format: ["esm", "cjs"],
   dts: true,
   skipNodeModulesBundle: true,
   fixedExtension: false
 });
 
-// then run oxfmt on the generated .d.ts files
+// then run oxfmt on the generated files
+execSync("oxfmt ./dist/**/*.d.cts");
 execSync("oxfmt ./dist/**/*.d.ts");
+execSync("oxfmt ./dist/**/*.cjs");
+execSync("oxfmt ./dist/**/*.js");
 
 process.exit(0);

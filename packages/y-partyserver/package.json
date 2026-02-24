@@ -21,19 +21,31 @@
   "type": "module",
   "exports": {
     ".": {
-      "types": "./dist/server/index.d.ts",
-      "require": "./dist/server/index.js",
-      "import": "./dist/server/index.js"
+      "types": {
+        "import": "./dist/server/index.d.ts",
+        "require": "./dist/server/index.d.cts",
+        "default": "./dist/server/index.d.ts"
+      },
+      "import": "./dist/server/index.js",
+      "require": "./dist/server/index.cjs"
     },
     "./provider": {
-      "types": "./dist/provider/index.d.ts",
-      "require": "./dist/provider/index.js",
-      "import": "./dist/provider/index.js"
+      "types": {
+        "import": "./dist/provider/index.d.ts",
+        "require": "./dist/provider/index.d.cts",
+        "default": "./dist/provider/index.d.ts"
+      },
+      "import": "./dist/provider/index.js",
+      "require": "./dist/provider/index.cjs"
     },
     "./react": {
-      "types": "./dist/provider/react.d.ts",
-      "require": "./dist/provider/react.js",
-      "import": "./dist/provider/react.js"
+      "types": {
+        "import": "./dist/provider/react.d.ts",
+        "require": "./dist/provider/react.d.cts",
+        "default": "./dist/provider/react.d.ts"
+      },
+      "import": "./dist/provider/react.js",
+      "require": "./dist/provider/react.cjs"
     }
   },
   "scripts": {
