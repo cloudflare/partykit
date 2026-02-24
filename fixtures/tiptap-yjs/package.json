@@ -8,17 +8,17 @@
     "types": "wrangler types env.d.ts --include-runtime false"
   },
   "dependencies": {
-    "@tiptap/extension-collaboration": "^3.14.0",
-    "@tiptap/react": "^3.14.0",
-    "@tiptap/starter-kit": "^3.14.0",
+    "@tiptap/extension-collaboration": "^3.20.0",
+    "@tiptap/react": "^3.20.0",
+    "@tiptap/starter-kit": "^3.20.0",
     "partyserver": "^0.3.0",
-    "react": "^19.2.3",
-    "react-dom": "^19.2.3",
-    "tailwindcss": "^4.1.18",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "tailwindcss": "^4.2.1",
     "y-partyserver": "^2.0.0"
   },
   "devDependencies": {
-    "@types/react": "^19.2.7",
+    "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3"
   }
 }

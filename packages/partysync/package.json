@@ -1,11 +1,23 @@
 {
   "name": "partysync",
   "version": "2.0.0",
+  "description": "",
+  "keywords": [
+    "durable-objects",
+    "local-first",
+    "sync"
+  ],
+  "homepage": "https://github.com/cloudflare/partykit/tree/main/packages/partysync",
+  "license": "ISC",
+  "author": "Sunil Pai <spai@cloudflare.com>",
   "repository": {
     "type": "git",
     "url": "git://github.com/cloudflare/partykit.git"
   },
-  "homepage": "https://github.com/cloudflare/partykit/tree/main/packages/partysync",
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "type": "module",
   "exports": {
     "./agent": {
@@ -32,28 +44,20 @@
   "scripts": {
     "build": "tsx scripts/build.ts"
   },
-  "files": [
-    "dist",
-    "README.md"
-  ],
-  "keywords": [
-    "sync",
-    "local-first",
-    "durable-objects"
-  ],
-  "author": "Sunil Pai <spai@cloudflare.com>",
-  "license": "ISC",
-  "description": "",
   "dependencies": {
     "idb": "^8.0.3",
     "nanoid": "^5.1.6"
   },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260303.0",
+    "partyfn": "^0.1.0",
+    "partyserver": ">=0.2.0 <1.0.0",
+    "partysocket": "^1.1.15"
+  },
   "peerDependencies": {
     "@cloudflare/workers-types": "^4.20240729.0",
-    "partyserver": ">=0.2.0 <1.0.0"
-  },
-  "devDependencies": {
-    "@cloudflare/workers-types": "^4.20251218.0",
-    "partyserver": ">=0.2.0 <1.0.0"
+    "partyfn": ">=0.1.0",
+    "partyserver": ">=0.2.0 <1.0.0",
+    "partysocket": ">=1.0.0"
   }
 }
