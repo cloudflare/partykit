@@ -1,5 +1,11 @@
 # partyflare
 
+## 0.3.2
+
+### Patch Changes
+
+- [#352](https://github.com/cloudflare/partykit/pull/352) [`b033ae1`](https://github.com/cloudflare/partykit/commit/b033ae1132b105c81566440e94d5913c4772e5da) Thanks [@threepointone](https://github.com/threepointone)! - Remove default console.log/console.info calls from `onConnect` and `onMessage` base methods in `Server`
+
 ## 0.3.1
 
 ### Patch Changes
@@ -280,12 +286,14 @@
 ### Patch Changes
 
 - [`528adea`](https://github.com/threepointone/partyserver/commit/528adeaced6dce6e888d2f54cc75c3569bf2c277) Thanks [@threepointone](https://github.com/threepointone)! - some fixes and tweaks
+
   - getServerByName was throwing on all requests
   - `Env` is now an optional arg when defining `Server`
   - `y-partyserver/provider` can now take an optional `prefix` arg to use a custom url to connect
   - `routePartyKitRequest`/`getServerByName` now accepts `jurisdiction`
 
   bonus:
+
   - added a bunch of fixtures
   - added stubs for docs
 
