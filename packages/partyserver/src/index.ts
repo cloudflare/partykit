@@ -687,13 +687,14 @@ Did you try connecting directly to this Durable Object? Try using getServerByNam
    * Called when a new connection is made to the server.
    */
   onConnect(
+    // oxlint-disable-next-line no-unused-vars
     connection: Connection,
     // oxlint-disable-next-line no-unused-vars
     ctx: ConnectionContext
   ): void | Promise<void> {
-    console.log(
-      `Connection ${connection.id} connected to ${this.#ParentClass.name}:${this.name}`
-    );
+    // console.log(
+    //   `Connection ${connection.id} connected to ${this.#ParentClass.name}:${this.name}`
+    // );
     // console.log(
     //   `Implement onConnect on ${this.#ParentClass.name} to handle websocket connections.`
     // );
@@ -704,12 +705,12 @@ Did you try connecting directly to this Durable Object? Try using getServerByNam
    */
   // oxlint-disable-next-line no-unused-vars
   onMessage(connection: Connection, message: WSMessage): void | Promise<void> {
-    console.log(
-      `Received message on connection ${this.#ParentClass.name}:${connection.id}`
-    );
-    console.info(
-      `Implement onMessage on ${this.#ParentClass.name} to handle this message.`
-    );
+    // console.log(
+    //   `Received message on connection ${this.#ParentClass.name}:${connection.id}`
+    // );
+    // console.info(
+    //   `Implement onMessage on ${this.#ParentClass.name} to handle this message.`
+    // );
   }
 
   /**
