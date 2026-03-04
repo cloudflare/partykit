@@ -1,5 +1,11 @@
 # hono-party
 
+## 2.0.3
+
+### Patch Changes
+
+- [`4e315b4`](https://github.com/cloudflare/partykit/commit/4e315b45e1c8f8d60ccfd2c348a8401086f71e26) Thanks [@threepointone](https://github.com/threepointone)! - update
+
 ## 2.0.2
 
 ### Patch Changes
