@@ -1,5 +1,11 @@
 # partyflare
 
+## 0.3.3
+
+### Patch Changes
+
+- [`4e315b4`](https://github.com/cloudflare/partykit/commit/4e315b45e1c8f8d60ccfd2c348a8401086f71e26) Thanks [@threepointone](https://github.com/threepointone)! - Add `__unsafe_ensureInitialized()` method to `Server` for frameworks that receive calls via native DO RPC, bypassing the standard fetch/alarm/webSocket entry points where name hydration and `onStart()` normally happen.
+
 ## 0.3.2
 
 ### Patch Changes
@@ -286,12 +292,14 @@
 ### Patch Changes
 
 - [`528adea`](https://github.com/threepointone/partyserver/commit/528adeaced6dce6e888d2f54cc75c3569bf2c277) Thanks [@threepointone](https://github.com/threepointone)! - some fixes and tweaks
+
   - getServerByName was throwing on all requests
   - `Env` is now an optional arg when defining `Server`
   - `y-partyserver/provider` can now take an optional `prefix` arg to use a custom url to connect
   - `routePartyKitRequest`/`getServerByName` now accepts `jurisdiction`
 
   bonus:
+
   - added a bunch of fixtures
   - added stubs for docs
 

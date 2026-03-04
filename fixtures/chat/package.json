@@ -9,7 +9,7 @@
   },
   "dependencies": {
     "nanoid": "^5.1.6",
-    "partyserver": "^0.3.2",
+    "partyserver": "^0.3.3",
     "partysocket": "^1.1.16",
     "react": "^19.2.4",
     "react-dom": "^19.2.4"
