@@ -544,6 +544,17 @@ Did you try connecting directly to this Durable Object? Try using getServerByNam
     }
   }
 
+  /**
+   * @internal — Do not use directly. This is an escape hatch for frameworks
+   * (like Agents) that receive calls via native DO RPC, bypassing the
+   * standard fetch/alarm/webSocket entry points where initialization
+   * normally happens. Calling this from application code is unsupported
+   * and may break without notice.
+   */
+  async __unsafe_ensureInitialized(): Promise<void> {
+    await this.#ensureInitialized();
+  }
+
   async #ensureInitialized(): Promise<void> {
     if (this.#status === "started") return;
     await this.#hydrateNameFromStorage();
