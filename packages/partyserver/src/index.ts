@@ -527,7 +527,10 @@ Did you try connecting directly to this Durable Object? Try using getServerByNam
       await this.#ensureInitialized();
       connection.server = this.name;
 
-      return this.onError(connection, error);
+      return this.onError(
+        connection,
+        error ?? new Error("Unknown error")
+      )
     } catch (e) {
       console.error(
         `Error in ${this.#ParentClass.name}:${this.#_name ?? "<unnamed>"} webSocketError:`,
@@ -594,7 +597,9 @@ Did you try connecting directly to this Durable Object? Try using getServerByNam
     const handleErrorFromClient = (e: ErrorEvent) => {
       connection.removeEventListener("message", handleMessageFromClient);
       connection.removeEventListener("error", handleErrorFromClient);
-      this.onError(connection, e.error)?.catch((e) => {
+      const error =
+        e.error ?? new Error(e.message || "Unknown error");
+      this.onError(connection, error)?.catch((e) => {
         console.error("onError error:", e);
       });
     };
