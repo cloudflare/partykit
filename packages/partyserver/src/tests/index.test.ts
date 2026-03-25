@@ -951,12 +951,9 @@ describe("Connection tags", () => {
 describe("Connection uri", () => {
   it("exposes uri on a hibernating connection in onConnect", async () => {
     const ctx = createExecutionContext();
-    const request = new Request(
-      "http://example.com/parties/uri-server/room1",
-      {
-        headers: { Upgrade: "websocket" }
-      }
-    );
+    const request = new Request("http://example.com/parties/uri-server/room1", {
+      headers: { Upgrade: "websocket" }
+    });
     const response = await worker.fetch(request, env, ctx);
     const ws = response.webSocket!;
     ws.accept();
@@ -965,9 +962,7 @@ describe("Connection uri", () => {
     ws.addEventListener("message", (message) => {
       try {
         const data = JSON.parse(message.data as string) as { uri: string };
-        expect(data.uri).toBe(
-          "http://example.com/parties/uri-server/room1"
-        );
+        expect(data.uri).toBe("http://example.com/parties/uri-server/room1");
         resolve();
       } catch (e) {
         reject(e);
@@ -981,12 +976,9 @@ describe("Connection uri", () => {
 
   it("preserves uri after hibernation wake-up (onMessage)", async () => {
     const ctx = createExecutionContext();
-    const request = new Request(
-      "http://example.com/parties/uri-server/room2",
-      {
-        headers: { Upgrade: "websocket" }
-      }
-    );
+    const request = new Request("http://example.com/parties/uri-server/room2", {
+      headers: { Upgrade: "websocket" }
+    });
     const response = await worker.fetch(request, env, ctx);
     const ws = response.webSocket!;
     ws.accept();
@@ -1006,9 +998,7 @@ describe("Connection uri", () => {
       });
     });
     const data = JSON.parse(wakeMessage) as { uri: string };
-    expect(data.uri).toBe(
-      "http://example.com/parties/uri-server/room2"
-    );
+    expect(data.uri).toBe("http://example.com/parties/uri-server/room2");
 
     ws.close();
   });
