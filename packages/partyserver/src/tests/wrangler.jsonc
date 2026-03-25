@@ -74,6 +74,14 @@
       {
         "name": "TagsServerInMemory",
         "class_name": "TagsServerInMemory"
+      },
+      {
+        "name": "UriServer",
+        "class_name": "UriServer"
+      },
+      {
+        "name": "UriServerInMemory",
+        "class_name": "UriServerInMemory"
       }
     ]
   },
@@ -96,7 +104,9 @@
         "FailingOnStartServer",
         "HibernatingNameInMessage",
         "TagsServer",
-        "TagsServerInMemory"
+        "TagsServerInMemory",
+        "UriServer",
+        "UriServerInMemory"
       ]
     }
   ]

@@ -25,6 +25,8 @@ export type Env = {
   HibernatingNameInMessage: DurableObjectNamespace<HibernatingNameInMessage>;
   TagsServer: DurableObjectNamespace<TagsServer>;
   TagsServerInMemory: DurableObjectNamespace<TagsServerInMemory>;
+  UriServer: DurableObjectNamespace<UriServer>;
+  UriServerInMemory: DurableObjectNamespace<UriServerInMemory>;
 };
 
 export class Stateful extends Server {
@@ -425,6 +427,36 @@ export class TagsServerInMemory extends Server {
 
   onConnect(connection: Connection): void {
     connection.send(JSON.stringify(connection.tags));
+  }
+}
+
+/**
+ * Tests that connection.uri is available in hibernating mode (onConnect + onMessage).
+ */
+export class UriServer extends Server {
+  static options = {
+    hibernate: true
+  };
+
+  onConnect(connection: Connection): void {
+    connection.send(JSON.stringify({ uri: connection.uri }));
+  }
+
+  onMessage(connection: Connection, _message: WSMessage): void {
+    connection.send(JSON.stringify({ uri: connection.uri }));
+  }
+}
+
+/**
+ * Tests that connection.uri is available in non-hibernating (in-memory) mode.
+ */
+export class UriServerInMemory extends Server {
+  onConnect(connection: Connection): void {
+    connection.send(JSON.stringify({ uri: connection.uri }));
+  }
+
+  onMessage(connection: Connection, _message: WSMessage): void {
+    connection.send(JSON.stringify({ uri: connection.uri }));
   }
 }
 

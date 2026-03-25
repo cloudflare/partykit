@@ -27,6 +27,12 @@ export type Connection<TState = unknown> = WebSocket & {
   id: string;
 
   /**
+   * The URL of the original WebSocket upgrade request.
+   * Persisted in the WebSocket attachment so it survives hibernation.
+   */
+  uri: string | null;
+
+  /**
    * Arbitrary state associated with this connection.
    * Read-only — use {@link Connection.setState} to update.
    *

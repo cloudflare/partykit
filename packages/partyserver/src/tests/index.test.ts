@@ -947,3 +947,129 @@ describe("Connection tags", () => {
     return promise;
   });
 });
+
+describe("Connection uri", () => {
+  it("exposes uri on a hibernating connection in onConnect", async () => {
+    const ctx = createExecutionContext();
+    const request = new Request(
+      "http://example.com/parties/uri-server/room1",
+      {
+        headers: { Upgrade: "websocket" }
+      }
+    );
+    const response = await worker.fetch(request, env, ctx);
+    const ws = response.webSocket!;
+    ws.accept();
+
+    const { promise, resolve, reject } = Promise.withResolvers<void>();
+    ws.addEventListener("message", (message) => {
+      try {
+        const data = JSON.parse(message.data as string) as { uri: string };
+        expect(data.uri).toBe(
+          "http://example.com/parties/uri-server/room1"
+        );
+        resolve();
+      } catch (e) {
+        reject(e);
+      } finally {
+        ws.close();
+      }
+    });
+
+    return promise;
+  });
+
+  it("preserves uri after hibernation wake-up (onMessage)", async () => {
+    const ctx = createExecutionContext();
+    const request = new Request(
+      "http://example.com/parties/uri-server/room2",
+      {
+        headers: { Upgrade: "websocket" }
+      }
+    );
+    const response = await worker.fetch(request, env, ctx);
+    const ws = response.webSocket!;
+    ws.accept();
+
+    // Wait for onConnect message
+    await new Promise<string>((resolve) => {
+      ws.addEventListener("message", (e) => resolve(e.data as string), {
+        once: true
+      });
+    });
+
+    // Send a message to trigger onMessage (simulates post-hibernation wake)
+    ws.send("ping");
+    const wakeMessage = await new Promise<string>((resolve) => {
+      ws.addEventListener("message", (e) => resolve(e.data as string), {
+        once: true
+      });
+    });
+    const data = JSON.parse(wakeMessage) as { uri: string };
+    expect(data.uri).toBe(
+      "http://example.com/parties/uri-server/room2"
+    );
+
+    ws.close();
+  });
+
+  it("includes query parameters in the uri", async () => {
+    const ctx = createExecutionContext();
+    const request = new Request(
+      "http://example.com/parties/uri-server/room3?token=abc&_pk=custom-id",
+      {
+        headers: { Upgrade: "websocket" }
+      }
+    );
+    const response = await worker.fetch(request, env, ctx);
+    const ws = response.webSocket!;
+    ws.accept();
+
+    const { promise, resolve, reject } = Promise.withResolvers<void>();
+    ws.addEventListener("message", (message) => {
+      try {
+        const data = JSON.parse(message.data as string) as { uri: string };
+        expect(data.uri).toBe(
+          "http://example.com/parties/uri-server/room3?token=abc&_pk=custom-id"
+        );
+        resolve();
+      } catch (e) {
+        reject(e);
+      } finally {
+        ws.close();
+      }
+    });
+
+    return promise;
+  });
+
+  it("exposes uri on a non-hibernating (in-memory) connection", async () => {
+    const ctx = createExecutionContext();
+    const request = new Request(
+      "http://example.com/parties/uri-server-in-memory/room1",
+      {
+        headers: { Upgrade: "websocket" }
+      }
+    );
+    const response = await worker.fetch(request, env, ctx);
+    const ws = response.webSocket!;
+    ws.accept();
+
+    const { promise, resolve, reject } = Promise.withResolvers<void>();
+    ws.addEventListener("message", (message) => {
+      try {
+        const data = JSON.parse(message.data as string) as { uri: string };
+        expect(data.uri).toBe(
+          "http://example.com/parties/uri-server-in-memory/room1"
+        );
+        resolve();
+      } catch (e) {
+        reject(e);
+      } finally {
+        ws.close();
+      }
+    });
+
+    return promise;
+  });
+});

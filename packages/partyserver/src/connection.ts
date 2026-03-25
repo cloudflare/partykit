@@ -32,6 +32,7 @@ type ConnectionAttachments = {
   __pk: {
     id: string;
     tags: string[];
+    uri?: string;
   };
   __user?: unknown;
 };
@@ -62,10 +63,12 @@ function tryGetPartyServerMeta(
     if (typeof id !== "string") {
       return null;
     }
+    const { uri } = pk as { uri?: unknown };
     return {
       id,
-      tags: Array.isArray(tags) ? tags : []
-    } as ConnectionAttachments["__pk"];
+      tags: Array.isArray(tags) ? tags : [],
+      uri: typeof uri === "string" ? uri : undefined
+    } satisfies ConnectionAttachments["__pk"];
   } catch {
     return null;
   }
@@ -135,6 +138,12 @@ export const createLazyConnection = (
       configurable: true,
       get() {
         return attachments.get(ws).__pk.id;
+      }
+    },
+    uri: {
+      configurable: true,
+      get() {
+        return attachments.get(ws).__pk.uri ?? null;
       }
     },
     tags: {
@@ -378,7 +387,8 @@ export class HibernatingConnectionManager<TState> implements ConnectionManager {
     connection.serializeAttachment({
       __pk: {
         id: connection.id,
-        tags
+        tags,
+        uri: connection.uri ?? undefined
       },
       __user: null
     });
