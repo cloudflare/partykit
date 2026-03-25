@@ -1,5 +1,19 @@
 # partyflare
 
+## 0.4.0
+
+### Minor Changes
+
+- [#360](https://github.com/cloudflare/partykit/pull/360) [`852e900`](https://github.com/cloudflare/partykit/commit/852e900bc89a6975b0a385bc5fbea1abe65157a1) Thanks [@threepointone](https://github.com/threepointone)! - Add `uri` property to `Connection` that captures the original WebSocket upgrade request URL
+
+  `WebSocketPair` doesn't accept a URL parameter, so the originating URL was previously lost after the handshake. The `uri` is now persisted in the WebSocket attachment alongside `id` and `tags`, so it survives hibernation. Returns `null` for connections established before this change.
+
+### Patch Changes
+
+- [#358](https://github.com/cloudflare/partykit/pull/358) [`7172dd1`](https://github.com/cloudflare/partykit/commit/7172dd1bd59ad0f691a5fbaa72ecdda3a387a904) Thanks [@threepointone](https://github.com/threepointone)! - Add `configurable: true` to `id`, `tags`, and `socket` property descriptors in `createLazyConnection` to fix Vite HMR compatibility
+
+  When using PartyServer with Vite's Cloudflare Workers dev mode, HMR reloads recreate the module-scoped `WeakSet` used to track wrapped sockets, while the underlying WebSocket instances survive. This caused `Object.defineProperties` to throw `TypeError: Cannot redefine property` on properties that were missing the `configurable` flag.
+
 ## 0.3.3
 
 ### Patch Changes
@@ -292,12 +306,14 @@
 ### Patch Changes
 
 - [`528adea`](https://github.com/threepointone/partyserver/commit/528adeaced6dce6e888d2f54cc75c3569bf2c277) Thanks [@threepointone](https://github.com/threepointone)! - some fixes and tweaks
+
   - getServerByName was throwing on all requests
   - `Env` is now an optional arg when defining `Server`
   - `y-partyserver/provider` can now take an optional `prefix` arg to use a custom url to connect
   - `routePartyKitRequest`/`getServerByName` now accepts `jurisdiction`
 
   bonus:
+
   - added a bunch of fixtures
   - added stubs for docs
 
