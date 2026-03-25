@@ -132,17 +132,20 @@ export const createLazyConnection = (
 
   const connection = Object.defineProperties(ws, {
     id: {
+      configurable: true,
       get() {
         return attachments.get(ws).__pk.id;
       }
     },
     tags: {
+      configurable: true,
       get() {
         // Default to [] for connections accepted before tags were stored
         return attachments.get(ws).__pk.tags ?? [];
       }
     },
     socket: {
+      configurable: true,
       get() {
         return ws;
       }
