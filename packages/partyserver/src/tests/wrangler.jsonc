@@ -82,6 +82,10 @@
       {
         "name": "UriServerInMemory",
         "class_name": "UriServerInMemory"
+      },
+      {
+        "name": "PropsServer",
+        "class_name": "PropsServer"
       }
     ]
   },
@@ -106,7 +110,8 @@
         "TagsServer",
         "TagsServerInMemory",
         "UriServer",
-        "UriServerInMemory"
+        "UriServerInMemory",
+        "PropsServer"
       ]
     }
   ]

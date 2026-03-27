@@ -55,20 +55,7 @@ export async function getServerByName<
   const id = serverNamespace.idFromName(name);
   const stub = serverNamespace.get(id, options);
 
-  // TODO: fix this to use RPC
-
-  const req = new Request(
-    "http://dummy-example.cloudflare.com/cdn-cgi/partyserver/set-name/"
-  );
-
-  req.headers.set("x-partykit-room", name);
-
-  if (options?.props) {
-    req.headers.set("x-partykit-props", JSON.stringify(options?.props));
-  }
-
-  // unfortunately we have to await this
-  await stub.fetch(req).then((res) => res.text());
+  await stub.setName(name, options?.props);
 
   return stub;
 }
@@ -267,14 +254,9 @@ Did you forget to add a durable object binding to the class ${namespace[0].toUpp
     const stub = doNamespace.get(id, options);
 
     req = new Request(req);
-    req.headers.set("x-partykit-room", name);
     req.headers.set("x-partykit-namespace", namespace);
     if (options?.jurisdiction) {
       req.headers.set("x-partykit-jurisdiction", options.jurisdiction);
-    }
-
-    if (options?.props) {
-      req.headers.set("x-partykit-props", JSON.stringify(options?.props));
     }
 
     const className = bindingNames[namespace] as Extract<keyof Env, string>;
@@ -315,7 +297,11 @@ Did you forget to add a durable object binding to the class ${namespace[0].toUpp
       }
     }
 
-    return withCorsHeaders(await stub.fetch(req));
+    if (isWebSocket) {
+      await stub.setName(name, options?.props);
+      return await stub.fetch(req);
+    }
+    return withCorsHeaders(await stub._initAndFetch(name, options?.props, req));
   } else {
     return null;
   }
@@ -399,10 +385,6 @@ Did you try connecting directly to this Durable Object? Try using getServerByNam
       await this.#ensureInitialized();
 
       const url = new URL(request.url);
-
-      if (url.pathname === "/cdn-cgi/partyserver/set-name/") {
-        return Response.json({ ok: true });
-      }
 
       if (request.headers.get("Upgrade")?.toLowerCase() !== "websocket") {
         return await this.onRequest(request);
@@ -623,7 +605,7 @@ Did you try connecting directly to this Durable Object? Try using getServerByNam
     return this.#_name;
   }
 
-  async setName(name: string) {
+  async setName(name: string, props?: Props) {
     if (!name) {
       throw new Error("A name is required.");
     }
@@ -632,10 +614,40 @@ Did you try connecting directly to this Durable Object? Try using getServerByNam
         `This server already has a name: ${this.#_name}, attempting to set to: ${name}`
       );
     }
+    if (props !== undefined) {
+      this.#_props = props;
+    }
+    if (this.#_name === name) {
+      return;
+    }
     this.#_name = name;
     await this.ctx.storage.put(NAME_STORAGE_KEY, name);
 
     await this.#ensureInitialized();
+  }
+
+  /**
+   * @internal Sets name/props and handles a request in a single RPC call.
+   * Used by routePartykitRequest to avoid an extra round trip.
+   */
+  async _initAndFetch(
+    name: string,
+    props: Props | undefined,
+    request: Request
+  ): Promise<Response> {
+    if (props !== undefined) {
+      this.#_props = props;
+    }
+    if (this.#_name && this.#_name !== name) {
+      throw new Error(
+        `This server already has a name: ${this.#_name}, attempting to set to: ${name}`
+      );
+    }
+    if (!this.#_name) {
+      this.#_name = name;
+      await this.ctx.storage.put(NAME_STORAGE_KEY, name);
+    }
+    return this.fetch(request);
   }
 
   #sendMessageToConnection(connection: Connection, message: WSMessage): void {

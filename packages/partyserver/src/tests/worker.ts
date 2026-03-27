@@ -27,6 +27,7 @@ export type Env = {
   TagsServerInMemory: DurableObjectNamespace<TagsServerInMemory>;
   UriServer: DurableObjectNamespace<UriServer>;
   UriServerInMemory: DurableObjectNamespace<UriServerInMemory>;
+  PropsServer: DurableObjectNamespace<PropsServer>;
 };
 
 export class Stateful extends Server {
@@ -460,6 +461,27 @@ export class UriServerInMemory extends Server {
   }
 }
 
+export class PropsServer extends Server<Env, { secret: string }> {
+  receivedProps: { secret: string } | undefined;
+
+  onStart(props?: { secret: string }) {
+    this.receivedProps = props;
+  }
+
+  onRequest(): Response {
+    return Response.json({
+      name: this.name,
+      props: this.receivedProps
+    });
+  }
+
+  onConnect(connection: Connection): void {
+    connection.send(
+      JSON.stringify({ name: this.name, props: this.receivedProps })
+    );
+  }
+}
+
 export class CorsServer extends Server {
   onRequest(): Response | Promise<Response> {
     return Response.json({ cors: true });
@@ -475,6 +497,16 @@ export class CustomCorsServer extends Server {
 export default {
   async fetch(request: Request, env: Env, _ctx: ExecutionContext) {
     const url = new URL(request.url);
+
+    // Route requests under /props-parties/ with props
+    if (url.pathname.startsWith("/props-parties/")) {
+      return (
+        (await routePartykitRequest(request, env, {
+          prefix: "props-parties",
+          props: { secret: "my-secret-value" }
+        })) || new Response("Not Found", { status: 404 })
+      );
+    }
 
     // Route requests under /cors-parties/ with cors: true
     if (url.pathname.startsWith("/cors-parties/")) {

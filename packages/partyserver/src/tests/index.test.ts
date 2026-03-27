@@ -1063,3 +1063,62 @@ describe("Connection uri", () => {
     return promise;
   });
 });
+
+describe("Props via RPC (_initAndFetch)", () => {
+  it("delivers props to onStart via HTTP request", async () => {
+    const ctx = createExecutionContext();
+    const request = new Request(
+      "http://example.com/props-parties/props-server/room1"
+    );
+    const response = await worker.fetch(request, env, ctx);
+    expect(response.status).toBe(200);
+    const data = (await response.json()) as {
+      name: string;
+      props: { secret: string };
+    };
+    expect(data.name).toBe("room1");
+    expect(data.props).toEqual({ secret: "my-secret-value" });
+  });
+
+  it("delivers props to onStart via WebSocket connection", async () => {
+    const ctx = createExecutionContext();
+    const request = new Request(
+      "http://example.com/props-parties/props-server/room2",
+      {
+        headers: { Upgrade: "websocket" }
+      }
+    );
+    const response = await worker.fetch(request, env, ctx);
+    const ws = response.webSocket!;
+    ws.accept();
+
+    const { promise, resolve, reject } = Promise.withResolvers<void>();
+    ws.addEventListener("message", (message) => {
+      try {
+        const data = JSON.parse(message.data as string) as {
+          name: string;
+          props: { secret: string };
+        };
+        expect(data.name).toBe("room2");
+        expect(data.props).toEqual({ secret: "my-secret-value" });
+        resolve();
+      } catch (e) {
+        reject(e);
+      } finally {
+        ws.close();
+      }
+    });
+
+    return promise;
+  });
+
+  it("does not leak props in request headers", async () => {
+    const ctx = createExecutionContext();
+    const request = new Request(
+      "http://example.com/props-parties/props-server/room3"
+    );
+    const response = await worker.fetch(request, env, ctx);
+    expect(response.status).toBe(200);
+    expect(request.headers.get("x-partykit-props")).toBeNull();
+  });
+});
