@@ -431,6 +431,166 @@ describe("Integration — onLoad returns YDoc", () => {
   });
 });
 
+describe("Integration — params re-evaluation on reconnect", () => {
+  it("re-evaluates params function on automatic reconnect", async () => {
+    const room = `params-reconnect-${Date.now()}`;
+
+    let callCount = 0;
+    const doc = new Y.Doc();
+    const provider = new YProvider(HOST, room, doc, {
+      party: "y-basic",
+      connect: true,
+      WebSocketPolyfill: WebSocket as unknown as typeof globalThis.WebSocket,
+      disableBc: true,
+      params: () => {
+        callCount++;
+        return { token: `token-${callCount}` };
+      }
+    });
+    providers.push(provider);
+
+    await waitForConnection(provider);
+    expect(callCount).toBe(1);
+    expect(provider.url).toContain("token-1");
+
+    // Force-close the WebSocket to trigger automatic reconnection.
+    // Unlike provider.disconnect(), this does not set shouldConnect=false,
+    // so the provider will auto-reconnect and re-evaluate params.
+    const ws = provider.ws as unknown as {
+      terminate?: () => void;
+      close: () => void;
+    };
+    if (ws && typeof ws.terminate === "function") {
+      ws.terminate();
+    } else if (ws) {
+      ws.close();
+    }
+
+    // Wait for the provider to auto-reconnect
+    await new Promise<void>((resolve, reject) => {
+      const timeout = setTimeout(
+        () => reject(new Error("Timed out waiting for reconnection")),
+        10000
+      );
+      const handler = (event: { status: string }) => {
+        if (event.status === "connected") {
+          clearTimeout(timeout);
+          provider.off("status", handler);
+          resolve();
+        }
+      };
+      provider.on("status", handler);
+    });
+
+    expect(callCount).toBe(2);
+    expect(provider.url).toContain("token-2");
+    expect(provider.url).not.toContain("token-1");
+  });
+
+  it("re-evaluates async params function on automatic reconnect", async () => {
+    const room = `params-async-reconnect-${Date.now()}`;
+
+    let callCount = 0;
+    const doc = new Y.Doc();
+    const provider = new YProvider(HOST, room, doc, {
+      party: "y-basic",
+      connect: true,
+      WebSocketPolyfill: WebSocket as unknown as typeof globalThis.WebSocket,
+      disableBc: true,
+      params: async () => {
+        callCount++;
+        return { token: `async-token-${callCount}` };
+      }
+    });
+    providers.push(provider);
+
+    await waitForConnection(provider);
+    expect(callCount).toBe(1);
+    expect(provider.url).toContain("async-token-1");
+
+    const ws = provider.ws as unknown as {
+      terminate?: () => void;
+      close: () => void;
+    };
+    if (ws && typeof ws.terminate === "function") {
+      ws.terminate();
+    } else if (ws) {
+      ws.close();
+    }
+
+    await new Promise<void>((resolve, reject) => {
+      const timeout = setTimeout(
+        () => reject(new Error("Timed out waiting for reconnection")),
+        10000
+      );
+      const handler = (event: { status: string }) => {
+        if (event.status === "connected") {
+          clearTimeout(timeout);
+          provider.off("status", handler);
+          resolve();
+        }
+      };
+      provider.on("status", handler);
+    });
+
+    expect(callCount).toBe(2);
+    expect(provider.url).toContain("async-token-2");
+    expect(provider.url).not.toContain("async-token-1");
+  });
+
+  it("does not reconnect when user called disconnect()", async () => {
+    const room = `params-no-reconnect-${Date.now()}`;
+
+    let callCount = 0;
+    const doc = new Y.Doc();
+    const provider = new YProvider(HOST, room, doc, {
+      party: "y-basic",
+      connect: true,
+      WebSocketPolyfill: WebSocket as unknown as typeof globalThis.WebSocket,
+      disableBc: true,
+      params: () => {
+        callCount++;
+        return { token: `token-${callCount}` };
+      }
+    });
+    providers.push(provider);
+
+    await waitForConnection(provider);
+    expect(callCount).toBe(1);
+
+    // Use provider.disconnect() which sets shouldConnect=false,
+    // then force-terminate to ensure the close event fires promptly.
+    const ws = provider.ws as unknown as {
+      terminate?: () => void;
+      close: () => void;
+    };
+    provider.disconnect();
+    if (ws && typeof ws.terminate === "function") {
+      ws.terminate();
+    }
+
+    // Wait for the disconnect to be processed
+    await new Promise<void>((resolve) => {
+      const check = () => {
+        if (!provider.wsconnected && provider.ws === null) {
+          resolve();
+        } else {
+          setTimeout(check, 50);
+        }
+      };
+      setTimeout(check, 50);
+    });
+
+    // Wait long enough for a reconnect attempt to have happened if the
+    // shouldConnect guard were broken
+    await new Promise((r) => setTimeout(r, 500));
+
+    // params should NOT have been called again
+    expect(callCount).toBe(1);
+    expect(provider.wsconnected).toBe(false);
+  });
+});
+
 describe("Integration — reconnection", () => {
   it("reconnects and re-syncs after disconnect", async () => {
     const room = `reconnect-${Date.now()}`;

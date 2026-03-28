@@ -180,12 +180,17 @@ function setupWS(provider: WebsocketProvider) {
       // Start with no reconnect timeout and increase timeout by
       // using exponential backoff starting with 100ms
       setTimeout(
-        setupWS,
+        () => {
+          if (provider.shouldConnect) {
+            Promise.resolve(provider._reconnectWS()).catch((err) => {
+              console.error("Reconnection failed", err);
+            });
+          }
+        },
         math.min(
           math.pow(2, provider.wsUnsuccessfulReconnects) * 100,
           provider.maxBackoffTime
-        ),
-        provider
+        )
       );
     });
     websocket.addEventListener("open", () => {
@@ -522,6 +527,15 @@ export class WebsocketProvider extends Observable<string> {
     }
   }
 
+  /**
+   * Called by the close handler to re-establish the WebSocket.
+   * Subclasses (e.g. YProvider) override this to refresh dynamic
+   * params before reconnecting.
+   */
+  _reconnectWS() {
+    setupWS(this);
+  }
+
   connect() {
     this.shouldConnect = true;
     if (!this.wsconnected && this.ws === null) {
@@ -608,34 +622,42 @@ export default class YProvider extends WebsocketProvider {
     }
   }
 
-  async connect() {
-    try {
-      // get updated url parameters
-      const nextParams =
-        typeof this.#params === "function"
-          ? await this.#params()
-          : this.#params;
-      // override current url parameters before connecting
-      const urlParams = new URLSearchParams([["_pk", this.id]]);
-      if (nextParams) {
-        for (const [key, value] of Object.entries(nextParams)) {
-          // filter out null/undefined values
-          if (value !== null && value !== undefined) {
-            urlParams.append(key, value);
-          }
+  async #resolveParams() {
+    const nextParams =
+      typeof this.#params === "function" ? await this.#params() : this.#params;
+    const urlParams = new URLSearchParams([["_pk", this.id]]);
+    if (nextParams) {
+      for (const [key, value] of Object.entries(nextParams)) {
+        if (value !== null && value !== undefined) {
+          urlParams.append(key, value);
         }
       }
+    }
+    const nextUrl = new URL(this.url);
+    nextUrl.search = urlParams.toString();
+    this.url = nextUrl.toString();
+  }
 
-      const nextUrl = new URL(this.url);
-      nextUrl.search = urlParams.toString();
-      this.url = nextUrl.toString();
-
-      // finally, connect
+  async connect() {
+    try {
+      await this.#resolveParams();
       super.connect();
     } catch (err) {
       console.error("Failed to open connecton to PartyServer", err);
       throw err;
     }
+  }
+
+  async _reconnectWS() {
+    try {
+      await this.#resolveParams();
+    } catch (err) {
+      console.error(
+        "Failed to refresh params, reconnecting with stale params",
+        err
+      );
+    }
+    super._reconnectWS();
   }
 
   sendMessage(message: string) {
