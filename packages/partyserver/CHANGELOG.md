@@ -5,7 +5,6 @@
 ### Patch Changes
 
 - [#365](https://github.com/cloudflare/partykit/pull/365) [`3fba690`](https://github.com/cloudflare/partykit/commit/3fba6903ec67cf902841fdd8080139cb0c26ada8) Thanks [@threepointone](https://github.com/threepointone)! - Use RPC instead of HTTP headers to pass room name and props to Durable Objects, preventing sensitive information from appearing in logs.
-
   - `getServerByName` now calls `stub.setName()` via RPC instead of sending a dummy fetch request with headers.
   - `routePartykitRequest` uses a new internal `_initAndFetch` RPC method for HTTP requests (single round trip), and `setName` + `fetch` for WebSocket upgrades.
   - `setName` accepts an optional `props` parameter and short-circuits when the name is already set.
@@ -317,14 +316,12 @@
 ### Patch Changes
 
 - [`528adea`](https://github.com/threepointone/partyserver/commit/528adeaced6dce6e888d2f54cc75c3569bf2c277) Thanks [@threepointone](https://github.com/threepointone)! - some fixes and tweaks
-
   - getServerByName was throwing on all requests
   - `Env` is now an optional arg when defining `Server`
   - `y-partyserver/provider` can now take an optional `prefix` arg to use a custom url to connect
   - `routePartyKitRequest`/`getServerByName` now accepts `jurisdiction`
 
   bonus:
-
   - added a bunch of fixtures
   - added stubs for docs
 
