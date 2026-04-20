@@ -1,5 +1,11 @@
 # partysocket
 
+## 1.1.18
+
+### Patch Changes
+
+- [#374](https://github.com/cloudflare/partykit/pull/374) [`c05d86a`](https://github.com/cloudflare/partykit/commit/c05d86af9b70af41bd47fbb127acdecc3cacd2cf) Thanks [@threepointone](https://github.com/threepointone)! - Narrow the exported `Message` type from `ArrayBufferView` to `ArrayBufferView<ArrayBuffer>` so it matches the DOM `WebSocket.send()` overloads under newer `@cloudflare/workers-types` / lib.dom.d.ts, where the default `ArrayBufferView<ArrayBufferLike>` includes `SharedArrayBuffer`-backed views that `send()` does not accept. Runtime behaviour is unchanged — `WebSocket.send()` already rejected shared-buffer views at runtime.
+
 ## 1.1.17
 
 ### Patch Changes
@@ -325,6 +331,7 @@
 ### Patch Changes
 
 - [#251](https://github.com/partykit/partykit/pull/251) [`049bcac`](https://github.com/partykit/partykit/commit/049bcac42aa49e4bddec975c63b7d7984112e450) Thanks [@threepointone](https://github.com/threepointone)! - small tweaks to `init`
+
   - replace `process.env.PARTYKIT_HOST` with just `PARTYKIT_HOST`
   - add a `tsconfig.json`
   - add partykit to devDependencies in `init`
@@ -345,6 +352,7 @@
 - [#211](https://github.com/partykit/partykit/pull/211) [`fffe721`](https://github.com/partykit/partykit/commit/fffe72148e5cc425e80c90b6bf180192df410080) Thanks [@threepointone](https://github.com/threepointone)! - update dependencies
 
 - [#191](https://github.com/partykit/partykit/pull/191) [`39cf5ce`](https://github.com/partykit/partykit/commit/39cf5cebf5e699bc50ace8b6d25cd82c807e863a) Thanks [@jevakallio](https://github.com/jevakallio)! - Improve PartySocket types and React hooks API:
+
   - Add websocket lifecycle event handlers to usePartyKit options to reduce need for effects in userland
   - Allow usePartySocket to provide startClosed option to initialize without opening connection
   - Fix types for PartySocket#removeEventListener

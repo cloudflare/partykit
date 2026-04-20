@@ -1,5 +1,11 @@
 # partysync
 
+## 2.0.3
+
+### Patch Changes
+
+- [#374](https://github.com/cloudflare/partykit/pull/374) [`c05d86a`](https://github.com/cloudflare/partykit/commit/c05d86af9b70af41bd47fbb127acdecc3cacd2cf) Thanks [@threepointone](https://github.com/threepointone)! - Rename `Agent#connect(namespace, room)` to `Agent#connectTo(namespace, room)`. The base `DurableObject` class in `@cloudflare/workers-types` now declares `connect?(socket: Socket): void | Promise<void>` for TCP socket bindings, which collided with our override and produced a `TS2416` "not assignable to the same property in base type" error. The rename also better reflects the method's intent — connecting to another PartyServer by namespace + room, not accepting a TCP socket.
+
 ## 2.0.2
 
 ### Patch Changes

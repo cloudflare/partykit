@@ -11,8 +11,8 @@
     "nanoid": "^5.1.9",
     "partyfn": "^0.1.0",
     "partyserver": "^0.4.1",
-    "partysocket": "^1.1.17",
-    "partysync": "^2.0.2",
+    "partysocket": "^1.1.18",
+    "partysync": "^2.0.3",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
     "valibot": "^1.3.1"

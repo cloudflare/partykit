@@ -1,6 +1,6 @@
 {
   "name": "partysync",
-  "version": "2.0.2",
+  "version": "2.0.3",
   "description": "",
   "keywords": [
     "durable-objects",
@@ -52,7 +52,7 @@
     "@cloudflare/workers-types": "^4.20260420.1",
     "partyfn": "^0.1.0",
     "partyserver": "^0.4.1",
-    "partysocket": "^1.1.17"
+    "partysocket": "^1.1.18"
   },
   "peerDependencies": {
     "@cloudflare/workers-types": "^4.20240729.0",
