@@ -58,15 +58,16 @@
   "dependencies": {
     "lib0": "^0.2.117",
     "lodash.debounce": "^4.0.8",
-    "nanoid": "^5.1.6",
+    "nanoid": "^5.1.9",
     "y-protocols": "^1.0.7"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20260303.0",
+    "@cloudflare/workers-types": "^4.20260420.1",
     "@types/lodash.debounce": "^4.0.9",
+    "@types/node": "25.6.0",
     "partyserver": "^0.4.1",
-    "ws": "^8.19.0",
-    "yjs": "^13.6.29"
+    "ws": "^8.20.0",
+    "yjs": "^13.6.30"
   },
   "peerDependencies": {
     "@cloudflare/workers-types": "^4.20240729.0",

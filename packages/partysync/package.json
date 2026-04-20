@@ -46,13 +46,13 @@
   },
   "dependencies": {
     "idb": "^8.0.3",
-    "nanoid": "^5.1.6"
+    "nanoid": "^5.1.9"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20260303.0",
+    "@cloudflare/workers-types": "^4.20260420.1",
     "partyfn": "^0.1.0",
     "partyserver": "^0.4.1",
-    "partysocket": "^1.1.16"
+    "partysocket": "^1.1.17"
   },
   "peerDependencies": {
     "@cloudflare/workers-types": "^4.20240729.0",

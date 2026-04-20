@@ -55,7 +55,7 @@ export class Agent<
     return [];
   }
 
-  async connect(namespace: string, room: string) {
+  async connectTo(namespace: string, room: string) {
     const stub = await getServerByName(
       this.env[namespace as keyof Env] as DurableObjectNamespace<
         SyncServer<Env, Channels>

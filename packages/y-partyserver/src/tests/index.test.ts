@@ -1,4 +1,5 @@
-import { createExecutionContext, env } from "cloudflare:test";
+import { createExecutionContext } from "cloudflare:test";
+import { env } from "cloudflare:workers";
 import * as encoding from "lib0/encoding";
 import * as decoding from "lib0/decoding";
 import * as syncProtocol from "y-protocols/sync";
@@ -7,12 +8,6 @@ import * as Y from "yjs";
 import { describe, expect, it } from "vitest";
 
 import worker from "./worker";
-
-import type { Env } from "./worker";
-
-declare module "cloudflare:test" {
-  interface ProvidedEnv extends Env {}
-}
 
 // ---------------------------------------------------------------------------
 // Yjs protocol constants (must match server)

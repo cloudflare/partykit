@@ -3,11 +3,16 @@ import { Observable } from "rxjs";
 import { innerFrom } from "rxjs/internal/observable/innerFrom";
 import { createOperatorSubscriber } from "rxjs/internal/operators/OperatorSubscriber";
 
+type FetchFn = (
+  input: RequestInfo | URL,
+  init?: RequestInit
+) => Promise<Response>;
+
 export function fromFetch<T>(
   input: string | Request,
   init: RequestInit & {
     selector: (response: Response) => ObservableInput<T>;
-    fetcher?: typeof fetch;
+    fetchImpl?: FetchFn;
   }
 ): Observable<T>;
 
@@ -24,10 +29,10 @@ export function fromFetch<T>(
   input: string | Request,
   initWithSelector: RequestInit & {
     selector?: (response: Response) => ObservableInput<T>;
-    fetcher?: typeof fetch;
+    fetchImpl?: FetchFn;
   } = {}
 ): Observable<Response | T> {
-  const { selector, fetcher = fetch, ...init } = initWithSelector;
+  const { selector, fetchImpl = fetch, ...init } = initWithSelector;
   return new Observable<Response | T>((subscriber) => {
     // Our controller for aborting this fetch.
     // Any externally provided AbortSignal will have to call
@@ -75,7 +80,7 @@ export function fromFetch<T>(
       subscriber.error(err);
     };
 
-    fetcher(input, perSubscriberInit)
+    fetchImpl(input, perSubscriberInit)
       .then((response) => {
         if (selector) {
           // If we have a selector function, use it to project our response.

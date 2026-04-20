@@ -745,7 +745,7 @@ async function signalingStateIsStable(peerConnection: RTCPeerConnection) {
 function makePeerConnectionSessionCombo(options: {
   iceServers?: RTCIceServer[];
   prefix: string;
-  fetch: typeof fetch;
+  fetch: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
   params: URLSearchParams;
 }): Observable<{
   peerConnection: RTCPeerConnection;
@@ -754,14 +754,19 @@ function makePeerConnectionSessionCombo(options: {
   return forkJoin({
     sessionId: fromFetch(`${options.prefix}/sessions/new?${options.params}`, {
       method: "POST",
-      fetcher: options.fetch,
-      selector: (res) => res.json().then(({ sessionId }) => sessionId)
+      fetchImpl: options.fetch,
+      selector: (res) =>
+        res.json().then((body) => (body as { sessionId: string }).sessionId)
     }),
     iceServers: options.iceServers
       ? of(options.iceServers)
       : fromFetch(`${options.prefix}/generate-ice-servers`, {
           selector: (res) =>
-            res.json().then(({ iceServers }) => iceServers as RTCIceServer[])
+            res
+              .json()
+              .then(
+                (body) => (body as { iceServers: RTCIceServer[] }).iceServers
+              )
         })
   }).pipe(
     switchMap(

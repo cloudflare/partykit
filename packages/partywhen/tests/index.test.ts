@@ -1,8 +1,8 @@
 import {
   createExecutionContext,
-  env,
   waitOnExecutionContext
 } from "cloudflare:test";
+import { env } from "cloudflare:workers";
 import cronParser from "cron-parser";
 import { describe, expect, it } from "vitest";
 

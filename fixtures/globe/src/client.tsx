@@ -7,17 +7,16 @@ import usePartySocket from "partysocket/react";
 
 // The type of messages we'll be receiving from the server
 import type { OutgoingMessage } from "./types";
-import type { LegacyRef } from "react";
 
 function App() {
   // A reference to the canvas element where we'll render the globe
   const canvasRef = useRef<HTMLCanvasElement>(null);
   // The number of markers we're currently displaying
   const [counter, setCounter] = useState(0);
-  // A map of marker IDs to their positions
-  // Note that we use a ref because the globe's `onRender` callback
-  // is called on every animation frame, and we don't want to re-render
-  // the component on every frame.
+  // A map of marker IDs to their positions.
+  // We use a ref because the globe's requestAnimationFrame loop reads
+  // this on every frame, and we don't want to re-render the component
+  // every time the set changes.
   const positions = useRef<
     Map<string, { location: [number, number]; size: number }>
   >(new Map());
@@ -45,11 +44,14 @@ function App() {
   });
 
   useEffect(() => {
-    // The angle of rotation of the globe
-    // We'll update this on every frame to make the globe spin
-    let phi = 0;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
 
-    const globe = createGlobe(canvasRef.current as HTMLCanvasElement, {
+    // The angle of rotation of the globe; updated every frame to make it spin
+    let phi = 0;
+    let raf = 0;
+
+    const globe = createGlobe(canvas, {
       devicePixelRatio: 2,
       width: 400 * 2,
       height: 400 * 2,
@@ -63,21 +65,23 @@ function App() {
       markerColor: [0.8, 0.1, 0.1],
       glowColor: [0.2, 0.2, 0.2],
       markers: [],
-      opacity: 0.7,
-      onRender: (state) => {
-        // Called on every animation frame.
-        // `state` will be an empty object, return updated params.
-
-        // Get the current positions from our map
-        state.markers = [...positions.current.values()];
-
-        // Rotate the globe
-        state.phi = phi;
-        phi += 0.01;
-      }
+      opacity: 0.7
     });
 
+    // cobe v2 removed the `onRender` callback; drive updates from our own
+    // requestAnimationFrame loop instead.
+    const animate = () => {
+      globe.update({
+        phi,
+        markers: [...positions.current.values()]
+      });
+      phi += 0.01;
+      raf = requestAnimationFrame(animate);
+    };
+    raf = requestAnimationFrame(animate);
+
     return () => {
+      cancelAnimationFrame(raf);
       globe.destroy();
     };
   }, []);
@@ -95,7 +99,7 @@ function App() {
 
       {/* The canvas where we'll render the globe */}
       <canvas
-        ref={canvasRef as LegacyRef<HTMLCanvasElement>}
+        ref={canvasRef}
         style={{ width: 400, height: 400, maxWidth: "100%", aspectRatio: 1 }}
       />
 

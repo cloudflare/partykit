@@ -1,19 +1,13 @@
 import {
   createExecutionContext,
-  env,
   runDurableObjectAlarm
   // waitOnExecutionContext
 } from "cloudflare:test";
+import { env } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
 
 // Could import any other source file/function here
 import worker from "./worker";
-
-import type { Env } from "./worker";
-
-declare module "cloudflare:test" {
-  interface ProvidedEnv extends Env {}
-}
 
 describe("Server", () => {
   it("can be connected with a url", async () => {

@@ -8,16 +8,16 @@
     "types": "wrangler types env.d.ts --include-runtime false"
   },
   "dependencies": {
-    "nanoid": "^5.1.6",
+    "nanoid": "^5.1.9",
     "partyserver": "^0.4.1",
     "partysocket": "^1.1.17",
-    "react": "^19.2.4",
-    "react-dom": "^19.2.4"
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5"
   },
   "devDependencies": {
-    "@tailwindcss/vite": "^4.2.1",
+    "@tailwindcss/vite": "^4.2.2",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
-    "tailwindcss": "^4.2.1"
+    "tailwindcss": "^4.2.2"
   }
 }
