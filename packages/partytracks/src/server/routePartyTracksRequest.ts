@@ -143,7 +143,9 @@ export const routePartyTracksRequest = async ({
 
   if (isCreatingNewSession) {
     const createdSessionResponse = await fetch(realtimeUrl, realtimeInit);
-    const { sessionId } = await createdSessionResponse.clone().json();
+    const { sessionId } = (await createdSessionResponse.clone().json()) as {
+      sessionId: string;
+    };
     const jwt = await new jose.SignJWT({
       sessionId
     })

@@ -144,7 +144,11 @@ export type ProtocolsProvider =
   | (() => string | string[] | null)
   | (() => Promise<string | string[] | null>);
 
-export type Message = string | ArrayBuffer | Blob | ArrayBufferView;
+export type Message =
+  | string
+  | ArrayBuffer
+  | Blob
+  | ArrayBufferView<ArrayBuffer>;
 
 export default class ReconnectingWebSocket extends (EventTarget as TypedEventTarget<WebSocketEventMap>) {
   private _ws: WebSocket | undefined;

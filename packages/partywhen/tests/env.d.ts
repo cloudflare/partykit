@@ -1,11 +1,20 @@
-import { Scheduler } from "../src/index";
+/// <reference types="@cloudflare/vitest-pool-workers/types" />
 
-type Env = {
-  SCHEDULER: DurableObjectNamespace<Scheduler<Env>>;
+import type { Scheduler } from "../src/index";
+
+type _Env = {
+  SCHEDULER: DurableObjectNamespace<Scheduler<_Env>>;
 };
 
-declare module "cloudflare:test" {
-  // Controls the type of `import("cloudflare:test").env`
-  // eslint-disable-next-line @typescript-eslint/no-empty-object-type
-  interface ProvidedEnv extends Env {}
+export type Env = _Env;
+
+declare global {
+  // eslint-disable-next-line @typescript-eslint/no-namespace
+  namespace Cloudflare {
+    // eslint-disable-next-line @typescript-eslint/no-empty-object-type
+    interface Env extends _Env {}
+    interface GlobalProps {
+      mainModule: typeof import("./index");
+    }
+  }
 }

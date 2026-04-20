@@ -8,12 +8,12 @@
     "types": "wrangler types env.d.ts --include-runtime false"
   },
   "dependencies": {
-    "hono": "^4.12.2",
+    "hono": "^4.12.14",
     "hono-party": "^2.0.3",
     "partyserver": "^0.4.1",
     "partysocket": "^1.1.17",
-    "react": "^19.2.4",
-    "react-dom": "^19.2.4"
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5"
   },
   "devDependencies": {
     "@types/react": "^19.2.14",

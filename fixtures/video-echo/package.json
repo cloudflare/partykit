@@ -9,11 +9,11 @@
   },
   "dependencies": {
     "partytracks": "^0.0.55",
-    "react": "^19.2.4",
-    "react-dom": "^19.2.4"
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20260303.0",
+    "@cloudflare/workers-types": "^4.20260420.1",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3"
   },
