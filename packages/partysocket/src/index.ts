@@ -1,6 +1,7 @@
 import ReconnectingWebSocket from "./ws";
 
 import type * as RWS from "./ws";
+import type { ProtocolsProvider } from "./ws";
 
 type Maybe<T> = T | null | undefined;
 type Params = Record<string, Maybe<string>>;
@@ -17,7 +18,7 @@ export type PartySocketOptions = Omit<RWS.Options, "constructor"> & {
   basePath?: string; // the base path to use for the party
   prefix?: string; // the prefix to use for the party
   protocol?: "ws" | "wss";
-  protocols?: string[];
+  protocols?: ProtocolsProvider;
   path?: string; // the path to connect to
   query?: Params | (() => Params | Promise<Params>);
   disableNameValidation?: boolean; // disable validation of party/room names
