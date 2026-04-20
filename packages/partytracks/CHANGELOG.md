@@ -1,5 +1,17 @@
 # partytracks
 
+## 0.0.56
+
+### Patch Changes
+
+- [#374](https://github.com/cloudflare/partykit/pull/374) [`c05d86a`](https://github.com/cloudflare/partykit/commit/c05d86af9b70af41bd47fbb127acdecc3cacd2cf) Thanks [@threepointone](https://github.com/threepointone)! - Fix type errors under newer `@cloudflare/workers-types` and TypeScript lib typings:
+
+  - Avoid `typeof fetch` in internal signatures — CF workers-types merges `fetch` with the `Fetcher` interface (which has `fetch()` and `connect()` methods), which doesn't match a plain fetch function. Internal helpers now use an explicit `(input, init?) => Promise<Response>` signature.
+  - Rename the internal `fetcher` option on `fromFetch` to `fetchImpl` to avoid colliding with CF's built-in `RequestInit.fetcher?: Fetcher | null`, which was intersected in and made the property uncallable.
+  - Cast `Response#json()` results (which are now typed `unknown`) before destructuring `{ sessionId }` / `{ iceServers }`.
+
+  All changes are internal; no public API changes.
+
 ## 0.0.55
 
 ### Patch Changes
@@ -20,6 +32,7 @@
 - [#285](https://github.com/cloudflare/partykit/pull/285) [`9a62501`](https://github.com/cloudflare/partykit/commit/9a625016f51ba3f016e002f546a2a31e139a20db) Thanks [@third774](https://github.com/third774)! - Fix Safari compatibility by adding setSinkId feature detection to createAudioSink
 
   The createAudioSink utility now gracefully handles browsers that don't support the setSinkId API (primarily Safari on mobile and desktop).
+
   - Added checkSinkIdSupport helper to detect setSinkId availability
   - Added isSinkIdSupported property to SinkApi interface
   - Wrapped setSinkId calls with feature detection to prevent crashes
@@ -124,6 +137,7 @@
 - [#216](https://github.com/cloudflare/partykit/pull/216) [`964a1c4`](https://github.com/cloudflare/partykit/commit/964a1c491b3206bf82dcd63f12a328477baa9896) Thanks [@third774](https://github.com/third774)! - Change useOnEmit to useObservable, and allow for error and complete callbacks
 
 - [#216](https://github.com/cloudflare/partykit/pull/216) [`fb6adc2`](https://github.com/cloudflare/partykit/commit/fb6adc2af78b3d1027e3c145f41c9ab916b92013) Thanks [@third774](https://github.com/third774)! - - Add getMic, getCamera, and createAudioSink utils.
+
   - Lock sessions to their initiator via a cookie w/ JWT.
   - Fixed a bug where toggling a device off and on rapidly could leave it in a "stuck on" state.
 
@@ -195,6 +209,7 @@
 ### Patch Changes
 
 - [#186](https://github.com/threepointone/partyserver/pull/186) [`bdfcdce`](https://github.com/threepointone/partyserver/commit/bdfcdce562f84a94ceb4bc03be133a82d8969839) Thanks [@third774](https://github.com/third774)! - - Enable sending simulcast via sendEncodings
+
   - Change encodings$ when pushing a track to not be an observable (changing requires renegotiation anyways)
 
 - [#186](https://github.com/threepointone/partyserver/pull/186) [`e5045fd`](https://github.com/threepointone/partyserver/commit/e5045fd052bdb8369b6cfaf54d4c619d3ac32a81) Thanks [@third774](https://github.com/third774)! - Enable pulling simulcast tracks with preferredRid
