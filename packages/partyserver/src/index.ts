@@ -670,19 +670,27 @@ export class Server<
   }
 
   /**
-   * @deprecated for callers that address DOs via `idFromName()` /
-   * `getByName()` — `this.name` is available automatically from
-   * `ctx.id.name` and calling `setName()` is redundant.
+   * Establish this server's name and trigger `onStart()`.
    *
-   * Still appropriate for two use cases:
-   *   1. Delivering initial `props` to `onStart()` (via the optional
-   *      second argument).
-   *   2. Framework-level bootstrap of non-`idFromName` DOs where
+   * Two distinct use cases:
+   *
+   *   1. **Framework-level bootstrap of non-`idFromName` DOs** where
    *      `ctx.id.name` is undefined — for example, Cloudflare Agents
-   *      facets. Calling `setName(name)` from inside such a DO stashes
-   *      the name in memory for the current instance; for
-   *      survival-across-eviction, write `__ps_name` to storage as
-   *      well.
+   *      facets (spawned via `ctx.facets.get(...)`). `setName()` is the
+   *      sanctioned bootstrap primitive: it stashes the name in memory
+   *      AND persists it to storage (under `__ps_name`) so the name
+   *      survives DO eviction and is recovered on cold wake by
+   *      `#ensureInitialized()`.
+   *   2. **Delivering initial `props` to `onStart()`** via the optional
+   *      second argument.
+   *
+   * For DOs addressed via `idFromName()` / `getByName()`, calling
+   * `setName()` is redundant — `this.name` is available automatically
+   * from `ctx.id.name`. Throws if `name` does not match `ctx.id.name`.
+   *
+   * @deprecated for callers that address DOs via `idFromName()` /
+   * `getByName()`. Still the supported API for framework-level
+   * bootstrap and props delivery.
    */
   async setName(name: string, props?: Props) {
     if (!name) {
@@ -703,10 +711,14 @@ export class Server<
       this.#_props = props;
     }
     if (!this.#_name && ctxName === undefined) {
-      // Legacy path only (DO was addressed without idFromName). Stash the
-      // name in memory so subsequent handlers can read `this.name`.
-      // No storage write: PartyServer no longer persists the name itself.
+      // Bootstrap path (DO was addressed without idFromName, e.g.
+      // Cloudflare Agents facets). Stash the name in memory AND
+      // persist to storage so that subsequent cold-wake invocations
+      // (fetch, alarm, websocket handlers, RPC via
+      // `__unsafe_ensureInitialized`) can recover the name through
+      // `#ensureInitialized()`'s legacy fallback.
       this.#_name = name;
+      await this.ctx.storage.put(NAME_STORAGE_KEY, name);
     }
     await this.#ensureInitialized();
   }
