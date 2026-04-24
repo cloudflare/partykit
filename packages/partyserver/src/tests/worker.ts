@@ -15,6 +15,7 @@ export type Env = {
   AlarmServer: DurableObjectNamespace<AlarmServer>;
   AlarmNameServer: DurableObjectNamespace<AlarmNameServer>;
   NoNameServer: DurableObjectNamespace<NoNameServer>;
+  HeaderOnlyOnStartServer: DurableObjectNamespace<HeaderOnlyOnStartServer>;
   FacetLikeBootstrapServer: DurableObjectNamespace<FacetLikeBootstrapServer>;
   NameInConstructorServer: DurableObjectNamespace<NameInConstructorServer>;
   Mixed: DurableObjectNamespace<Mixed>;
@@ -254,6 +255,29 @@ export class NoNameServer extends Server {
 
   onRequest(): Response {
     return Response.json({ name: this.name });
+  }
+}
+
+/**
+ * Regression guard: DO with `ctx.id.name === undefined` (because it was
+ * addressed via `newUniqueId()`) whose `onStart()` reads `this.name`.
+ * When the caller supplies the name via the `x-partykit-room` header,
+ * `Server.fetch()` must apply the header BEFORE running `onStart()`, so
+ * `this.name` is readable during `onStart()`.
+ */
+export class HeaderOnlyOnStartServer extends Server {
+  onStartName: string | null = null;
+
+  async onStart() {
+    // Throws if `this.name` isn't resolvable here.
+    this.onStartName = this.name;
+  }
+
+  onRequest(): Response {
+    return Response.json({
+      name: this.name,
+      onStartName: this.onStartName
+    });
   }
 }
 
