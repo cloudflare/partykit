@@ -389,23 +389,25 @@ export class Server<
         this.#_props = JSON.parse(props);
       }
 
-      // Legacy fallback for callers that bypass `routePartykitRequest`/
-      // `getServerByName` and invoke `stub.fetch()` directly with the
-      // `x-partykit-room` header. When the DO was addressed via
-      // `idFromName()`/`getByName()`, `ctx.id.name` provides the name and
-      // this branch is a no-op.
+      // Name resolution in `#ensureInitialized()` consults
+      // `ctx.id.name`, then a legacy storage record, so by the time it
+      // returns `this.name` is populated for any properly-addressed
+      // DO or any DO bootstrapped via the legacy `__ps_name` storage
+      // record (e.g. Cloudflare Agents facets). The only remaining
+      // case is a caller that bypasses both — then we fall back to
+      // the `x-partykit-room` request header.
+      await this.#ensureInitialized();
+
       if (!this.ctx.id.name && !this.#_name) {
         const room = request.headers.get("x-partykit-room");
         if (!room) {
-          throw new Error(`Cannot determine the name for ${this.#ParentClass.name}: this.ctx.id.name is undefined and no x-partykit-room header is present. Likely causes:
+          throw new Error(`Cannot determine the name for ${this.#ParentClass.name}: this.ctx.id.name is undefined, no legacy __ps_name storage record is present, and no x-partykit-room header was supplied. Likely causes:
   1. The stub was built via idFromString()/newUniqueId(). PartyServer requires name-based addressing (idFromName/getByName).
   2. The workerd/wrangler runtime is too old to expose ctx.id.name — update to a recent wrangler release.
   3. You called stub.fetch() directly without going through routePartykitRequest()/getServerByName(). Prefer those, or set the x-partykit-room header.`);
         }
         this.#_name = room;
       }
-
-      await this.#ensureInitialized();
 
       const url = new URL(request.url);
 
@@ -543,10 +545,21 @@ export class Server<
   }
 
   /**
-   * Read a legacy name record from storage. Only used for alarms scheduled
-   * before 2026-03-15, which fire without `ctx.id.name` populated on the
-   * alarm handler. See:
-   * https://developers.cloudflare.com/durable-objects/api/id/#name
+   * Read the legacy `__ps_name` storage record as a fallback source of
+   * `this.name` when `ctx.id.name` is unavailable. Covers:
+   *
+   *   1. Pre-2026-03-15 alarms, which fire without `ctx.id.name`
+   *      populated on the alarm handler (see the Durable Objects
+   *      ID docs: https://developers.cloudflare.com/durable-objects/api/id/#name).
+   *   2. Framework-level bootstrap patterns that write `__ps_name`
+   *      directly before calling `__unsafe_ensureInitialized()` —
+   *      notably Cloudflare Agents facets, which are addressed via
+   *      `ctx.facets.get()` rather than `idFromName()` and therefore
+   *      do not receive a `ctx.id.name`.
+   *
+   * PartyServer no longer writes this record itself. Everything that
+   * reads it is reading something written by an older version of
+   * PartyServer or by a framework that embeds it.
    */
   async #hydrateNameFromLegacyStorage(): Promise<void> {
     if (this.#_name) return;
@@ -569,6 +582,17 @@ export class Server<
 
   async #ensureInitialized(): Promise<void> {
     if (this.#status === "started") return;
+
+    // Name resolution fallback. The happy path (DO addressed via
+    // idFromName/getByName) short-circuits here because `ctx.id.name`
+    // is already populated — no storage read. The slow path covers
+    // pre-2026-03-15 alarms and framework bootstrap patterns (e.g.
+    // Agents facets) that write `__ps_name` directly before the
+    // first `onStart()` runs.
+    if (!this.ctx.id.name && !this.#_name) {
+      await this.#hydrateNameFromLegacyStorage();
+    }
+
     let error: unknown;
     await this.ctx.blockConcurrencyWhile(async () => {
       this.#status = "starting";
@@ -646,11 +670,19 @@ export class Server<
   }
 
   /**
-   * @deprecated The DO's name is available automatically via `ctx.id.name`
-   * as long as the stub was created with `idFromName()`/`getByName()`.
-   * Callers generally no longer need `setName()`; it is retained for
-   * backward compatibility (including delivering initial `props` to
-   * `onStart()`).
+   * @deprecated for callers that address DOs via `idFromName()` /
+   * `getByName()` — `this.name` is available automatically from
+   * `ctx.id.name` and calling `setName()` is redundant.
+   *
+   * Still appropriate for two use cases:
+   *   1. Delivering initial `props` to `onStart()` (via the optional
+   *      second argument).
+   *   2. Framework-level bootstrap of non-`idFromName` DOs where
+   *      `ctx.id.name` is undefined — for example, Cloudflare Agents
+   *      facets. Calling `setName(name)` from inside such a DO stashes
+   *      the name in memory for the current instance; for
+   *      survival-across-eviction, write `__ps_name` to storage as
+   *      well.
    */
   async setName(name: string, props?: Props) {
     if (!name) {
@@ -842,13 +874,6 @@ export class Server<
   }
 
   async alarm(): Promise<void> {
-    // Alarms scheduled before 2026-03-15 fire without `ctx.id.name`.
-    // Recover the name from the legacy storage record if present so that
-    // `this.name` / `onStart()` / `onAlarm()` keep working during the
-    // upgrade window while those alarms drain.
-    if (!this.ctx.id.name && !this.#_name) {
-      await this.#hydrateNameFromLegacyStorage();
-    }
     await this.#ensureInitialized();
     await this.onAlarm();
   }

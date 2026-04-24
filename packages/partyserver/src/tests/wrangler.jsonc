@@ -88,6 +88,10 @@
         "class_name": "PropsServer"
       },
       {
+        "name": "FacetLikeBootstrapServer",
+        "class_name": "FacetLikeBootstrapServer"
+      },
+      {
         "name": "NameInConstructorServer",
         "class_name": "NameInConstructorServer"
       }
@@ -116,6 +120,7 @@
         "UriServer",
         "UriServerInMemory",
         "PropsServer",
+        "FacetLikeBootstrapServer",
         "NameInConstructorServer"
       ]
     }
