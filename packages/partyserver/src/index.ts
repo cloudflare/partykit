@@ -397,8 +397,10 @@ export class Server<
       if (!this.ctx.id.name && !this.#_name) {
         const room = request.headers.get("x-partykit-room");
         if (!room) {
-          throw new Error(`Missing namespace or room headers when connecting to ${this.#ParentClass.name}.
-Did you try connecting directly to this Durable Object? Try using getServerByName(namespace, id) instead.`);
+          throw new Error(`Cannot determine the name for ${this.#ParentClass.name}: this.ctx.id.name is undefined and no x-partykit-room header is present. Likely causes:
+  1. The stub was built via idFromString()/newUniqueId(). PartyServer requires name-based addressing (idFromName/getByName).
+  2. The workerd/wrangler runtime is too old to expose ctx.id.name — update to a recent wrangler release.
+  3. You called stub.fetch() directly without going through routePartykitRequest()/getServerByName(). Prefer those, or set the x-partykit-room header.`);
         }
         this.#_name = room;
       }

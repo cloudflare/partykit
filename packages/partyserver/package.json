@@ -41,7 +41,7 @@
     "nanoid": "^5.1.9"
   },
   "peerDependencies": {
-    "@cloudflare/workers-types": "^4.20240729.0"
+    "@cloudflare/workers-types": "^4.20260424.1"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20260424.1",

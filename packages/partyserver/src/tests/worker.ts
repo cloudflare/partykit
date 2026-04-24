@@ -15,6 +15,7 @@ export type Env = {
   AlarmServer: DurableObjectNamespace<AlarmServer>;
   AlarmNameServer: DurableObjectNamespace<AlarmNameServer>;
   NoNameServer: DurableObjectNamespace<NoNameServer>;
+  NameInConstructorServer: DurableObjectNamespace<NameInConstructorServer>;
   Mixed: DurableObjectNamespace<Mixed>;
   ConfigurableState: DurableObjectNamespace<ConfigurableState>;
   ConfigurableStateInMemory: DurableObjectNamespace<ConfigurableStateInMemory>;
@@ -252,6 +253,32 @@ export class NoNameServer extends Server {
 
   onRequest(): Response {
     return Response.json({ name: this.name });
+  }
+}
+
+/**
+ * Regression guard for the headline Phase 1 capability: `this.name` must
+ * be readable inside the constructor and from class field initializers,
+ * not just after `setName()`/`fetch()` has been called.
+ */
+export class NameInConstructorServer extends Server {
+  // Class field initializer — runs in subclass after super(), before the
+  // constructor body. `this.ctx.id.name` must already be populated here.
+  fieldName = this.name;
+
+  constructorName: string;
+
+  constructor(ctx: DurableObjectState, env: Env) {
+    super(ctx, env);
+    this.constructorName = this.name;
+  }
+
+  onRequest(): Response {
+    return Response.json({
+      fieldName: this.fieldName,
+      constructorName: this.constructorName,
+      currentName: this.name
+    });
   }
 }
 
