@@ -129,7 +129,7 @@ These methods can be optionally `async`:
 
 ## Properties
 
-- `.name` - (readonly) this is automatically set to the server's "name", determined by `getServerByName()` or `routePartykitRequest()`.
+- `.name` - (readonly) the server's name, as provided to `getServerByName()` or `routePartykitRequest()`. Resolves from the underlying Durable Object's `ctx.id.name`, so it is available inside every entry point — including the constructor, `onStart()`, `onAlarm()`, and hibernating websocket handlers. This assumes the DO was addressed via `idFromName()`/`getByName()` (which is the only supported way to address PartyServer DOs).
 
 - `.ctx` - the context object for the Durable Object, containing references to [`storage`](https://developers.cloudflare.com/durable-objects/api/transactional-storage-api/)
 

@@ -35,9 +35,15 @@ const bindingNameCache = new WeakMap<object, Record<string, string>>();
 /**
  * For a given server namespace, create a server with a name.
  *
- * The DO's name is available inside the server via `this.name` (from
- * `ctx.id.name`), so no RPC is needed unless props are supplied. When
- * props are supplied we make a single RPC to deliver them to `onStart()`.
+ * Makes a single RPC that awaits the DO's `onStart()` before returning,
+ * so callers can invoke user-defined RPC methods on the returned stub and
+ * trust that `onStart()` has completed. (User-defined RPC methods don't
+ * otherwise pass through `Server.fetch()`, which is where initialization
+ * would normally be triggered.)
+ *
+ * `this.name` inside the DO is always populated from `ctx.id.name`, so
+ * the RPC no longer needs to carry the name for bookkeeping; it exists
+ * purely to synchronize `onStart()` and to deliver `props`.
  */
 export async function getServerByName<
   Env extends Cloudflare.Env = Cloudflare.Env,
@@ -59,12 +65,7 @@ export async function getServerByName<
   const id = serverNamespace.idFromName(name);
   const stub = serverNamespace.get(id, options);
 
-  // If props are supplied, deliver them via a single RPC so they are
-  // available inside `onStart(props)`. Without props, no RPC is needed —
-  // `this.name` resolves from `ctx.id.name` on first access.
-  if (options?.props !== undefined) {
-    await stub.setName(name, options.props);
-  }
+  await stub.setName(name, options?.props);
 
   return stub;
 }
@@ -687,23 +688,7 @@ Did you try connecting directly to this Durable Object? Try using getServerByNam
     props: Props | undefined,
     request: Request
   ): Promise<Response> {
-    if (props !== undefined) {
-      this.#_props = props;
-    }
-    const ctxName = this.ctx.id.name;
-    if (ctxName !== undefined && ctxName !== name) {
-      throw new Error(
-        `This server's Durable Object id was created for name "${ctxName}", cannot init with "${name}".`
-      );
-    }
-    if (this.#_name && this.#_name !== name) {
-      throw new Error(
-        `This server already has a name: ${this.#_name}, attempting to set to: ${name}`
-      );
-    }
-    if (!this.#_name && ctxName === undefined) {
-      this.#_name = name;
-    }
+    await this.setName(name, props);
     return this.fetch(request);
   }
 
