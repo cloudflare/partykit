@@ -699,6 +699,29 @@ describe("this.name in the constructor", () => {
   });
 });
 
+describe("x-partykit-room header applied before onStart", () => {
+  it("populates this.name from header before onStart runs", async () => {
+    // Regression guard: for DOs with `ctx.id.name === undefined` where
+    // the caller supplies the name via `x-partykit-room`, the header
+    // must be applied BEFORE `#ensureInitialized()` runs `onStart()`.
+    // Otherwise an onStart that reads `this.name` would throw.
+    const id = env.HeaderOnlyOnStartServer.newUniqueId();
+    const stub = env.HeaderOnlyOnStartServer.get(id);
+    const res = await stub.fetch(
+      new Request("http://example.com/", {
+        headers: { "x-partykit-room": "header-onstart-test" }
+      })
+    );
+    expect(res.status).toBe(200);
+    const data = (await res.json()) as {
+      name: string;
+      onStartName: string | null;
+    };
+    expect(data.name).toBe("header-onstart-test");
+    expect(data.onStartName).toBe("header-onstart-test");
+  });
+});
+
 describe("Framework bootstrap fallback (Agents facets etc.)", () => {
   it("hydrates this.name from __ps_name storage when ctx.id.name is undefined", async () => {
     // Regression guard for Cloudflare Agents facets. Facets are spawned

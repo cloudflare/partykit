@@ -389,24 +389,24 @@ export class Server<
         this.#_props = JSON.parse(props);
       }
 
-      // Name resolution in `#ensureInitialized()` consults
-      // `ctx.id.name`, then a legacy storage record, so by the time it
-      // returns `this.name` is populated for any properly-addressed
-      // DO or any DO bootstrapped via the legacy `__ps_name` storage
-      // record (e.g. Cloudflare Agents facets). The only remaining
-      // case is a caller that bypasses both — then we fall back to
-      // the `x-partykit-room` request header.
+      // Name resolution priority: ctx.id.name > x-partykit-room header
+      // > legacy __ps_name storage record. Pre-populate from the header
+      // BEFORE `#ensureInitialized()` so that `onStart()` sees the name
+      // regardless of how it was supplied. `#ensureInitialized()` will
+      // fall back to reading storage when neither ctx.id.name nor the
+      // header has provided one.
+      if (!this.ctx.id.name && !this.#_name) {
+        const room = request.headers.get("x-partykit-room");
+        if (room) this.#_name = room;
+      }
+
       await this.#ensureInitialized();
 
       if (!this.ctx.id.name && !this.#_name) {
-        const room = request.headers.get("x-partykit-room");
-        if (!room) {
-          throw new Error(`Cannot determine the name for ${this.#ParentClass.name}: this.ctx.id.name is undefined, no legacy __ps_name storage record is present, and no x-partykit-room header was supplied. Likely causes:
+        throw new Error(`Cannot determine the name for ${this.#ParentClass.name}: this.ctx.id.name is undefined, no legacy __ps_name storage record is present, and no x-partykit-room header was supplied. Likely causes:
   1. The stub was built via idFromString()/newUniqueId(). PartyServer requires name-based addressing (idFromName/getByName).
   2. The workerd/wrangler runtime is too old to expose ctx.id.name — update to a recent wrangler release.
   3. You called stub.fetch() directly without going through routePartykitRequest()/getServerByName(). Prefer those, or set the x-partykit-room header.`);
-        }
-        this.#_name = room;
       }
 
       const url = new URL(request.url);
