@@ -14,7 +14,7 @@
     "partyserver": "^0.4.1",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
-    "tailwindcss": "^4.2.2",
+    "tailwindcss": "^4.2.4",
     "y-partyserver": "^2.1.4"
   },
   "devDependencies": {

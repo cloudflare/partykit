@@ -34,6 +34,10 @@ const bindingNameCache = new WeakMap<object, Record<string, string>>();
 
 /**
  * For a given server namespace, create a server with a name.
+ *
+ * The DO's name is available inside the server via `this.name` (from
+ * `ctx.id.name`), so no RPC is needed unless props are supplied. When
+ * props are supplied we make a single RPC to deliver them to `onStart()`.
  */
 export async function getServerByName<
   Env extends Cloudflare.Env = Cloudflare.Env,
@@ -55,7 +59,12 @@ export async function getServerByName<
   const id = serverNamespace.idFromName(name);
   const stub = serverNamespace.get(id, options);
 
-  await stub.setName(name, options?.props);
+  // If props are supplied, deliver them via a single RPC so they are
+  // available inside `onStart(props)`. Without props, no RPC is needed —
+  // `this.name` resolves from `ctx.id.name` on first access.
+  if (options?.props !== undefined) {
+    await stub.setName(name, options.props);
+  }
 
   return stub;
 }
@@ -297,11 +306,19 @@ Did you forget to add a durable object binding to the class ${namespace[0].toUpp
       }
     }
 
-    if (isWebSocket) {
-      await stub.setName(name, options?.props);
-      return await stub.fetch(req);
+    // Attach props to the request after the hooks so that user-defined
+    // onBeforeConnect / onBeforeRequest callbacks don't see the serialized
+    // props header on the inspection request.
+    if (options?.props !== undefined) {
+      req.headers.set("x-partykit-props", JSON.stringify(options.props));
     }
-    return withCorsHeaders(await stub._initAndFetch(name, options?.props, req));
+
+    // Single RPC for both WS and HTTP: `this.name` is populated from
+    // `ctx.id.name` inside the DO, so there's no need for a prior
+    // `setName()` round-trip. Props (if any) travel in the request header
+    // and are picked up in `Server.fetch()`.
+    const response = await stub.fetch(req);
+    return isWebSocket ? response : withCorsHeaders(response);
   } else {
     return null;
   }
@@ -370,16 +387,19 @@ export class Server<
       if (props) {
         this.#_props = JSON.parse(props);
       }
-      if (!this.#_name) {
-        await this.#hydrateNameFromStorage();
-      }
-      if (!this.#_name) {
+
+      // Legacy fallback for callers that bypass `routePartykitRequest`/
+      // `getServerByName` and invoke `stub.fetch()` directly with the
+      // `x-partykit-room` header. When the DO was addressed via
+      // `idFromName()`/`getByName()`, `ctx.id.name` provides the name and
+      // this branch is a no-op.
+      if (!this.ctx.id.name && !this.#_name) {
         const room = request.headers.get("x-partykit-room");
         if (!room) {
           throw new Error(`Missing namespace or room headers when connecting to ${this.#ParentClass.name}.
 Did you try connecting directly to this Durable Object? Try using getServerByName(namespace, id) instead.`);
         }
-        await this.setName(room);
+        this.#_name = room;
       }
 
       await this.#ensureInitialized();
@@ -432,7 +452,7 @@ Did you try connecting directly to this Durable Object? Try using getServerByNam
       }
     } catch (err) {
       console.error(
-        `Error in ${this.#ParentClass.name}:${this.#_name ?? "<unnamed>"} fetch:`,
+        `Error in ${this.#ParentClass.name}:${this.ctx.id.name ?? this.#_name ?? "<unnamed>"} fetch:`,
         err
       );
       if (!(err instanceof Error)) throw err;
@@ -468,7 +488,7 @@ Did you try connecting directly to this Durable Object? Try using getServerByNam
       return this.onMessage(connection, message);
     } catch (e) {
       console.error(
-        `Error in ${this.#ParentClass.name}:${this.#_name ?? "<unnamed>"} webSocketMessage:`,
+        `Error in ${this.#ParentClass.name}:${this.ctx.id.name ?? this.#_name ?? "<unnamed>"} webSocketMessage:`,
         e
       );
     }
@@ -493,7 +513,7 @@ Did you try connecting directly to this Durable Object? Try using getServerByNam
       return this.onClose(connection, code, reason, wasClean);
     } catch (e) {
       console.error(
-        `Error in ${this.#ParentClass.name}:${this.#_name ?? "<unnamed>"} webSocketClose:`,
+        `Error in ${this.#ParentClass.name}:${this.ctx.id.name ?? this.#_name ?? "<unnamed>"} webSocketClose:`,
         e
       );
     }
@@ -513,13 +533,19 @@ Did you try connecting directly to this Durable Object? Try using getServerByNam
       return this.onError(connection, error);
     } catch (e) {
       console.error(
-        `Error in ${this.#ParentClass.name}:${this.#_name ?? "<unnamed>"} webSocketError:`,
+        `Error in ${this.#ParentClass.name}:${this.ctx.id.name ?? this.#_name ?? "<unnamed>"} webSocketError:`,
         e
       );
     }
   }
 
-  async #hydrateNameFromStorage(): Promise<void> {
+  /**
+   * Read a legacy name record from storage. Only used for alarms scheduled
+   * before 2026-03-15, which fire without `ctx.id.name` populated on the
+   * alarm handler. See:
+   * https://developers.cloudflare.com/durable-objects/api/id/#name
+   */
+  async #hydrateNameFromLegacyStorage(): Promise<void> {
     if (this.#_name) return;
     const stored = await this.ctx.storage.get<string>(NAME_STORAGE_KEY);
     if (stored) {
@@ -540,7 +566,6 @@ Did you try connecting directly to this Durable Object? Try using getServerByNam
 
   async #ensureInitialized(): Promise<void> {
     if (this.#status === "started") return;
-    await this.#hydrateNameFromStorage();
     let error: unknown;
     await this.ctx.blockConcurrencyWhile(async () => {
       this.#status = "starting";
@@ -592,22 +617,47 @@ Did you try connecting directly to this Durable Object? Try using getServerByNam
   #_name: string | undefined;
 
   /**
-   * The name for this server. Write-once-only.
-   * Hydrated from durable storage by #ensureInitialized() on every
-   * entry point (fetch, alarm, webSocketMessage/Close/Error).
+   * The name for this server.
+   *
+   * Resolves from `this.ctx.id.name` — the native DO id name, populated
+   * whenever the stub was created via `idFromName()` or `getByName()`.
+   * This is available inside every entry point (including the constructor,
+   * alarms, and hibernating websocket handlers).
+   *
+   * For the narrow case of alarms that were scheduled before 2026-03-15
+   * (where `ctx.id.name` is undefined inside the alarm handler), the name
+   * is recovered from a legacy storage record written by older versions
+   * of PartyServer. See `alarm()`.
+   *
+   * Throws if neither source is available — typically this means the DO
+   * was addressed via `idFromString()` or `newUniqueId()`, which is not
+   * supported by PartyServer.
    */
   get name(): string {
-    if (!this.#_name) {
-      throw new Error(
-        `Attempting to read .name on ${this.#ParentClass.name} before it was set. The name can be set by explicitly calling .setName(name) on the stub, or by using routePartyKitRequest(). This is a known issue and will be fixed soon. Follow https://github.com/cloudflare/workerd/issues/2240 for more updates.`
-      );
-    }
-    return this.#_name;
+    const ctxName = this.ctx.id.name;
+    if (ctxName !== undefined) return ctxName;
+    if (this.#_name) return this.#_name;
+    throw new Error(
+      `Attempting to read .name on ${this.#ParentClass.name}, but this.ctx.id.name is not set. PartyServer requires DOs to be addressed via idFromName()/getByName(). If this is a legacy alarm scheduled before 2026-03-15, reschedule it from a fetch handler to restore the name.`
+    );
   }
 
+  /**
+   * @deprecated The DO's name is available automatically via `ctx.id.name`
+   * as long as the stub was created with `idFromName()`/`getByName()`.
+   * Callers generally no longer need `setName()`; it is retained for
+   * backward compatibility (including delivering initial `props` to
+   * `onStart()`).
+   */
   async setName(name: string, props?: Props) {
     if (!name) {
       throw new Error("A name is required.");
+    }
+    const ctxName = this.ctx.id.name;
+    if (ctxName !== undefined && ctxName !== name) {
+      throw new Error(
+        `This server's Durable Object id was created for name "${ctxName}", cannot setName to "${name}".`
+      );
     }
     if (this.#_name && this.#_name !== name) {
       throw new Error(
@@ -617,18 +667,20 @@ Did you try connecting directly to this Durable Object? Try using getServerByNam
     if (props !== undefined) {
       this.#_props = props;
     }
-    if (this.#_name === name) {
-      return;
+    if (!this.#_name && ctxName === undefined) {
+      // Legacy path only (DO was addressed without idFromName). Stash the
+      // name in memory so subsequent handlers can read `this.name`.
+      // No storage write: PartyServer no longer persists the name itself.
+      this.#_name = name;
     }
-    this.#_name = name;
-    await this.ctx.storage.put(NAME_STORAGE_KEY, name);
-
     await this.#ensureInitialized();
   }
 
   /**
-   * @internal Sets name/props and handles a request in a single RPC call.
-   * Used by routePartykitRequest to avoid an extra round trip.
+   * @internal
+   * @deprecated Retained for backward compatibility with older callers.
+   * `routePartykitRequest` no longer uses this method; it sends props via
+   * the `x-partykit-props` header on the underlying `fetch()` request.
    */
   async _initAndFetch(
     name: string,
@@ -638,14 +690,19 @@ Did you try connecting directly to this Durable Object? Try using getServerByNam
     if (props !== undefined) {
       this.#_props = props;
     }
+    const ctxName = this.ctx.id.name;
+    if (ctxName !== undefined && ctxName !== name) {
+      throw new Error(
+        `This server's Durable Object id was created for name "${ctxName}", cannot init with "${name}".`
+      );
+    }
     if (this.#_name && this.#_name !== name) {
       throw new Error(
         `This server already has a name: ${this.#_name}, attempting to set to: ${name}`
       );
     }
-    if (!this.#_name) {
+    if (!this.#_name && ctxName === undefined) {
       this.#_name = name;
-      await this.ctx.storage.put(NAME_STORAGE_KEY, name);
     }
     return this.fetch(request);
   }
@@ -798,6 +855,13 @@ Did you try connecting directly to this Durable Object? Try using getServerByNam
   }
 
   async alarm(): Promise<void> {
+    // Alarms scheduled before 2026-03-15 fire without `ctx.id.name`.
+    // Recover the name from the legacy storage record if present so that
+    // `this.name` / `onStart()` / `onAlarm()` keep working during the
+    // upgrade window while those alarms drain.
+    if (!this.ctx.id.name && !this.#_name) {
+      await this.#hydrateNameFromLegacyStorage();
+    }
     await this.#ensureInitialized();
     await this.onAlarm();
   }
