@@ -15,6 +15,7 @@ export type Env = {
   AlarmServer: DurableObjectNamespace<AlarmServer>;
   AlarmNameServer: DurableObjectNamespace<AlarmNameServer>;
   NoNameServer: DurableObjectNamespace<NoNameServer>;
+  FacetLikeBootstrapServer: DurableObjectNamespace<FacetLikeBootstrapServer>;
   NameInConstructorServer: DurableObjectNamespace<NameInConstructorServer>;
   Mixed: DurableObjectNamespace<Mixed>;
   ConfigurableState: DurableObjectNamespace<ConfigurableState>;
@@ -253,6 +254,41 @@ export class NoNameServer extends Server {
 
   onRequest(): Response {
     return Response.json({ name: this.name });
+  }
+}
+
+/**
+ * Simulates a framework-level bootstrap pattern (e.g. Cloudflare Agents
+ * facets) where the DO is NOT addressed via `idFromName()` — so
+ * `ctx.id.name` is undefined — but the framework writes `__ps_name` to
+ * storage directly and then triggers `onStart()`. PartyServer must pick
+ * up the legacy storage record as a fallback so `onStart()` and
+ * subsequent handlers can read `this.name`.
+ */
+export class FacetLikeBootstrapServer extends Server {
+  static options = { hibernate: true };
+
+  onStartName: string | null = null;
+
+  async onStart() {
+    try {
+      this.onStartName = this.name;
+    } catch {
+      this.onStartName = null;
+    }
+  }
+
+  async bootstrap(name: string): Promise<{ onStartName: string | null }> {
+    await this.ctx.storage.put("__ps_name", name);
+    await this.__unsafe_ensureInitialized();
+    return { onStartName: this.onStartName };
+  }
+
+  onRequest(): Response {
+    return Response.json({
+      name: this.name,
+      onStartName: this.onStartName
+    });
   }
 }
 

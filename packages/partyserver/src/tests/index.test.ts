@@ -699,6 +699,50 @@ describe("this.name in the constructor", () => {
   });
 });
 
+describe("Framework bootstrap fallback (Agents facets etc.)", () => {
+  it("hydrates this.name from __ps_name storage when ctx.id.name is undefined", async () => {
+    // Regression guard for Cloudflare Agents facets. Facets are spawned
+    // via `ctx.facets.get(...)`, not `idFromName()`, so their
+    // `ctx.id.name` is `undefined`. Agents bootstraps the name by
+    // writing `__ps_name` to storage and then calling
+    // `__unsafe_ensureInitialized()`. PartyServer's
+    // `#ensureInitialized()` must pick up the storage record as a
+    // fallback so `onStart()` can read `this.name`.
+    const id = env.FacetLikeBootstrapServer.newUniqueId();
+    const stub = env.FacetLikeBootstrapServer.get(id);
+    const result = await stub.bootstrap("facet-bootstrap-test");
+    expect(result.onStartName).toBe("facet-bootstrap-test");
+
+    // Follow-up fetch must also see the hydrated name (the #_name
+    // stashed during bootstrap survives in-memory as long as the DO
+    // instance isn't evicted).
+    const res = await stub.fetch(new Request("http://example.com/"));
+    const data = (await res.json()) as {
+      name: string;
+      onStartName: string | null;
+    };
+    expect(data.name).toBe("facet-bootstrap-test");
+    expect(data.onStartName).toBe("facet-bootstrap-test");
+  });
+
+  it("recovers from cold-wake fetch by re-reading storage when ctx.id.name is undefined", async () => {
+    // After the initial bootstrap, the DO may evict and come back
+    // cold. `Server.fetch()` must still resolve `this.name` via the
+    // storage fallback inside `#ensureInitialized()`, even without an
+    // `x-partykit-room` header.
+    const id = env.FacetLikeBootstrapServer.newUniqueId();
+    const stub = env.FacetLikeBootstrapServer.get(id);
+    await stub.bootstrap("facet-coldwake-test");
+
+    // Second, otherwise-unrelated fetch — no header, no bootstrap call.
+    // Simulates a later request arriving at the same DO.
+    const res = await stub.fetch(new Request("http://example.com/"));
+    expect(res.status).toBe(200);
+    const data = (await res.json()) as { name: string };
+    expect(data.name).toBe("facet-coldwake-test");
+  });
+});
+
 describe("Legacy fallbacks", () => {
   it("reads __ps_name from storage when ctx.id.name is undefined in an alarm", async () => {
     // Simulates the pre-2026-03-15 alarm migration scenario: an alarm was
