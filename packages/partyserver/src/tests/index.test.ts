@@ -640,7 +640,20 @@ describe("Name resolution", () => {
     expect(data.message).toMatch(/created for name "ctx-id-mismatch"/);
   });
 
-  it("getServerByName returns a stub whose this.name is available without a setName round trip", async () => {
+  it("getServerByName awaits onStart before returning, so user-defined RPCs see initialized state", async () => {
+    // Regression guard: `getServerByName` must return a stub on which
+    // user-defined RPC methods can rely on state initialized in
+    // `onStart()`. Native DO RPCs do not pass through `Server.fetch()`
+    // and therefore don't trigger `#ensureInitialized()` themselves.
+    const { getServerByName } = await import("../index");
+    const stub = await getServerByName(env.OnStartServer, "gsbn-rpc-sync");
+    const counter = await stub.getCounter();
+    // If onStart didn't run, counter would be 0. The fixture increments
+    // it after a 300ms delay, so seeing 1 here proves onStart completed.
+    expect(counter).toBe(1);
+  });
+
+  it("getServerByName returns a stub whose this.name is available without any additional plumbing", async () => {
     const ctx = createExecutionContext();
 
     // First, route a request to set up the DO.

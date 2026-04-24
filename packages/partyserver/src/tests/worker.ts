@@ -76,6 +76,15 @@ export class OnStartServer extends Server {
   ): Response | Promise<Response> {
     return new Response(this.counter.toString());
   }
+  /**
+   * Custom user-defined RPC. Used to verify that `getServerByName()`
+   * awaits `onStart()` before returning, so that state initialized there
+   * (here, `counter`) is observable via native DO RPCs (which don't pass
+   * through `Server.fetch()` and thus don't trigger initialization).
+   */
+  async getCounter(): Promise<number> {
+    return this.counter;
+  }
 }
 
 /**
