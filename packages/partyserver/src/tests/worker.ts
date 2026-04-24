@@ -16,6 +16,7 @@ export type Env = {
   AlarmNameServer: DurableObjectNamespace<AlarmNameServer>;
   NoNameServer: DurableObjectNamespace<NoNameServer>;
   HeaderOnlyOnStartServer: DurableObjectNamespace<HeaderOnlyOnStartServer>;
+  SetNameBootstrapServer: DurableObjectNamespace<SetNameBootstrapServer>;
   FacetLikeBootstrapServer: DurableObjectNamespace<FacetLikeBootstrapServer>;
   NameInConstructorServer: DurableObjectNamespace<NameInConstructorServer>;
   Mixed: DurableObjectNamespace<Mixed>;
@@ -271,6 +272,47 @@ export class HeaderOnlyOnStartServer extends Server {
   async onStart() {
     // Throws if `this.name` isn't resolvable here.
     this.onStartName = this.name;
+  }
+
+  onRequest(): Response {
+    return Response.json({
+      name: this.name,
+      onStartName: this.onStartName
+    });
+  }
+}
+
+/**
+ * Same scenario as `FacetLikeBootstrapServer`, but uses the sanctioned
+ * `setName()` bootstrap API instead of writing `__ps_name` directly to
+ * storage. Verifies that `setName()` alone is sufficient: it stashes
+ * `#_name` in memory AND persists it to storage so cold-wake fetches
+ * recover the name through `#ensureInitialized()`'s legacy fallback.
+ */
+export class SetNameBootstrapServer extends Server {
+  static options = { hibernate: true };
+
+  onStartName: string | null = null;
+
+  async onStart() {
+    try {
+      this.onStartName = this.name;
+    } catch {
+      this.onStartName = null;
+    }
+  }
+
+  async bootstrap(name: string): Promise<{ onStartName: string | null }> {
+    await this.setName(name);
+    return { onStartName: this.onStartName };
+  }
+
+  /**
+   * Probe storage from outside the DO to verify `setName()` persisted
+   * the name under the legacy `__ps_name` key.
+   */
+  async readStoredName(): Promise<string | undefined> {
+    return this.ctx.storage.get<string>("__ps_name");
   }
 
   onRequest(): Response {

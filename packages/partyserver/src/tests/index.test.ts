@@ -722,6 +722,49 @@ describe("x-partykit-room header applied before onStart", () => {
   });
 });
 
+describe("setName() as bootstrap API for non-idFromName DOs", () => {
+  it("persists __ps_name to storage so the name survives eviction", async () => {
+    const id = env.SetNameBootstrapServer.newUniqueId();
+    const stub = env.SetNameBootstrapServer.get(id);
+
+    const result = await stub.bootstrap("setname-bootstrap-test");
+    expect(result.onStartName).toBe("setname-bootstrap-test");
+
+    // Verify setName() persisted to storage. Frameworks no longer need
+    // to write __ps_name themselves — `setName()` covers it.
+    const stored = await stub.readStoredName();
+    expect(stored).toBe("setname-bootstrap-test");
+  });
+
+  it("recovers the name on cold-wake fetch via the storage fallback", async () => {
+    const id = env.SetNameBootstrapServer.newUniqueId();
+    const stub = env.SetNameBootstrapServer.get(id);
+    await stub.bootstrap("setname-coldwake-test");
+
+    // Subsequent fetch with no header — must hydrate from storage.
+    const res = await stub.fetch(new Request("http://example.com/"));
+    expect(res.status).toBe(200);
+    const data = (await res.json()) as { name: string };
+    expect(data.name).toBe("setname-coldwake-test");
+  });
+
+  it("does NOT write storage when the DO was addressed via idFromName", async () => {
+    // For normal idFromName DOs, ctx.id.name carries the name and
+    // setName() is redundant. It must not write `__ps_name` to
+    // storage in this path — that would re-introduce the per-setName
+    // storage write that 0.5.0 eliminated.
+    const id = env.SetNameBootstrapServer.idFromName("setname-no-write");
+    const stub = env.SetNameBootstrapServer.get(id);
+
+    // Calling setName with the matching name is a no-op on storage;
+    // it just runs onStart.
+    await stub.setName("setname-no-write");
+
+    const stored = await stub.readStoredName();
+    expect(stored).toBeUndefined();
+  });
+});
+
 describe("Framework bootstrap fallback (Agents facets etc.)", () => {
   it("hydrates this.name from __ps_name storage when ctx.id.name is undefined", async () => {
     // Regression guard for Cloudflare Agents facets. Facets are spawned

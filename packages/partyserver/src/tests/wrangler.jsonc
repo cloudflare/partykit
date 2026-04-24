@@ -92,6 +92,10 @@
         "class_name": "HeaderOnlyOnStartServer"
       },
       {
+        "name": "SetNameBootstrapServer",
+        "class_name": "SetNameBootstrapServer"
+      },
+      {
         "name": "FacetLikeBootstrapServer",
         "class_name": "FacetLikeBootstrapServer"
       },
@@ -125,6 +129,7 @@
         "UriServerInMemory",
         "PropsServer",
         "HeaderOnlyOnStartServer",
+        "SetNameBootstrapServer",
         "FacetLikeBootstrapServer",
         "NameInConstructorServer"
       ]
