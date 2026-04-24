@@ -165,14 +165,35 @@ export class AlarmNameServer extends Server {
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url);
 
-    // Seed storage directly, bypassing Server.fetch()/setName().
-    // Simulates a DO that was previously named, hibernated, and
-    // wakes cold — #_name is unset, only storage has the name.
+    // Seed the legacy __ps_name storage record and schedule an alarm.
+    // Simulates a DO that was named by an older version of PartyServer
+    // and had an alarm scheduled before 2026-03-15 (where `ctx.id.name`
+    // is not carried into the alarm handler). When the DO is addressed
+    // via `newUniqueId()` the storage fallback inside alarm() is the
+    // only way to recover the name.
     if (url.searchParams.get("seed")) {
       const name = url.searchParams.get("name")!;
       await this.ctx.storage.put("__ps_name", name);
       await this.ctx.storage.setAlarm(Date.now() + 60_000);
       return new Response("seeded");
+    }
+
+    // Try calling setName() with a different name from within the DO and
+    // return the error message. Used by the test that verifies setName
+    // throws on a ctx.id.name mismatch. Running this inside the DO keeps
+    // the rejection off the RPC boundary so vitest-pool-workers doesn't
+    // report it as an "unhandled error" alongside the expected failure.
+    const mismatchName = url.searchParams.get("setNameMismatch");
+    if (mismatchName) {
+      try {
+        await this.setName(mismatchName);
+        return Response.json({ threw: false });
+      } catch (e) {
+        return Response.json({
+          threw: true,
+          message: e instanceof Error ? e.message : String(e)
+        });
+      }
     }
 
     return super.fetch(request);
@@ -187,7 +208,11 @@ export class AlarmNameServer extends Server {
   }
 
   onAlarm() {
-    this.alarmName = this.name;
+    try {
+      this.alarmName = this.name;
+    } catch {
+      this.alarmName = null;
+    }
   }
 
   async onRequest(request: Request): Promise<Response> {
@@ -206,8 +231,8 @@ export class AlarmNameServer extends Server {
 }
 
 /**
- * Minimal DO that never has its name set.
- * Used to test that the name getter throws appropriately.
+ * Minimal DO used to verify that `this.name` is available automatically
+ * from `ctx.id.name` without any prior `setName()`/header plumbing.
  */
 export class NoNameServer extends Server {
   static options = { hibernate: true };
