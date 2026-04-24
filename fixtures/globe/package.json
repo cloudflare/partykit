@@ -9,7 +9,7 @@
   },
   "dependencies": {
     "cobe": "^2.0.1",
-    "partyserver": "^0.5.0",
+    "partyserver": "^0.5.1",
     "partysocket": "^1.1.18",
     "react": "^19.2.5",
     "react-dom": "^19.2.5"
