@@ -9,7 +9,6 @@
   Durable Objects now expose `ctx.id.name` on every entry point (constructor, fetch, alarm, hibernating websocket handlers) when the DO is addressed via `idFromName()`/`getByName()`. PartyServer now uses this as the primary source of `this.name`, which simplifies routing, eliminates storage writes, and makes `this.name` available inside the constructor.
 
   Changes in `partyserver`:
-
   - `this.name` resolves from `this.ctx.id.name`. The apologetic `workerd#2240` error message is gone.
   - `this.name` is now available **inside the constructor** and from class field initializers, not just after `setName()`/`fetch()` has run.
   - `routePartykitRequest` no longer issues a `setName()`/`_initAndFetch()` RPC before `fetch()`. The WebSocket path goes from 2 RPCs to 1; the HTTP path remains 1 RPC. Props, when supplied, are delivered to the DO via the `x-partykit-props` request header, set after `onBeforeConnect`/`onBeforeRequest` hooks run.
@@ -21,7 +20,6 @@
   - When reading `this.name` throws, it is because `ctx.id.name` is undefined and no legacy fallback has populated the name: the DO was addressed via `idFromString()` or `newUniqueId()` (both unsupported), the runtime is too old to expose `ctx.id.name`, or a pre-2026-03-15 alarm fired before the legacy storage fallback ran.
 
   Changes in all affected packages (`partyserver`, `partysub`, `partysync`, `y-partyserver`, `hono-party`):
-
   - `@cloudflare/workers-types` peer dependency bumped from `^4.20240729.0` to `^4.20260424.1`. The old range predates `ctx.id.name` in the type surface.
 
   Not supported: addressing PartyServer DOs via `idFromString()` or `newUniqueId()`. These paths return `ctx.id.name === undefined` inside the DO and will surface as a clear error from `this.name`. PartyServer has always assumed name-based addressing via `getServerByName` / `routePartykitRequest`; this release makes that assumption explicit.
@@ -342,14 +340,12 @@
 ### Patch Changes
 
 - [`528adea`](https://github.com/threepointone/partyserver/commit/528adeaced6dce6e888d2f54cc75c3569bf2c277) Thanks [@threepointone](https://github.com/threepointone)! - some fixes and tweaks
-
   - getServerByName was throwing on all requests
   - `Env` is now an optional arg when defining `Server`
   - `y-partyserver/provider` can now take an optional `prefix` arg to use a custom url to connect
   - `routePartyKitRequest`/`getServerByName` now accepts `jurisdiction`
 
   bonus:
-
   - added a bunch of fixtures
   - added stubs for docs
 
