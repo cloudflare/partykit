@@ -30,7 +30,7 @@
   "license": "ISC",
   "description": "Use PartyServer with Hono",
   "peerDependencies": {
-    "@cloudflare/workers-types": "^4.20240729.0",
+    "@cloudflare/workers-types": "^4.20260424.1",
     "hono": "^4.6.17",
     "partyserver": ">=0.2.0 <1.0.0"
   },

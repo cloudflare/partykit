@@ -427,7 +427,8 @@ describe("Error handling", () => {
   it("returns 500 with useful message when name cannot be resolved", async () => {
     // newUniqueId produces a DO whose ctx.id.name is undefined. Without the
     // legacy x-partykit-room header there is no way to know the name, so
-    // Server.fetch() should surface a clear error.
+    // Server.fetch() should surface a clear error that mentions the
+    // supported alternatives.
     const id = env.Stateful.newUniqueId();
     const stub = env.Stateful.get(id);
     const response = await stub.fetch(
@@ -435,7 +436,9 @@ describe("Error handling", () => {
     );
     expect(response.status).toBe(500);
     const body = await response.text();
-    expect(body).toContain("Missing namespace or room headers");
+    expect(body).toContain("Cannot determine the name");
+    expect(body).toContain("idFromName");
+    expect(body).toContain("wrangler");
   });
 });
 
@@ -671,6 +674,28 @@ describe("Name resolution", () => {
     const directRes = await stub.fetch(new Request("http://example.com/"));
     const directData = (await directRes.json()) as { name: string };
     expect(directData.name).toBe("gsbn-test");
+  });
+});
+
+describe("this.name in the constructor", () => {
+  it("is available from class field initializers and the constructor body", async () => {
+    // Phase 1 headline capability: `this.name` resolves from
+    // `ctx.id.name`, which is populated before the subclass body runs.
+    // That means class fields AND the constructor body can both read it.
+    const ctx = createExecutionContext();
+    const request = new Request(
+      "http://example.com/parties/name-in-constructor-server/ctor-test"
+    );
+    const response = await worker.fetch(request, env, ctx);
+    expect(response.status).toBe(200);
+    const data = (await response.json()) as {
+      fieldName: string;
+      constructorName: string;
+      currentName: string;
+    };
+    expect(data.fieldName).toBe("ctor-test");
+    expect(data.constructorName).toBe("ctor-test");
+    expect(data.currentName).toBe("ctor-test");
   });
 });
 

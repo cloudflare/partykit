@@ -70,7 +70,7 @@
     "yjs": "^13.6.30"
   },
   "peerDependencies": {
-    "@cloudflare/workers-types": "^4.20240729.0",
+    "@cloudflare/workers-types": "^4.20260424.1",
     "partyserver": ">=0.2.0 <1.0.0",
     "yjs": "^13.6.14"
   }

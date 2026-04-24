@@ -86,6 +86,10 @@
       {
         "name": "PropsServer",
         "class_name": "PropsServer"
+      },
+      {
+        "name": "NameInConstructorServer",
+        "class_name": "NameInConstructorServer"
       }
     ]
   },
@@ -111,7 +115,8 @@
         "TagsServerInMemory",
         "UriServer",
         "UriServerInMemory",
-        "PropsServer"
+        "PropsServer",
+        "NameInConstructorServer"
       ]
     }
   ]
