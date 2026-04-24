@@ -65,7 +65,7 @@
     "@cloudflare/workers-types": "^4.20260424.1",
     "@types/lodash.debounce": "^4.0.9",
     "@types/node": "25.6.0",
-    "partyserver": "^0.5.0",
+    "partyserver": "^0.5.1",
     "ws": "^8.20.0",
     "yjs": "^13.6.30"
   },
