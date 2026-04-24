@@ -712,13 +712,18 @@ export class Server<
     }
     if (!this.#_name && ctxName === undefined) {
       // Bootstrap path (DO was addressed without idFromName, e.g.
-      // Cloudflare Agents facets). Stash the name in memory AND
-      // persist to storage so that subsequent cold-wake invocations
+      // Cloudflare Agents facets). Persist to storage AND stash the
+      // name in memory so that subsequent cold-wake invocations
       // (fetch, alarm, websocket handlers, RPC via
       // `__unsafe_ensureInitialized`) can recover the name through
       // `#ensureInitialized()`'s legacy fallback.
-      this.#_name = name;
+      //
+      // Order matters: write storage first so that if it throws,
+      // `#_name` stays undefined and a retry will re-attempt the
+      // storage write (instead of silently no-op'ing because the
+      // in-memory name was already set).
       await this.ctx.storage.put(NAME_STORAGE_KEY, name);
+      this.#_name = name;
     }
     await this.#ensureInitialized();
   }
