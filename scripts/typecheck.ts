@@ -1,4 +1,4 @@
-import { type ExecException, execSync } from "node:child_process";
+import { type ExecException, execFileSync } from "node:child_process";
 import fg from "fast-glob";
 
 const tsconfigs: string[] = [];
@@ -21,9 +21,10 @@ const results: Result[] = [];
 for (const tsconfig of tsconfigs) {
   console.log(`Checking ${tsconfig}...`);
   try {
-    const output = execSync(`tsc -p ${tsconfig}`, {
+    const output = execFileSync("tsc", ["-p", tsconfig], {
       encoding: "utf-8",
-      stdio: ["pipe", "pipe", "pipe"]
+      stdio: ["pipe", "pipe", "pipe"],
+      shell: false
     });
     results.push({ tsconfig, success: true, output });
     console.log(`✅ ${tsconfig} - OK`);
