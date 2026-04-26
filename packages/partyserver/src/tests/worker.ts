@@ -32,6 +32,9 @@ export type Env = {
   UriServer: DurableObjectNamespace<UriServer>;
   UriServerInMemory: DurableObjectNamespace<UriServerInMemory>;
   PropsServer: DurableObjectNamespace<PropsServer>;
+  FacetParent: DurableObjectNamespace<FacetParent>;
+  // FacetChild has no binding — it's reached via ctx.facets.get() from
+  // FacetParent's isolate, just like Cloudflare Agents sub-agents.
 };
 
 export class Stateful extends Server {
@@ -324,12 +327,18 @@ export class SetNameBootstrapServer extends Server {
 }
 
 /**
- * Simulates a framework-level bootstrap pattern (e.g. Cloudflare Agents
- * facets) where the DO is NOT addressed via `idFromName()` — so
- * `ctx.id.name` is undefined — but the framework writes `__ps_name` to
- * storage directly and then triggers `onStart()`. PartyServer must pick
- * up the legacy storage record as a fallback so `onStart()` and
+ * Legacy bootstrap fixture: a DO addressed via `newUniqueId()` (so
+ * `ctx.id.name` is undefined) whose framework writes `__ps_name` to
+ * storage directly and then triggers `onStart()`. PartyServer must
+ * pick up the legacy storage record as a fallback so `onStart()` and
  * subsequent handlers can read `this.name`.
+ *
+ * Note: the class name is historical — it does NOT reflect how
+ * Cloudflare Agents facets actually work. Real facets (spawned via
+ * `ctx.facets.get(...)`) inherit the parent DO's `ctx.id` and should
+ * be created with an explicit `id` in `FacetStartupOptions` so the
+ * facet has its own `ctx.id.name`. See the `facets` describe block
+ * in `index.test.ts` for the recommended facet pattern.
  */
 export class FacetLikeBootstrapServer extends Server {
   static options = { hibernate: true };
@@ -654,6 +663,145 @@ export class CorsServer extends Server {
 export class CustomCorsServer extends Server {
   onRequest(): Response | Promise<Response> {
     return Response.json({ customCors: true });
+  }
+}
+
+/**
+ * Sub-DO spawned as a facet from `FacetParent` via `ctx.facets.get()`.
+ *
+ * The facet exposes a few RPC probes the test uses to inspect its
+ * own identity from inside (since `ctx.id.name` etc. depend on how
+ * `FacetStartupOptions.id` was supplied at the parent's
+ * `ctx.facets.get(...)` call).
+ *
+ * `getName()` calls `__unsafe_ensureInitialized()` first so the test
+ * exercises the realistic cold-wake path (native DO RPCs don't pass
+ * through `Server.fetch`, so `#ensureInitialized()` would otherwise
+ * not run). This mirrors what frameworks like Cloudflare Agents do
+ * inside their RPC bridges.
+ */
+export class FacetChild extends Server {
+  static options = { hibernate: true };
+
+  onStartName: string | null = null;
+
+  async onStart() {
+    try {
+      this.onStartName = this.name;
+    } catch {
+      this.onStartName = null;
+    }
+  }
+
+  async getName(): Promise<string> {
+    await this.__unsafe_ensureInitialized();
+    return this.name;
+  }
+
+  async getCtxIdName(): Promise<string | undefined> {
+    return this.ctx.id.name;
+  }
+
+  async getStoredName(): Promise<string | undefined> {
+    return this.ctx.storage.get<string>("__ps_name");
+  }
+
+  async getOnStartName(): Promise<string | null> {
+    await this.__unsafe_ensureInitialized();
+    return this.onStartName;
+  }
+
+  /**
+   * Convenience: snapshot all four name-related sources in one
+   * round trip. Tries `getName()` first, but tolerates it throwing
+   * (which it will when `ctx.id.name` is undefined and no `setName`
+   * override has run) and reports `null` instead.
+   */
+  async snapshot(): Promise<{
+    name: string | null;
+    ctxIdName: string | undefined;
+    storedName: string | undefined;
+    onStartName: string | null;
+  }> {
+    let name: string | null = null;
+    try {
+      name = await this.getName();
+    } catch {
+      name = null;
+    }
+    return {
+      name,
+      ctxIdName: this.ctx.id.name,
+      storedName: await this.ctx.storage.get<string>("__ps_name"),
+      onStartName: this.onStartName
+    };
+  }
+}
+
+/**
+ * Parent DO that spawns a `FacetChild` via the workerd facet API.
+ */
+export class FacetParent extends Server {
+  /**
+   * Spawn a facet WITHOUT an explicit `id`. Per the Cloudflare facet
+   * docs, this causes the facet to inherit the parent's `ctx.id`
+   * (including `ctx.id.name`). Used by the test to document this
+   * runtime contract — it's not a recommended pattern.
+   */
+  async spawnImplicitId(facetName: string): Promise<{
+    parentName: string;
+    facet: {
+      name: string | null;
+      ctxIdName: string | undefined;
+      storedName: string | undefined;
+      onStartName: string | null;
+    };
+  }> {
+    const Cls = (this.ctx.exports as Record<string, unknown>)
+      .FacetChild as DurableObjectClass<FacetChild>;
+    const stub = this.ctx.facets.get(facetName, () => ({
+      class: Cls
+    })) as unknown as DurableObjectStub<FacetChild>;
+    return { parentName: this.name, facet: await stub.snapshot() };
+  }
+
+  /**
+   * Spawn a facet WITH an explicit `id` constructed three different
+   * ways, so the test can confirm which work. The recommended
+   * pattern for frameworks is the `ctx-exports-namespace` form:
+   * `ctx.exports[BoundClassName].idFromName(facetName)`. It works
+   * without needing to know an env binding name, and produces a
+   * facet whose `ctx.id.name` is the facet's own name.
+   */
+  async spawnWithExplicitId(
+    facetName: string,
+    idSource: "env-namespace" | "ctx-exports-namespace" | "plain-string"
+  ): Promise<{
+    parentName: string;
+    facet: {
+      name: string | null;
+      ctxIdName: string | undefined;
+      storedName: string | undefined;
+      onStartName: string | null;
+    };
+  }> {
+    const Cls = (this.ctx.exports as Record<string, unknown>)
+      .FacetChild as DurableObjectClass<FacetChild>;
+    let id: DurableObjectId | string;
+    if (idSource === "env-namespace") {
+      id = (this.env as Env).FacetParent.idFromName(facetName);
+    } else if (idSource === "ctx-exports-namespace") {
+      const ns = (this.ctx.exports as Record<string, unknown>)
+        .FacetParent as DurableObjectNamespace<FacetParent>;
+      id = ns.idFromName(facetName);
+    } else {
+      id = facetName;
+    }
+    const stub = this.ctx.facets.get(facetName, () => ({
+      class: Cls,
+      id
+    })) as unknown as DurableObjectStub<FacetChild>;
+    return { parentName: this.name, facet: await stub.snapshot() };
   }
 }
 

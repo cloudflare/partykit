@@ -551,15 +551,19 @@ export class Server<
    *   1. Pre-2026-03-15 alarms, which fire without `ctx.id.name`
    *      populated on the alarm handler (see the Durable Objects
    *      ID docs: https://developers.cloudflare.com/durable-objects/api/id/#name).
-   *   2. Framework-level bootstrap patterns that write `__ps_name`
-   *      directly before calling `__unsafe_ensureInitialized()` —
-   *      notably Cloudflare Agents facets, which are addressed via
-   *      `ctx.facets.get()` rather than `idFromName()` and therefore
-   *      do not receive a `ctx.id.name`.
+   *   2. Legacy framework-level bootstrap patterns that write
+   *      `__ps_name` directly (or call `setName()`) before triggering
+   *      `__unsafe_ensureInitialized()` — typically DOs addressed via
+   *      `idFromString()` / `newUniqueId()` plus a name override.
    *
    * PartyServer no longer writes this record itself. Everything that
    * reads it is reading something written by an older version of
    * PartyServer or by a framework that embeds it.
+   *
+   * Not relevant to Cloudflare Agents facets — the recommended
+   * facet pattern passes an explicit `id` in `FacetStartupOptions`,
+   * so the facet has its own `ctx.id.name` and never hits this
+   * fallback. See the README for the full pattern.
    */
   async #hydrateNameFromLegacyStorage(): Promise<void> {
     if (this.#_name) return;
@@ -672,25 +676,43 @@ export class Server<
   /**
    * Establish this server's name and trigger `onStart()`.
    *
-   * Two distinct use cases:
+   * Use cases:
    *
-   *   1. **Framework-level bootstrap of non-`idFromName` DOs** where
-   *      `ctx.id.name` is undefined — for example, Cloudflare Agents
-   *      facets (spawned via `ctx.facets.get(...)`). `setName()` is the
-   *      sanctioned bootstrap primitive: it stashes the name in memory
-   *      AND persists it to storage (under `__ps_name`) so the name
-   *      survives DO eviction and is recovered on cold wake by
-   *      `#ensureInitialized()`.
-   *   2. **Delivering initial `props` to `onStart()`** via the optional
-   *      second argument.
+   *   1. **Framework-level bootstrap of DOs where `ctx.id.name` is
+   *      undefined** — e.g. DOs addressed via `idFromString()` /
+   *      `newUniqueId()`. `setName()` stashes the name in memory and
+   *      persists it under `__ps_name` so cold-wake invocations
+   *      recover it via `#ensureInitialized()`'s legacy fallback.
+   *   2. **Delivering initial `props` to `onStart()`** via the
+   *      optional second argument.
    *
    * For DOs addressed via `idFromName()` / `getByName()`, calling
    * `setName()` is redundant — `this.name` is available automatically
    * from `ctx.id.name`. Throws if `name` does not match `ctx.id.name`.
    *
+   * **Not appropriate for facets.** Cloudflare Agents and any other
+   * framework using `ctx.facets.get(...)` should pass an explicit
+   * `id` in `FacetStartupOptions` so the facet has its own
+   * `ctx.id.name`:
+   *
+   * ```ts
+   * const stub = ctx.facets.get(facetKey, () => ({
+   *   class: ChildClass,
+   *   id: ctx.exports.SomeBoundDOClass.idFromName(facetName),
+   * }));
+   * ```
+   *
+   * Without an explicit `id`, the facet inherits the parent DO's
+   * `ctx.id` (including `ctx.id.name`), and `setName()` will throw
+   * the ctx.id.name-mismatch error because the facet's intended
+   * name differs from the parent's. See
+   * https://developers.cloudflare.com/dynamic-workers/usage/durable-object-facets/
+   * for the `FacetStartupOptions.id` semantics.
+   *
    * @deprecated for callers that address DOs via `idFromName()` /
    * `getByName()`. Still the supported API for framework-level
-   * bootstrap and props delivery.
+   * bootstrap of header/`newUniqueId`-addressed DOs and for
+   * delivering initial `props` to `onStart()`.
    */
   async setName(name: string, props?: Props) {
     if (!name) {

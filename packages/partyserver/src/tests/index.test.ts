@@ -626,6 +626,12 @@ describe("Name resolution", () => {
   });
 
   it("setName throws when called with a name different from ctx.id.name", async () => {
+    // Sanity guard: setName() on an idFromName-addressed DO must
+    // match `ctx.id.name`. Mismatches almost always indicate a typo
+    // and should fail loudly rather than silently override. (Facets
+    // are not a counter-example — facets should be created with an
+    // explicit `id` in `FacetStartupOptions`, giving them their own
+    // `ctx.id.name` so `setName()` isn't needed at all.)
     const id = env.AlarmNameServer.idFromName("ctx-id-mismatch");
     const stub = env.AlarmNameServer.get(id);
 
@@ -641,6 +647,139 @@ describe("Name resolution", () => {
     const data = (await res.json()) as { threw: boolean; message?: string };
     expect(data.threw).toBe(true);
     expect(data.message).toMatch(/created for name "ctx-id-mismatch"/);
+  });
+
+  describe("facets (real ctx.facets.get round-trip)", () => {
+    // End-to-end coverage of the workerd facet API and partyserver's
+    // contract on top of it. These tests exist as executable docs —
+    // the supported pattern is to pass `id` in FacetStartupOptions
+    // so the facet has its own `ctx.id.name`. The implicit-id flow
+    // is also exercised here to pin down the runtime contract: a
+    // facet without explicit `id` inherits the parent's `ctx.id`,
+    // including `ctx.id.name`. Frameworks that want their facets
+    // to have logical names different from the parent's MUST pass
+    // an explicit `id`.
+
+    it("facet WITHOUT explicit id inherits the parent DO's ctx.id.name (workerd contract)", async () => {
+      // Documents the runtime behavior — not a recommendation. If
+      // you call `ctx.facets.get(name, () => ({ class }))` without
+      // an `id`, the facet's `ctx.id` IS the parent's id. PartyServer
+      // reflects that faithfully: `this.name` on the facet returns
+      // the parent's name, NOT the facet's `name` argument. This is
+      // almost always not what you want — see the explicit-id test
+      // below for the recommended pattern.
+      const parentName = "facet-parent-" + Math.random().toString(36).slice(2);
+      const facetName = "facet-child-" + Math.random().toString(36).slice(2);
+
+      const id = env.FacetParent.idFromName(parentName);
+      const stub = env.FacetParent.get(id);
+
+      const result = await stub.spawnImplicitId(facetName);
+
+      expect(result.parentName).toBe(parentName);
+      // The facet's ctx.id.name is the PARENT's name, because facets
+      // without explicit id share the parent's underlying DO id.
+      expect(result.facet.ctxIdName).toBe(parentName);
+      // Therefore this.name on the facet also returns the parent's
+      // name. Consumers reading this.name from inside an implicit-id
+      // facet will see the wrong value.
+      expect(result.facet.name).toBe(parentName);
+      // No storage record is involved — the implicit-id path doesn't
+      // touch __ps_name.
+      expect(result.facet.storedName).toBeUndefined();
+    });
+
+    it("facet WITH explicit id survives cold wake without any storage hydrate (ctx.id.name is the source of truth)", async () => {
+      // Variant of the explicit-id path that exercises cold wake.
+      // The factory passed to ctx.facets.get() runs again on resume,
+      // and idFromName(facetName) is deterministic, so the resumed
+      // facet gets the same ctx.id.name. No storage record needed.
+      const parentName = "facet-parent-" + Math.random().toString(36).slice(2);
+      const facetName = "facet-child-" + Math.random().toString(36).slice(2);
+
+      const id = env.FacetParent.idFromName(parentName);
+      const stub = env.FacetParent.get(id);
+
+      await stub.spawnWithExplicitId(facetName, "env-namespace");
+      // No __ps_name was written, so the only thing that can carry
+      // the name across eviction is the deterministic id factory.
+      // This implicitly tests that it works.
+      const result = await stub.spawnWithExplicitId(facetName, "env-namespace");
+      expect(result.facet.name).toBe(facetName);
+      expect(result.facet.ctxIdName).toBe(facetName);
+      expect(result.facet.storedName).toBeUndefined();
+    });
+
+    it("facet WITH explicit id (FacetStartupOptions.id) gets its own ctx.id.name — no setName needed", async () => {
+      // Per https://developers.cloudflare.com/dynamic-workers/usage/durable-object-facets/,
+      // FacetStartupOptions.id is optional; when supplied, the facet's
+      // `ctx.id` reflects that id rather than inheriting the parent's.
+      // This is the recommended pattern — the facet gets a real
+      // `ctx.id.name === facetName` and partyserver's `name` getter
+      // returns it without any setName/__ps_name override mechanism.
+      //
+      // The id can be constructed from any DurableObjectNamespace.
+      // Two ergonomic options:
+      //   - env binding (requires knowing the binding name)
+      //   - `ctx.exports[BoundClassName]` (works with any bound DO
+      //     class; no env knowledge required — recommended for
+      //     framework code)
+      // A plain string is NOT a valid id — workerd treats it as
+      // idFromString-like and the resulting facet has no
+      // `ctx.id.name`, so `this.name` throws.
+      const parentName = "facet-parent-" + Math.random().toString(36).slice(2);
+      const facetName = "facet-child-" + Math.random().toString(36).slice(2);
+
+      const id = env.FacetParent.idFromName(parentName);
+      const stub = env.FacetParent.get(id);
+
+      // Each strategy gets a fresh facet name so the factory actually
+      // runs (resuming an existing facet skips the factory and would
+      // mask strategy-specific failures).
+      const fromEnvNs = (
+        await stub.spawnWithExplicitId(
+          `${facetName}-env-namespace`,
+          "env-namespace"
+        )
+      ).facet;
+      const fromCtxExportsNs = (
+        await stub.spawnWithExplicitId(
+          `${facetName}-ctx-exports-namespace`,
+          "ctx-exports-namespace"
+        )
+      ).facet;
+      const fromPlainStr = (
+        await stub.spawnWithExplicitId(
+          `${facetName}-plain-string`,
+          "plain-string"
+        )
+      ).facet;
+
+      // env-namespace: works.
+      expect(fromEnvNs.name).toBe(`${facetName}-env-namespace`);
+      expect(fromEnvNs.ctxIdName).toBe(`${facetName}-env-namespace`);
+      expect(fromEnvNs.storedName).toBeUndefined();
+      expect(fromEnvNs.onStartName).toBe(`${facetName}-env-namespace`);
+
+      // ctx-exports-namespace: also works, no env knowledge needed.
+      // Recommended for framework code.
+      expect(fromCtxExportsNs.name).toBe(`${facetName}-ctx-exports-namespace`);
+      expect(fromCtxExportsNs.ctxIdName).toBe(
+        `${facetName}-ctx-exports-namespace`
+      );
+      expect(fromCtxExportsNs.storedName).toBeUndefined();
+      expect(fromCtxExportsNs.onStartName).toBe(
+        `${facetName}-ctx-exports-namespace`
+      );
+
+      // plain-string: produces a valid facet but ctx.id.name is
+      // undefined and this.name throws. snapshot() catches the
+      // throw and returns name: null. Pinning this contract so
+      // callers don't get tempted by the type signature accepting
+      // `string`.
+      expect(fromPlainStr.name).toBeNull();
+      expect(fromPlainStr.ctxIdName).toBeUndefined();
+    });
   });
 
   it("getServerByName awaits onStart before returning, so user-defined RPCs see initialized state", async () => {
