@@ -102,6 +102,10 @@
       {
         "name": "NameInConstructorServer",
         "class_name": "NameInConstructorServer"
+      },
+      {
+        "name": "FacetParent",
+        "class_name": "FacetParent"
       }
     ]
   },
@@ -131,7 +135,9 @@
         "HeaderOnlyOnStartServer",
         "SetNameBootstrapServer",
         "FacetLikeBootstrapServer",
-        "NameInConstructorServer"
+        "NameInConstructorServer",
+        "FacetParent",
+        "FacetChild"
       ]
     }
   ]

@@ -51,7 +51,7 @@
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20260424.1",
     "partyfn": "^0.1.0",
-    "partyserver": "^0.5.1",
+    "partyserver": "^0.5.2",
     "partysocket": "^1.1.18"
   },
   "peerDependencies": {
