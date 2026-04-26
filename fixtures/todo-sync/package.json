@@ -10,7 +10,7 @@
   "dependencies": {
     "nanoid": "^5.1.9",
     "partyfn": "^0.1.0",
-    "partyserver": "^0.5.2",
+    "partyserver": "^0.5.3",
     "partysocket": "^1.1.18",
     "partysync": "^2.1.0",
     "react": "^19.2.5",
