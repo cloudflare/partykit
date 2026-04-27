@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>partyserver alarm-restart e2e</title>
+    <style>
+      body {
+        font-family:
+          ui-monospace,
+          SFMono-Regular,
+          SF Mono,
+          Menlo,
+          monospace;
+        margin: 24px;
+        background: #0b0b0e;
+        color: #e6e6ea;
+      }
+      h1 {
+        font-size: 16px;
+        margin: 0 0 16px;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 16px;
+      }
+      .card {
+        background: #14141a;
+        border: 1px solid #2a2a33;
+        border-radius: 6px;
+        padding: 12px;
+        font-size: 12px;
+      }
+      .card h2 {
+        font-size: 13px;
+        margin: 0 0 8px;
+      }
+      .row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 6px;
+      }
+      .badge {
+        display: inline-block;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 11px;
+      }
+      .ok {
+        background: #133b1f;
+        color: #8be9a3;
+      }
+      .warn {
+        background: #4a2a08;
+        color: #f5b061;
+      }
+      .err {
+        background: #4a1818;
+        color: #ef9494;
+      }
+      pre {
+        margin: 0;
+        white-space: pre-wrap;
+        word-break: break-all;
+        background: #0a0a0e;
+        border: 1px solid #1f1f27;
+        padding: 8px;
+        border-radius: 4px;
+        font-size: 11px;
+        max-height: 320px;
+        overflow: auto;
+      }
+      input,
+      button {
+        background: #1f1f27;
+        border: 1px solid #2f2f3a;
+        color: #e6e6ea;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font: inherit;
+      }
+      button {
+        cursor: pointer;
+      }
+      button:hover {
+        background: #292935;
+      }
+      .controls {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>partyserver alarm-restart e2e</h1>
+    <div class="controls">
+      Room name:
+      <input id="room" value="default-room" />
+      Schedule alarm in
+      <input id="seconds" type="number" value="20" style="width: 64px" />s
+      <button id="schedule-all">Schedule on all 3</button>
+      <button id="snapshot-all">Snapshot all 3</button>
+    </div>
+    <div class="grid">
+      <section class="card" id="card-raw">
+        <h2>RawAlarm <span class="badge" data-status>?</span></h2>
+        <div class="row">
+          <small data-summary></small>
+        </div>
+        <pre data-log>(no events yet)</pre>
+      </section>
+      <section class="card" id="card-stock">
+        <h2>
+          StockAlarm (partyserver@0.5.3)
+          <span class="badge" data-status>?</span>
+        </h2>
+        <div class="row">
+          <small data-summary></small>
+        </div>
+        <pre data-log>(no events yet)</pre>
+      </section>
+      <section class="card" id="card-fixed">
+        <h2>
+          FixedAlarm (workspace partyserver)
+          <span class="badge" data-status>?</span>
+        </h2>
+        <div class="row">
+          <small data-summary></small>
+        </div>
+        <pre data-log>(no events yet)</pre>
+      </section>
+    </div>
+    <script src="/src/client.ts" type="module"></script>
+  </body>
+</html>

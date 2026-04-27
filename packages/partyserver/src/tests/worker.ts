@@ -1,3 +1,5 @@
+import { DurableObject } from "cloudflare:workers";
+
 import { routePartykitRequest, Server } from "../index";
 
 import type { Connection, ConnectionContext, WSMessage } from "../index";
@@ -35,6 +37,7 @@ export type Env = {
   FacetParent: DurableObjectNamespace<FacetParent>;
   // FacetChild has no binding — it's reached via ctx.facets.get() from
   // FacetParent's isolate, just like Cloudflare Agents sub-agents.
+  RawAlarmDO: DurableObjectNamespace<RawAlarmDO>;
 };
 
 export class Stateful extends Server {
@@ -229,6 +232,10 @@ export class AlarmNameServer extends Server {
     } catch {
       this.alarmName = null;
     }
+  }
+
+  async readStoredName(): Promise<string | undefined> {
+    return this.ctx.storage.get<string>("__ps_name");
   }
 
   async onRequest(request: Request): Promise<Response> {
@@ -802,6 +809,43 @@ export class FacetParent extends Server {
       id
     })) as unknown as DurableObjectStub<FacetChild>;
     return { parentName: this.name, facet: await stub.snapshot() };
+  }
+}
+
+/**
+ * Raw `DurableObject` fixture (no PartyServer wrapping) used to probe
+ * the underlying runtime contract for `ctx.id.name`. Schedules an alarm
+ * during `fetch()` and records the value of `ctx.id.name` observed in
+ * both `fetch()` and `alarm()`. The compat date for the test runtime
+ * (`packages/partyserver/src/tests/wrangler.jsonc`) is `2026-01-28`,
+ * which is BEFORE the `2026-03-15` cutoff at which workerd starts
+ * persisting `name` into alarm records.
+ */
+export class RawAlarmDO extends DurableObject {
+  fetchCtxIdName: string | undefined;
+  alarmCtxIdName: string | undefined | null = null;
+
+  async fetch(_request: Request): Promise<Response> {
+    this.fetchCtxIdName = this.ctx.id.name;
+    await this.ctx.storage.setAlarm(Date.now() + 60_000);
+    return Response.json({
+      fetchCtxIdName: this.fetchCtxIdName,
+      alarmCtxIdName: this.alarmCtxIdName
+    });
+  }
+
+  async alarm(): Promise<void> {
+    this.alarmCtxIdName = this.ctx.id.name;
+  }
+
+  async snapshot(): Promise<{
+    fetchCtxIdName: string | undefined;
+    alarmCtxIdName: string | undefined | null;
+  }> {
+    return {
+      fetchCtxIdName: this.fetchCtxIdName,
+      alarmCtxIdName: this.alarmCtxIdName
+    };
   }
 }
 

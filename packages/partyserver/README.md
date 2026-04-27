@@ -129,7 +129,7 @@ These methods can be optionally `async`:
 
 ## Properties
 
-- `.name` - (readonly) the server's name. Resolves from the underlying Durable Object's `ctx.id.name`, populated whenever the DO is addressed via `idFromName()` / `getByName()` — which is the supported way to address PartyServer DOs. Available inside every entry point including the constructor, `onStart()`, `onAlarm()`, and hibernating websocket handlers. (For the narrow case of legacy DOs bootstrapped via `setName()` — e.g. a `__ps_name` storage record from an older version — that override is recovered automatically. PartyServer no longer writes that record itself for new DOs.)
+- `.name` - (readonly) the server's name. Resolves from the underlying Durable Object's `ctx.id.name`, populated whenever the DO is addressed via `idFromName()` / `getByName()` — which is the supported way to address PartyServer DOs. Available inside every entry point including the constructor, `onStart()`, `onAlarm()`, and hibernating websocket handlers. PartyServer also persists this name to a small `__ps_name` fallback record during initialization so that alarm handlers firing on stale on-disk alarm records (scheduled by older workerd versions that didn't persist `name`) can still recover the name. Legacy DOs bootstrapped via `setName()` use the same fallback.
 
   DOs addressed via `idFromString()` or `newUniqueId()` without a `setName()` bootstrap are not supported and `.name` will throw.
 
@@ -215,7 +215,7 @@ export class ParentServer extends Server {
 }
 ```
 
-Without the explicit `id`, the facet's `ctx.id.name` is the parent's name, `this.name` returns the parent's name, and `setName(facetName)` throws (it would mismatch `ctx.id.name`). With the explicit `id`, the facet has its own native `ctx.id.name`, no `setName()` is needed, no storage write is involved, and cold wakes recover the name automatically (the factory re-runs and `idFromName(facetName)` is deterministic).
+Without the explicit `id`, the facet's `ctx.id.name` is the parent's name, `this.name` returns the parent's name, and `setName(facetName)` throws (it would mismatch `ctx.id.name`). With the explicit `id`, the facet has its own native `ctx.id.name`, no `setName()` is needed, and cold wakes recover the name automatically (the factory re-runs and `idFromName(facetName)` is deterministic). PartyServer may also persist that native name as an alarm fallback for older compatibility dates.
 
 Plain strings (`id: "child-foo"`) are NOT a substitute for `idFromName(facetName)` — workerd treats a string `id` as `idFromString`-like and the resulting facet has no `ctx.id.name`, so `this.name` will throw.
 
