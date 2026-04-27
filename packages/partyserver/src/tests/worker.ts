@@ -38,6 +38,12 @@ export type Env = {
   // FacetChild has no binding — it's reached via ctx.facets.get() from
   // FacetParent's isolate, just like Cloudflare Agents sub-agents.
   RawAlarmDO: DurableObjectNamespace<RawAlarmDO>;
+  CloseHandshakeHibernating: DurableObjectNamespace<CloseHandshakeHibernating>;
+  CloseHandshakeInMemory: DurableObjectNamespace<CloseHandshakeInMemory>;
+  ThrowingCloseHibernating: DurableObjectNamespace<ThrowingCloseHibernating>;
+  ThrowingCloseInMemory: DurableObjectNamespace<ThrowingCloseInMemory>;
+  UserClosesInOnCloseHibernating: DurableObjectNamespace<UserClosesInOnCloseHibernating>;
+  UserClosesInOnCloseInMemory: DurableObjectNamespace<UserClosesInOnCloseInMemory>;
 };
 
 export class Stateful extends Server {
@@ -846,6 +852,140 @@ export class RawAlarmDO extends DurableObject {
       fetchCtxIdName: this.fetchCtxIdName,
       alarmCtxIdName: this.alarmCtxIdName
     };
+  }
+}
+
+/**
+ * Records every `onClose` invocation, plus the `readyState` of the
+ * connection at the moment `onClose` fires. Used by the close-handshake
+ * tests to verify both that `onClose` is called with the right args AND
+ * that the framework reciprocates the Close frame so the client-side
+ * socket transitions to CLOSED cleanly.
+ *
+ * The `lastClose` snapshot is read back via an HTTP request rather than
+ * a follow-up WebSocket, because hibernation evicts in-memory state and
+ * we want to verify the recorded close survives a wake-up cycle.
+ */
+type CloseRecord = {
+  code: number;
+  reason: string;
+  wasClean: boolean;
+  /** ws.readyState at the start of onClose, before any reciprocation. */
+  readyStateAtOnClose: number;
+  id: string;
+};
+
+export class CloseHandshakeHibernating extends Server {
+  static options = { hibernate: true };
+
+  override onConnect(connection: Connection): void {
+    connection.send("hello");
+  }
+
+  override async onClose(
+    connection: Connection,
+    code: number,
+    reason: string,
+    wasClean: boolean
+  ): Promise<void> {
+    const record: CloseRecord = {
+      code,
+      reason,
+      wasClean,
+      readyStateAtOnClose: connection.readyState,
+      id: connection.id
+    };
+    await this.ctx.storage.put<CloseRecord>("lastClose", record);
+  }
+
+  override onRequest = async (): Promise<Response> => {
+    const record = await this.ctx.storage.get<CloseRecord>("lastClose");
+    return Response.json({ lastClose: record ?? null });
+  };
+}
+
+export class CloseHandshakeInMemory extends Server {
+  // No hibernation — exercises #attachSocketEventHandlers.
+
+  lastClose: CloseRecord | null = null;
+
+  override onConnect(connection: Connection): void {
+    connection.send("hello");
+  }
+
+  override onClose(
+    connection: Connection,
+    code: number,
+    reason: string,
+    wasClean: boolean
+  ): void {
+    this.lastClose = {
+      code,
+      reason,
+      wasClean,
+      readyStateAtOnClose: connection.readyState,
+      id: connection.id
+    };
+  }
+
+  override onRequest = async (): Promise<Response> => {
+    return Response.json({ lastClose: this.lastClose });
+  };
+}
+
+/**
+ * `onClose` throws. The framework must still reciprocate the close so
+ * the client never sees a 1006 abnormal closure. Mirrors the behavior
+ * users get from buggy `onClose` overrides.
+ */
+export class ThrowingCloseHibernating extends Server {
+  static options = { hibernate: true };
+
+  override onConnect(connection: Connection): void {
+    connection.send("hello");
+  }
+
+  override onClose(): void {
+    throw new Error("intentional onClose failure (hibernating)");
+  }
+}
+
+export class ThrowingCloseInMemory extends Server {
+  override onConnect(connection: Connection): void {
+    connection.send("hello");
+  }
+
+  override onClose(): void {
+    throw new Error("intentional onClose failure (in-memory)");
+  }
+}
+
+/**
+ * User code itself calls `connection.close(...)` from inside `onClose`
+ * with an arbitrary code. The framework's reciprocation in `finally`
+ * must be a no-op (idempotent), and the client must observe the code
+ * the *peer* sent, not the one user code passed. This is the contract
+ * for "the server reflects the client's close".
+ */
+export class UserClosesInOnCloseHibernating extends Server {
+  static options = { hibernate: true };
+
+  override onConnect(connection: Connection): void {
+    connection.send("hello");
+  }
+
+  override onClose(connection: Connection): void {
+    connection.close(4000, "user-initiated-from-onclose");
+  }
+}
+
+export class UserClosesInOnCloseInMemory extends Server {
+  override onConnect(connection: Connection): void {
+    connection.send("hello");
+  }
+
+  override onClose(connection: Connection): void {
+    connection.close(4000, "user-initiated-from-onclose");
   }
 }
 

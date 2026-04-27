@@ -22,6 +22,46 @@ export type WSMessage = ArrayBuffer | ArrayBufferView | string;
 
 const NAME_STORAGE_KEY = "__ps_name";
 
+/**
+ * Reserved WebSocket close codes that cannot be sent in a Close frame.
+ *  - 1005 (NoStatusReceived) — stand-in for "no code in close frame".
+ *  - 1006 (AbnormalClosure)  — synthesized for connections that drop
+ *                              without a Close frame.
+ *  - 1015 (TLSHandshake)     — TLS failure indicator.
+ *
+ * If we observe one of these in `webSocketClose`, normalize it to 1000
+ * before reciprocating, otherwise `ws.close(code, reason)` will throw.
+ */
+function normalizeCloseCode(code: number): number {
+  if (code === 1005 || code === 1006 || code === 1015) return 1000;
+  return code;
+}
+
+/**
+ * Reciprocate a peer-initiated Close frame to complete the handshake.
+ *
+ * Best-effort: swallows errors from invalid codes, oversize reasons, or
+ * sockets that have already been closed by user code. Used by both the
+ * hibernating and non-hibernating close handlers to ensure the close
+ * handshake always completes.
+ */
+function closeQuietly(ws: WebSocket, code: number, reason: string): void {
+  try {
+    ws.close(normalizeCloseCode(code), reason);
+  } catch {
+    // Reasons we end up here:
+    //   - the socket was already closed (user called `connection.close()`
+    //     in `onClose`, or the runtime auto-replied on compat dates
+    //     >= 2026-04-07 for the standard `accept()` API)
+    //   - `reason` exceeds the 123-byte UTF-8 limit (compat date
+    //     >= 2026-03-03)
+    //   - some other invariant violation we don't want to crash the
+    //     handler over
+    // None of these are recoverable here; the handshake is either already
+    // done or the runtime is out of our control.
+  }
+}
+
 // Let's cache the server namespace map
 // so we don't call it on every request
 const serverMapCache = new WeakMap<
@@ -515,12 +555,24 @@ export class Server<
       await this.#ensureInitialized();
       connection.server = this.name;
 
-      return this.onClose(connection, code, reason, wasClean);
+      await this.onClose(connection, code, reason, wasClean);
     } catch (e) {
       console.error(
         `Error in ${this.#ParentClass.name}:${this.ctx.id.name ?? this.#_name ?? "<unnamed>"} webSocketClose:`,
         e
       );
+    } finally {
+      // Reciprocate the peer's Close frame to complete the handshake.
+      // The Hibernation API requires applications to do this — without it,
+      // clients stay in CLOSING and end up reporting 1006 abnormal closure.
+      // The standard `accept()` API gets this for free on compat dates
+      // >= 2026-04-07 via the `web_socket_auto_reply_to_close` flag, but the
+      // Hibernation API contract is unchanged: see
+      // https://developers.cloudflare.com/durable-objects/api/base/#websocketclose
+      // Calling close() on an already-closed socket is a silent no-op, so
+      // this is safe regardless of compat date or whether user code in
+      // `onClose` already called `connection.close()`.
+      closeQuietly(ws, code, reason);
     }
   }
 
@@ -629,14 +681,44 @@ export class Server<
       });
     };
 
+    const reciprocateClose = (event: CloseEvent) => {
+      // Reciprocate the peer's Close frame. On compat dates
+      // >= 2026-04-07 the runtime's `web_socket_auto_reply_to_close`
+      // flag will already have done this before the close event
+      // fired, in which case `closeQuietly` is a silent no-op. On
+      // older compat dates this is the only way the client gets a
+      // clean close back.
+      closeQuietly(connection, event.code, event.reason);
+    };
+
     const handleCloseFromClient = (event: CloseEvent) => {
       connection.removeEventListener("message", handleMessageFromClient);
       connection.removeEventListener("close", handleCloseFromClient);
-      this.onClose(connection, event.code, event.reason, event.wasClean)?.catch(
-        (e) => {
-          console.error("onClose error:", e);
-        }
-      );
+      let result: void | Promise<void>;
+      try {
+        result = this.onClose(
+          connection,
+          event.code,
+          event.reason,
+          event.wasClean
+        );
+      } catch (e) {
+        // Synchronous throw from `onClose`. Log it and still
+        // reciprocate the close so the client doesn't observe a 1006
+        // abnormal closure on top of the user error.
+        console.error("onClose error:", e);
+        reciprocateClose(event);
+        return;
+      }
+      if (result && typeof (result as Promise<void>).then === "function") {
+        (result as Promise<void>)
+          .catch((e) => {
+            console.error("onClose error:", e);
+          })
+          .finally(() => reciprocateClose(event));
+      } else {
+        reciprocateClose(event);
+      }
     };
 
     const handleErrorFromClient = (e: ErrorEvent) => {
