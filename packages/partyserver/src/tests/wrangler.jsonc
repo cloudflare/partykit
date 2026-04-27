@@ -110,6 +110,30 @@
       {
         "name": "RawAlarmDO",
         "class_name": "RawAlarmDO"
+      },
+      {
+        "name": "CloseHandshakeHibernating",
+        "class_name": "CloseHandshakeHibernating"
+      },
+      {
+        "name": "CloseHandshakeInMemory",
+        "class_name": "CloseHandshakeInMemory"
+      },
+      {
+        "name": "ThrowingCloseHibernating",
+        "class_name": "ThrowingCloseHibernating"
+      },
+      {
+        "name": "ThrowingCloseInMemory",
+        "class_name": "ThrowingCloseInMemory"
+      },
+      {
+        "name": "UserClosesInOnCloseHibernating",
+        "class_name": "UserClosesInOnCloseHibernating"
+      },
+      {
+        "name": "UserClosesInOnCloseInMemory",
+        "class_name": "UserClosesInOnCloseInMemory"
       }
     ]
   },
@@ -142,7 +166,13 @@
         "NameInConstructorServer",
         "FacetParent",
         "FacetChild",
-        "RawAlarmDO"
+        "RawAlarmDO",
+        "CloseHandshakeHibernating",
+        "CloseHandshakeInMemory",
+        "ThrowingCloseHibernating",
+        "ThrowingCloseInMemory",
+        "UserClosesInOnCloseHibernating",
+        "UserClosesInOnCloseInMemory"
       ]
     }
   ]
