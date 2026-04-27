@@ -1,0 +1,18 @@
+{
+  "name": "partyserver-fixture-alarm-restart-e2e",
+  "main": "src/server.ts",
+  "compatibility_date": "2026-01-28",
+  "durable_objects": {
+    "bindings": [
+      { "name": "RawAlarm", "class_name": "RawAlarm" },
+      { "name": "StockAlarm", "class_name": "StockAlarm" },
+      { "name": "FixedAlarm", "class_name": "FixedAlarm" }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["RawAlarm", "StockAlarm", "FixedAlarm"]
+    }
+  ]
+}

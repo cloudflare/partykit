@@ -106,6 +106,10 @@
       {
         "name": "FacetParent",
         "class_name": "FacetParent"
+      },
+      {
+        "name": "RawAlarmDO",
+        "class_name": "RawAlarmDO"
       }
     ]
   },
@@ -137,7 +141,8 @@
         "FacetLikeBootstrapServer",
         "NameInConstructorServer",
         "FacetParent",
-        "FacetChild"
+        "FacetChild",
+        "RawAlarmDO"
       ]
     }
   ]

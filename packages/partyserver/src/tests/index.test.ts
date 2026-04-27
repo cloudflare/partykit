@@ -578,6 +578,7 @@ describe("Name resolution", () => {
       )
     );
     expect(await setupRes.text()).toBe("alarm set");
+    await expect(stub.readStoredName()).resolves.toBe("alarm-name-normal");
 
     const ran = await runDurableObjectAlarm(stub);
     expect(ran).toBe(true);
@@ -684,16 +685,18 @@ describe("Name resolution", () => {
       // name. Consumers reading this.name from inside an implicit-id
       // facet will see the wrong value.
       expect(result.facet.name).toBe(parentName);
-      // No storage record is involved — the implicit-id path doesn't
-      // touch __ps_name.
-      expect(result.facet.storedName).toBeUndefined();
+      // PartyServer persists the native ctx.id.name as an alarm fallback.
+      // For implicit-id facets that is the parent's name, which is another
+      // reason this flow is not recommended.
+      expect(result.facet.storedName).toBe(parentName);
     });
 
-    it("facet WITH explicit id survives cold wake without any storage hydrate (ctx.id.name is the source of truth)", async () => {
+    it("facet WITH explicit id survives cold wake with its own persisted fallback", async () => {
       // Variant of the explicit-id path that exercises cold wake.
       // The factory passed to ctx.facets.get() runs again on resume,
       // and idFromName(facetName) is deterministic, so the resumed
-      // facet gets the same ctx.id.name. No storage record needed.
+      // facet gets the same ctx.id.name. PartyServer also persists it
+      // so old-compat alarm handlers have a fallback.
       const parentName = "facet-parent-" + Math.random().toString(36).slice(2);
       const facetName = "facet-child-" + Math.random().toString(36).slice(2);
 
@@ -701,13 +704,11 @@ describe("Name resolution", () => {
       const stub = env.FacetParent.get(id);
 
       await stub.spawnWithExplicitId(facetName, "env-namespace");
-      // No __ps_name was written, so the only thing that can carry
-      // the name across eviction is the deterministic id factory.
-      // This implicitly tests that it works.
+      // The fallback record is populated from the facet's own explicit id.
       const result = await stub.spawnWithExplicitId(facetName, "env-namespace");
       expect(result.facet.name).toBe(facetName);
       expect(result.facet.ctxIdName).toBe(facetName);
-      expect(result.facet.storedName).toBeUndefined();
+      expect(result.facet.storedName).toBe(facetName);
     });
 
     it("facet WITH explicit id (FacetStartupOptions.id) gets its own ctx.id.name — no setName needed", async () => {
@@ -716,7 +717,7 @@ describe("Name resolution", () => {
       // `ctx.id` reflects that id rather than inheriting the parent's.
       // This is the recommended pattern — the facet gets a real
       // `ctx.id.name === facetName` and partyserver's `name` getter
-      // returns it without any setName/__ps_name override mechanism.
+      // returns it without any setName override mechanism.
       //
       // The id can be constructed from any DurableObjectNamespace.
       // Two ergonomic options:
@@ -758,7 +759,7 @@ describe("Name resolution", () => {
       // env-namespace: works.
       expect(fromEnvNs.name).toBe(`${facetName}-env-namespace`);
       expect(fromEnvNs.ctxIdName).toBe(`${facetName}-env-namespace`);
-      expect(fromEnvNs.storedName).toBeUndefined();
+      expect(fromEnvNs.storedName).toBe(`${facetName}-env-namespace`);
       expect(fromEnvNs.onStartName).toBe(`${facetName}-env-namespace`);
 
       // ctx-exports-namespace: also works, no env knowledge needed.
@@ -767,7 +768,9 @@ describe("Name resolution", () => {
       expect(fromCtxExportsNs.ctxIdName).toBe(
         `${facetName}-ctx-exports-namespace`
       );
-      expect(fromCtxExportsNs.storedName).toBeUndefined();
+      expect(fromCtxExportsNs.storedName).toBe(
+        `${facetName}-ctx-exports-namespace`
+      );
       expect(fromCtxExportsNs.onStartName).toBe(
         `${facetName}-ctx-exports-namespace`
       );
@@ -887,20 +890,19 @@ describe("setName() as bootstrap API for non-idFromName DOs", () => {
     expect(data.name).toBe("setname-coldwake-test");
   });
 
-  it("does NOT write storage when the DO was addressed via idFromName", async () => {
-    // For normal idFromName DOs, ctx.id.name carries the name and
-    // setName() is redundant. It must not write `__ps_name` to
-    // storage in this path — that would re-introduce the per-setName
-    // storage write that 0.5.0 eliminated.
-    const id = env.SetNameBootstrapServer.idFromName("setname-no-write");
+  it("persists a fallback when the DO was addressed via idFromName", async () => {
+    // For normal idFromName DOs, ctx.id.name carries the name. PartyServer
+    // also writes a fallback before onStart so old-compat alarm handlers
+    // can recover the name after a cold wake.
+    const id = env.SetNameBootstrapServer.idFromName("setname-fallback-write");
     const stub = env.SetNameBootstrapServer.get(id);
 
-    // Calling setName with the matching name is a no-op on storage;
-    // it just runs onStart.
-    await stub.setName("setname-no-write");
+    // Calling setName with the matching name is redundant, but still
+    // triggers initialization and the fallback persistence path.
+    await stub.setName("setname-fallback-write");
 
     const stored = await stub.readStoredName();
-    expect(stored).toBeUndefined();
+    expect(stored).toBe("setname-fallback-write");
   });
 });
 
@@ -945,6 +947,64 @@ describe("Framework bootstrap fallback (Agents facets etc.)", () => {
     expect(res.status).toBe(200);
     const data = (await res.json()) as { name: string };
     expect(data.name).toBe("facet-coldwake-test");
+  });
+});
+
+describe("Raw runtime contract: ctx.id.name in alarms vs. compatibility_date", () => {
+  // The test runtime's `wrangler.jsonc` declares
+  // `compatibility_date: "2026-01-28"`, which is BEFORE the
+  // 2026-03-15 date the Cloudflare DO docs cite for when alarms
+  // started persisting `name`:
+  //   https://developers.cloudflare.com/durable-objects/api/id/#name
+  //
+  // This test probes a raw `DurableObject` (no PartyServer wrapping)
+  // to pin the actual workerd contract. As of the workerd version
+  // used by this test pool, `ctx.id.name` IS available in `alarm()`
+  // for an idFromName-addressed DO under compat_date 2026-01-28 —
+  // i.e., the local runtime does not appear to gate alarm-name
+  // propagation by compat date. If this test ever fails, the runtime
+  // contract has changed and PartyServer's fallback becomes
+  // load-bearing rather than defensive. Either way, the fallback
+  // protects us from the empirically-observed failure mode reported
+  // in cloudflare/partykit#390.
+  it("ctx.id.name is available in fetch() and alarm() for idFromName DOs (compat 2026-01-28)", async () => {
+    const name = "raw-alarm-" + Math.random().toString(36).slice(2);
+    const id = env.RawAlarmDO.idFromName(name);
+    const stub = env.RawAlarmDO.get(id);
+
+    const fetchRes = await stub.fetch(new Request("http://example.com/"));
+    const fetchData = (await fetchRes.json()) as {
+      fetchCtxIdName: string | undefined;
+      alarmCtxIdName: string | undefined | null;
+    };
+    expect(fetchData.fetchCtxIdName).toBe(name);
+    // alarm() hasn't fired yet; sentinel is null so we can distinguish
+    // "didn't run" from "ran with undefined".
+    expect(fetchData.alarmCtxIdName).toBeNull();
+
+    const ran = await runDurableObjectAlarm(stub);
+    expect(ran).toBe(true);
+
+    const snap = await stub.snapshot();
+    expect(snap.fetchCtxIdName).toBe(name);
+    expect(snap.alarmCtxIdName).toBe(name);
+  });
+
+  it("ctx.id.name is undefined in alarm() for newUniqueId DOs (no name to propagate)", async () => {
+    // Sanity check: when there is genuinely no name to begin with,
+    // ctx.id.name remains undefined throughout — confirming that the
+    // previous test isn't trivially passing because workerd is
+    // synthesizing a name from somewhere else.
+    const id = env.RawAlarmDO.newUniqueId();
+    const stub = env.RawAlarmDO.get(id);
+
+    await stub.fetch(new Request("http://example.com/"));
+    const ran = await runDurableObjectAlarm(stub);
+    expect(ran).toBe(true);
+
+    const snap = await stub.snapshot();
+    expect(snap.fetchCtxIdName).toBeUndefined();
+    expect(snap.alarmCtxIdName).toBeUndefined();
   });
 });
 

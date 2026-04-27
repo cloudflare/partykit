@@ -548,22 +548,18 @@ export class Server<
    * Read the legacy `__ps_name` storage record as a fallback source of
    * `this.name` when `ctx.id.name` is unavailable. Covers:
    *
-   *   1. Pre-2026-03-15 alarms, which fire without `ctx.id.name`
-   *      populated on the alarm handler (see the Durable Objects
-   *      ID docs: https://developers.cloudflare.com/durable-objects/api/id/#name).
+   *   1. Alarm handlers firing on alarm records that were scheduled by
+   *      a workerd version that did not yet persist `name` into the
+   *      alarm record (see the Durable Objects ID docs:
+   *      https://developers.cloudflare.com/durable-objects/api/id/#name).
+   *      The runtime contract for current workerd populates `ctx.id.name`
+   *      in alarm handlers — see the "Raw runtime contract" tests — so
+   *      this fallback exists primarily for stale on-disk alarm records
+   *      and for defense-in-depth against future runtime changes.
    *   2. Legacy framework-level bootstrap patterns that write
    *      `__ps_name` directly (or call `setName()`) before triggering
    *      `__unsafe_ensureInitialized()` — typically DOs addressed via
    *      `idFromString()` / `newUniqueId()` plus a name override.
-   *
-   * PartyServer no longer writes this record itself. Everything that
-   * reads it is reading something written by an older version of
-   * PartyServer or by a framework that embeds it.
-   *
-   * Not relevant to Cloudflare Agents facets — the recommended
-   * facet pattern passes an explicit `id` in `FacetStartupOptions`,
-   * so the facet has its own `ctx.id.name` and never hits this
-   * fallback. See the README for the full pattern.
    */
   async #hydrateNameFromLegacyStorage(): Promise<void> {
     if (this.#_name) return;
@@ -571,6 +567,17 @@ export class Server<
     if (stored) {
       this.#_name = stored;
     }
+  }
+
+  async #persistNameFallbackFromCtxId(): Promise<void> {
+    const ctxName = this.ctx.id.name;
+    if (ctxName === undefined || this.#_name) return;
+
+    const stored = await this.ctx.storage.get<string>(NAME_STORAGE_KEY);
+    if (stored !== ctxName) {
+      await this.ctx.storage.put(NAME_STORAGE_KEY, ctxName);
+    }
+    this.#_name = ctxName;
   }
 
   /**
@@ -587,13 +594,15 @@ export class Server<
   async #ensureInitialized(): Promise<void> {
     if (this.#status === "started") return;
 
-    // Name resolution fallback. The happy path (DO addressed via
-    // idFromName/getByName) short-circuits here because `ctx.id.name`
-    // is already populated — no storage read. The slow path covers
-    // pre-2026-03-15 alarms and framework bootstrap patterns (e.g.
-    // Agents facets) that write `__ps_name` directly before the
-    // first `onStart()` runs.
-    if (!this.ctx.id.name && !this.#_name) {
+    // Persist a fallback record for name-based DOs before user startup
+    // code can schedule alarms. Current workerd populates `ctx.id.name`
+    // in alarm handlers, but stale on-disk alarm records scheduled by
+    // older workerd versions do not, and we want recovery from those
+    // without requiring users to wipe `.wrangler/state` or to reschedule
+    // alarms from a fetch handler. See cloudflare/partykit#390.
+    if (this.ctx.id.name !== undefined) {
+      await this.#persistNameFallbackFromCtxId();
+    } else if (!this.#_name) {
       await this.#hydrateNameFromLegacyStorage();
     }
 
@@ -655,10 +664,9 @@ export class Server<
    * This is available inside every entry point (including the constructor,
    * alarms, and hibernating websocket handlers).
    *
-   * For the narrow case of alarms that were scheduled before 2026-03-15
-   * (where `ctx.id.name` is undefined inside the alarm handler), the name
-   * is recovered from a legacy storage record written by older versions
-   * of PartyServer. See `alarm()`.
+   * For alarm handlers firing on stale on-disk alarm records from
+   * older workerd versions that didn't persist `name` into the alarm
+   * record, the name is recovered from a storage fallback record.
    *
    * Throws if neither source is available — typically this means the DO
    * was addressed via `idFromString()` or `newUniqueId()`, which is not
@@ -669,7 +677,7 @@ export class Server<
     if (ctxName !== undefined) return ctxName;
     if (this.#_name) return this.#_name;
     throw new Error(
-      `Attempting to read .name on ${this.#ParentClass.name}, but this.ctx.id.name is not set. PartyServer requires DOs to be addressed via idFromName()/getByName(). If this is a legacy alarm scheduled before 2026-03-15, reschedule it from a fetch handler to restore the name.`
+      `Attempting to read .name on ${this.#ParentClass.name}, but this.ctx.id.name is not set and no ${NAME_STORAGE_KEY} fallback record is available. PartyServer requires DOs to be addressed via idFromName()/getByName(), or explicitly bootstrapped with setName() when using idFromString()/newUniqueId(). If this happens in an alarm handler firing on a stale alarm record, initialize the DO from a fetch/RPC entry point first so PartyServer can persist the fallback name.`
     );
   }
 
@@ -688,7 +696,9 @@ export class Server<
    *
    * For DOs addressed via `idFromName()` / `getByName()`, calling
    * `setName()` is redundant — `this.name` is available automatically
-   * from `ctx.id.name`. Throws if `name` does not match `ctx.id.name`.
+   * from `ctx.id.name`. The normal initialization path also persists
+   * a fallback record so old-compat alarm handlers can recover the name.
+   * Throws if `name` does not match `ctx.id.name`.
    *
    * **Not appropriate for facets.** Cloudflare Agents and any other
    * framework using `ctx.facets.get(...)` should pass an explicit
