@@ -46,7 +46,7 @@
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20260424.1",
-    "partyserver": "^0.5.3",
+    "partyserver": "^0.5.4",
     "partysocket": "^1.1.18"
   }
 }
