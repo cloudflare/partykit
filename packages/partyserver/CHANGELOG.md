@@ -25,7 +25,6 @@
   The fix is at the call site, not in PartyServer: pass `id: someBoundDONamespace.idFromName(facetName)` to `ctx.facets.get(...)`. The facet then gets its own native `ctx.id.name === facetName` and PartyServer's `name` getter does the right thing automatically. No `setName()` is required, no `__ps_name` storage record is written, and cold-wake recovery happens for free because the factory re-runs and `idFromName` is deterministic.
 
   This release adds:
-
   - **A "Using PartyServer with Durable Object Facets" section in the README** that walks through the recommended pattern with a code example, calls out the implicit-id footgun explicitly, and documents that plain-string `id` values are not a substitute for `idFromName(facetName)` (workerd treats string ids as `idFromString`-like, so the resulting facet has no `ctx.id.name`).
   - **`setName()` docstring updated** to clarify that facets are NOT a `setName()` use case — point to the explicit-`id` pattern instead. The original `setName()` `ctx.id.name` mismatch throw is preserved as a typo guard for the `idFromName` happy path.
   - **End-to-end facet test coverage** against the real workerd `ctx.facets.get(...)` API. A `FacetParent` / `FacetChild` fixture exercises both the implicit-id path (pinning the runtime contract that `this.name` returns the parent's name in that flow — i.e., behavior-as-documentation so framework authors are unsurprised) and the explicit-id path (recommended; verifies that all reasonable id-construction strategies work and that cold wake recovers without any storage record). Plain-string `id` is also tested; the test asserts it does NOT carry a name, pinning the contract so callers don't get tempted by the type signature.
@@ -54,7 +53,6 @@
   ```
 
   Backward compatible:
-
   - For DOs addressed via `idFromName()` / `getByName()` (the happy path), `setName()` continues to NOT write storage — `ctx.id.name` is the source of truth and `setName()` is just a no-op-plus-onStart.
   - The pre-existing direct-storage-write pattern keeps working — the storage write becomes idempotent with what `setName()` would do.
 
@@ -69,7 +67,6 @@
   0.5.0 moved the legacy storage hydrate into `alarm()` only, breaking Cloudflare Agents facets and any other framework that writes `__ps_name` directly before calling `__unsafe_ensureInitialized()`. Facet DOs are spawned via `ctx.facets.get(...)` rather than `idFromName()` and therefore have `ctx.id.name === undefined`; they relied on PartyServer reading the storage record back to populate `this.name` before `onStart()`.
 
   Changes:
-
   - Move the legacy `__ps_name` hydrate from `alarm()` into `#ensureInitialized()`, still gated on `!ctx.id.name && !#_name` so it costs nothing on the happy path (normal `idFromName()`/`getByName()` DOs skip the storage read entirely).
   - `Server.fetch()` now delegates to `#ensureInitialized()` for the hydrate instead of doing its own. The `x-partykit-room` header fallback remains as a last resort when neither `ctx.id.name` nor a legacy storage record is available.
   - `Server.alarm()` is simplified — it no longer needs its own hydrate call since `#ensureInitialized()` handles it.
@@ -84,7 +81,6 @@
   Durable Objects now expose `ctx.id.name` on every entry point (constructor, fetch, alarm, hibernating websocket handlers) when the DO is addressed via `idFromName()`/`getByName()`. PartyServer now uses this as the primary source of `this.name`, which simplifies routing, eliminates storage writes, and makes `this.name` available inside the constructor.
 
   Changes in `partyserver`:
-
   - `this.name` resolves from `this.ctx.id.name`. The apologetic `workerd#2240` error message is gone.
   - `this.name` is now available **inside the constructor** and from class field initializers, not just after `setName()`/`fetch()` has run.
   - `routePartykitRequest` no longer issues a `setName()`/`_initAndFetch()` RPC before `fetch()`. The WebSocket path goes from 2 RPCs to 1; the HTTP path remains 1 RPC. Props, when supplied, are delivered to the DO via the `x-partykit-props` request header, set after `onBeforeConnect`/`onBeforeRequest` hooks run.
@@ -96,7 +92,6 @@
   - When reading `this.name` throws, it is because `ctx.id.name` is undefined and no legacy fallback has populated the name: the DO was addressed via `idFromString()` or `newUniqueId()` (both unsupported), the runtime is too old to expose `ctx.id.name`, or a pre-2026-03-15 alarm fired before the legacy storage fallback ran.
 
   Changes in all affected packages (`partyserver`, `partysub`, `partysync`, `y-partyserver`, `hono-party`):
-
   - `@cloudflare/workers-types` peer dependency bumped from `^4.20240729.0` to `^4.20260424.1`. The old range predates `ctx.id.name` in the type surface.
 
   Not supported: addressing PartyServer DOs via `idFromString()` or `newUniqueId()`. These paths return `ctx.id.name === undefined` inside the DO and will surface as a clear error from `this.name`. PartyServer has always assumed name-based addressing via `getServerByName` / `routePartykitRequest`; this release makes that assumption explicit.
@@ -417,14 +412,12 @@
 ### Patch Changes
 
 - [`528adea`](https://github.com/threepointone/partyserver/commit/528adeaced6dce6e888d2f54cc75c3569bf2c277) Thanks [@threepointone](https://github.com/threepointone)! - some fixes and tweaks
-
   - getServerByName was throwing on all requests
   - `Env` is now an optional arg when defining `Server`
   - `y-partyserver/provider` can now take an optional `prefix` arg to use a custom url to connect
   - `routePartyKitRequest`/`getServerByName` now accepts `jurisdiction`
 
   bonus:
-
   - added a bunch of fixtures
   - added stubs for docs
 
