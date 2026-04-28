@@ -23,31 +23,50 @@ export type WSMessage = ArrayBuffer | ArrayBufferView | string;
 const NAME_STORAGE_KEY = "__ps_name";
 
 /**
- * Reserved WebSocket close codes that cannot be sent in a Close frame.
- *  - 1005 (NoStatusReceived) — stand-in for "no code in close frame".
- *  - 1006 (AbnormalClosure)  — synthesized for connections that drop
- *                              without a Close frame.
- *  - 1015 (TLSHandshake)     — TLS failure indicator.
+ * Reserved WebSocket close codes the runtime synthesizes when there
+ * was no real Close frame from the peer:
+ *  - 1005 (NoStatusReceived) — peer's frame had no status code.
+ *  - 1006 (AbnormalClosure)  — peer dropped the underlying transport
+ *                              without sending a Close frame at all.
+ *  - 1015 (TLSHandshake)     — TLS failure during connection setup.
  *
- * If we observe one of these in `webSocketClose`, normalize it to 1000
- * before reciprocating, otherwise `ws.close(code, reason)` will throw.
+ * These cannot legally appear in an outgoing Close frame, and — more
+ * importantly for our reciprocation path — there is no peer left to
+ * receive a reciprocating Close frame. Trying to send one anyway can
+ * succeed synchronously but fail asynchronously inside the runtime
+ * with "WebSocket peer disconnected" / "Network connection lost",
+ * which escapes a synchronous try/catch and surfaces as an unhandled
+ * promise rejection.
  */
-function normalizeCloseCode(code: number): number {
-  if (code === 1005 || code === 1006 || code === 1015) return 1000;
-  return code;
+function isReservedCloseCode(code: number): boolean {
+  return code === 1005 || code === 1006 || code === 1015;
 }
 
 /**
  * Reciprocate a peer-initiated Close frame to complete the handshake.
  *
- * Best-effort: swallows errors from invalid codes, oversize reasons, or
- * sockets that have already been closed by user code. Used by both the
- * hibernating and non-hibernating close handlers to ensure the close
- * handshake always completes.
+ * Best-effort: swallows synchronous errors from invalid codes,
+ * oversize reasons, or sockets that have already been closed by user
+ * code. Skips the reciprocation entirely when the peer didn't
+ * actually send a Close frame (reserved codes 1005/1006/1015) — in
+ * those cases the underlying transport is already gone and writing
+ * to it would fail asynchronously, which we can't catch here.
+ *
+ * Used by both the hibernating and non-hibernating close handlers to
+ * ensure the close handshake always completes when there is one to
+ * complete.
  */
 function closeQuietly(ws: WebSocket, code: number, reason: string): void {
+  // No real Close frame from the peer → nothing to reciprocate.
+  // Calling `ws.close(...)` here would synchronously succeed but
+  // schedule an outbound write on a dead transport, which the runtime
+  // would later reject with "Network connection lost". That rejection
+  // can't be observed from here (it's not thrown synchronously and
+  // ws.close() doesn't return a Promise to attach a `.catch` to), so
+  // it would surface as an unhandled rejection.
+  if (isReservedCloseCode(code)) return;
   try {
-    ws.close(normalizeCloseCode(code), reason);
+    ws.close(code, reason);
   } catch {
     // Reasons we end up here:
     //   - the socket was already closed (user called `connection.close()`

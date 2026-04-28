@@ -1652,6 +1652,65 @@ describe("Close handshake (#389)", () => {
       expect([1000, 4000]).toContain(event.code);
     });
 
+    it("skips reciprocation when the peer didn't send a real Close frame (reserved codes)", async () => {
+      // Regression for the followup to #393: when the runtime calls
+      // `webSocketClose` with a reserved synthetic code (1005 / 1006
+      // / 1015), the peer didn't actually send a Close frame — these
+      // codes can only be SYNTHESIZED locally. Calling `ws.close(...)`
+      // to "reciprocate" anyway succeeds synchronously but schedules
+      // an outbound write whose target may already be gone (notably
+      // when the WebSocket pair is tunneled across Durable Object
+      // RPC boundaries). The runtime later rejects that write with
+      // `Network connection lost`, which escapes `closeQuietly`'s
+      // synchronous try/catch and surfaces as an unhandled rejection.
+      //
+      // The fix is to recognize the reserved-code shape and skip the
+      // reciprocation entirely. There is nothing to acknowledge.
+      //
+      // What we verify here:
+      //   1. `onClose` IS still invoked with the reserved code, so
+      //      user-side cleanup runs as expected.
+      //   2. The test file completes without any unhandled rejection.
+      //      Without the fix, an integration scenario that puts the
+      //      server-side socket on a different isolate from the
+      //      client (e.g. a Cloudflare Agents facet) would emit
+      //      `Network connection lost` here as a vitest "Errors 1"
+      //      entry alongside the otherwise-passing test.
+      //
+      // We cannot easily reproduce the cross-isolate transport
+      // failure inside this in-process test runner, but we CAN
+      // reliably synthesize a code-1005 arrival on the server by
+      // having the client send a Close frame with no code (`ws.close()`
+      // with no args). That exercises the same `closeQuietly`
+      // branch without depending on a particular runtime topology.
+      const ws = await openAndHandshake(
+        "http://example.com/parties/close-handshake-hibernating/reserved-room"
+      );
+      ws.close(); // no code → server receives webSocketClose with code=1005
+
+      // We don't await `waitForClose(ws)` — with reciprocation skipped
+      // the client may not see a clean close on older compat dates
+      // (the runtime's auto-reply flag isn't active until 2026-04-07).
+      // What matters is that the server's `onClose` ran with the
+      // reserved code and no unhandled rejection escaped.
+      await new Promise((resolve) => setTimeout(resolve, 200));
+
+      const ctx = createExecutionContext();
+      const probe = await worker.fetch(
+        new Request(
+          "http://example.com/parties/close-handshake-hibernating/reserved-room"
+        ),
+        env,
+        ctx
+      );
+      const body = (await probe.json()) as {
+        lastClose: { code: number; wasClean: boolean } | null;
+      };
+
+      expect(body.lastClose).not.toBeNull();
+      expect(body.lastClose!.code).toBe(1005);
+    });
+
     it("normalizes reserved close codes (1005, 1006, 1015) when reciprocating", async () => {
       // The runtime never delivers a 1005/1006 close *frame* to
       // webSocketClose (these are synthetic, used only when there is
