@@ -9,8 +9,8 @@
     "types": "wrangler types env.d.ts --include-runtime false"
   },
   "dependencies": {
-    "@lexical/react": "^0.43.0",
-    "lexical": "^0.43.0",
+    "@lexical/react": "^0.44.0",
+    "lexical": "^0.44.0",
     "react": "^19.2.5",
     "react-dom": "^19.2.5"
   },

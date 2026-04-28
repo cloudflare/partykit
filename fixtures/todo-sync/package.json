@@ -18,7 +18,7 @@
     "valibot": "^1.3.1"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20260424.1",
+    "@cloudflare/workers-types": "^4.20260426.1",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3"
   }

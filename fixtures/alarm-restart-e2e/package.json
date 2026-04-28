@@ -9,13 +9,13 @@
   },
   "dependencies": {
     "partyserver": "*",
-    "partyserver-stock": "npm:partyserver@0.5.3",
+    "partyserver-stock": "npm:partyserver@0.5.5",
     "partysocket": "^1.1.18"
   },
   "devDependencies": {
-    "@cloudflare/vite-plugin": "^1.33.2",
-    "@cloudflare/workers-types": "^4.20260424.1",
+    "@cloudflare/vite-plugin": "^1.34.0",
+    "@cloudflare/workers-types": "^4.20260426.1",
     "vite": "^8.0.10",
-    "wrangler": "^4.85.0"
+    "wrangler": "^4.86.0"
   }
 }

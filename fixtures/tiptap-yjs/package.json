@@ -8,9 +8,9 @@
     "types": "wrangler types env.d.ts --include-runtime false"
   },
   "dependencies": {
-    "@tiptap/extension-collaboration": "^3.22.4",
-    "@tiptap/react": "^3.22.4",
-    "@tiptap/starter-kit": "^3.22.4",
+    "@tiptap/extension-collaboration": "^3.22.5",
+    "@tiptap/react": "^3.22.5",
+    "@tiptap/starter-kit": "^3.22.5",
     "partyserver": "^0.5.5",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",

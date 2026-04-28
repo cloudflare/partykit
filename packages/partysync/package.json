@@ -49,7 +49,7 @@
     "nanoid": "^5.1.9"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20260424.1",
+    "@cloudflare/workers-types": "^4.20260426.1",
     "partyfn": "^0.1.0",
     "partyserver": "^0.5.5",
     "partysocket": "^1.1.18"
