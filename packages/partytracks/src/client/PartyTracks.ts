@@ -761,6 +761,7 @@ function makePeerConnectionSessionCombo(options: {
     iceServers: options.iceServers
       ? of(options.iceServers)
       : fromFetch(`${options.prefix}/generate-ice-servers`, {
+          fetchImpl: options.fetch,
           selector: (res) =>
             res
               .json()
