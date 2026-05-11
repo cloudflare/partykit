@@ -4,10 +4,31 @@ import {
   // waitOnExecutionContext
 } from "cloudflare:test";
 import { env } from "cloudflare:workers";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 // Could import any other source file/function here
+import { routePartykitRequest } from "../index";
 import worker from "./worker";
+
+function retryableError(message = "transient Durable Object failure") {
+  const error = new Error(message) as Error & {
+    retryable: boolean;
+    overloaded?: boolean;
+  };
+  error.retryable = true;
+  return error;
+}
+
+function fakeEnvForFetch(
+  fetch: (request: Request) => Promise<Response>
+): Cloudflare.Env {
+  return {
+    FakeServer: {
+      idFromName: (name: string) => name,
+      get: () => ({ fetch })
+    }
+  } as unknown as Cloudflare.Env;
+}
 
 describe("Server", () => {
   it("can be connected with a url", async () => {
@@ -155,6 +176,172 @@ describe("Server", () => {
       className: "OnStartServer",
       name: "lobby-info"
     });
+  });
+
+  it("retries transient Durable Object routing errors by default", async () => {
+    const bodies: string[] = [];
+    let hookCalls = 0;
+    let retryEvent:
+      | {
+          attempt: number;
+          maxAttempts: number;
+          delayMs: number;
+          name: string;
+          className?: string;
+        }
+      | undefined;
+    const env = fakeEnvForFetch(async (request) => {
+      bodies.push(await request.text());
+      if (bodies.length === 1) {
+        throw retryableError();
+      }
+      return new Response("ok");
+    });
+
+    const response = await routePartykitRequest(
+      new Request("http://example.com/parties/fake-server/retry-room", {
+        method: "POST",
+        body: "payload"
+      }),
+      env,
+      {
+        routingRetry: {
+          baseDelayMs: 1,
+          maxDelayMs: 1,
+          onRetry: (event) => {
+            retryEvent = {
+              attempt: event.attempt,
+              maxAttempts: event.maxAttempts,
+              delayMs: event.delayMs,
+              name: event.name,
+              className: event.className
+            };
+          }
+        },
+        onBeforeRequest: () => {
+          hookCalls++;
+        }
+      }
+    );
+
+    expect(response?.status).toBe(200);
+    expect(await response?.text()).toBe("ok");
+    expect(bodies).toEqual(["payload", "payload"]);
+    expect(hookCalls).toBe(1);
+    expect(retryEvent).toEqual({
+      attempt: 1,
+      maxAttempts: 3,
+      delayMs: 0,
+      name: "retry-room",
+      className: "FakeServer"
+    });
+  });
+
+  it("does not retry overloaded Durable Object routing errors", async () => {
+    let attempts = 0;
+    const env = fakeEnvForFetch(async () => {
+      attempts++;
+      const error = retryableError("Durable Object is overloaded");
+      error.overloaded = true;
+      throw error;
+    });
+
+    await expect(
+      routePartykitRequest(
+        new Request("http://example.com/parties/fake-server/overloaded"),
+        env,
+        { routingRetry: { baseDelayMs: 1, maxDelayMs: 1 } }
+      )
+    ).rejects.toThrow("Durable Object is overloaded");
+    expect(attempts).toBe(1);
+  });
+
+  it("does not retry non-retryable Durable Object routing errors", async () => {
+    let attempts = 0;
+    const env = fakeEnvForFetch(async () => {
+      attempts++;
+      throw new Error("not retryable");
+    });
+
+    await expect(
+      routePartykitRequest(
+        new Request("http://example.com/parties/fake-server/non-retryable"),
+        env,
+        { routingRetry: { baseDelayMs: 1, maxDelayMs: 1 } }
+      )
+    ).rejects.toThrow("not retryable");
+    expect(attempts).toBe(1);
+  });
+
+  it("throws the last retryable routing error after maxAttempts", async () => {
+    let attempts = 0;
+    const env = fakeEnvForFetch(async () => {
+      attempts++;
+      throw retryableError(`transient ${attempts}`);
+    });
+
+    await expect(
+      routePartykitRequest(
+        new Request("http://example.com/parties/fake-server/exhausted"),
+        env,
+        { routingRetry: { maxAttempts: 2, baseDelayMs: 1, maxDelayMs: 1 } }
+      )
+    ).rejects.toThrow("transient 2");
+    expect(attempts).toBe(2);
+  });
+
+  it("continues retrying when onRetry throws", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    let attempts = 0;
+    const env = fakeEnvForFetch(async () => {
+      attempts++;
+      if (attempts === 1) {
+        throw retryableError();
+      }
+      return new Response("ok");
+    });
+
+    try {
+      const response = await routePartykitRequest(
+        new Request("http://example.com/parties/fake-server/on-retry-throws"),
+        env,
+        {
+          routingRetry: {
+            baseDelayMs: 1,
+            maxDelayMs: 1,
+            onRetry: () => {
+              throw new Error("observer failed");
+            }
+          }
+        }
+      );
+
+      expect(await response?.text()).toBe("ok");
+      expect(attempts).toBe(2);
+      expect(warn).toHaveBeenCalledWith(
+        "PartyServer routingRetry onRetry callback failed:",
+        expect.any(Error)
+      );
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it("can disable Durable Object routing retries", async () => {
+    let attempts = 0;
+    const env = fakeEnvForFetch(async () => {
+      attempts++;
+      throw retryableError();
+    });
+
+    await expect(
+      routePartykitRequest(
+        new Request("http://example.com/parties/fake-server/no-retry"),
+        env,
+        { routingRetry: false }
+      )
+    ).rejects.toThrow("transient Durable Object failure");
+    expect(attempts).toBe(1);
   });
 
   it("ignores foreign hibernated websockets when broadcasting", async () => {

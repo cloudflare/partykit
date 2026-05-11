@@ -91,12 +91,156 @@ const serverMapCache = new WeakMap<
 // Maps kebab-case namespace -> original env binding name (e.g. "my-agent" -> "MyAgent")
 const bindingNameCache = new WeakMap<object, Record<string, string>>();
 
+const DEFAULT_ROUTING_RETRY_OPTIONS = {
+  maxAttempts: 3,
+  baseDelayMs: 100,
+  maxDelayMs: 800
+};
+
+export interface RoutingRetryEvent {
+  error: unknown;
+  attempt: number;
+  maxAttempts: number;
+  delayMs: number;
+  name: string;
+  className?: string;
+}
+
+export interface RoutingRetryOptions {
+  /** Max number of attempts, including the first. Default: 3 */
+  maxAttempts?: number;
+  /** Base delay in ms for exponential backoff. Default: 100 */
+  baseDelayMs?: number;
+  /** Max delay cap in ms. Default: 800 */
+  maxDelayMs?: number;
+  /** Optional callback invoked before each retry delay. */
+  onRetry?: (event: RoutingRetryEvent) => void | Promise<void>;
+}
+
+interface ResolvedRoutingRetryOptions extends Required<
+  Omit<RoutingRetryOptions, "onRetry">
+> {
+  onRetry?: RoutingRetryOptions["onRetry"];
+}
+
+interface RoutingRetryContext {
+  name: string;
+  className?: string;
+}
+
+function durableObjectGetOptions(
+  options: { locationHint?: DurableObjectLocationHint } | undefined
+) {
+  return options?.locationHint
+    ? { locationHint: options.locationHint }
+    : undefined;
+}
+
+function validatePositiveInteger(value: number, name: string): void {
+  if (!Number.isFinite(value) || value < 1) {
+    throw new Error(`${name} must be >= 1`);
+  }
+  if (!Number.isInteger(value)) {
+    throw new Error(`${name} must be an integer`);
+  }
+}
+
+function validatePositiveNumber(value: number, name: string): void {
+  if (!Number.isFinite(value) || value <= 0) {
+    throw new Error(`${name} must be > 0`);
+  }
+}
+
+function resolveRoutingRetryOptions(
+  options: false | RoutingRetryOptions | undefined
+): ResolvedRoutingRetryOptions | null {
+  if (options === false) return null;
+
+  const resolved = {
+    maxAttempts:
+      options?.maxAttempts ?? DEFAULT_ROUTING_RETRY_OPTIONS.maxAttempts,
+    baseDelayMs:
+      options?.baseDelayMs ?? DEFAULT_ROUTING_RETRY_OPTIONS.baseDelayMs,
+    maxDelayMs: options?.maxDelayMs ?? DEFAULT_ROUTING_RETRY_OPTIONS.maxDelayMs,
+    onRetry: options?.onRetry
+  };
+
+  validatePositiveInteger(resolved.maxAttempts, "routingRetry.maxAttempts");
+  validatePositiveNumber(resolved.baseDelayMs, "routingRetry.baseDelayMs");
+  validatePositiveNumber(resolved.maxDelayMs, "routingRetry.maxDelayMs");
+  if (resolved.baseDelayMs > resolved.maxDelayMs) {
+    throw new Error("routingRetry.baseDelayMs must be <= maxDelayMs");
+  }
+
+  return resolved;
+}
+
+function isRetryableDurableObjectError(error: unknown): boolean {
+  if (typeof error !== "object" || error === null) return false;
+  const typed = error as { retryable?: boolean; overloaded?: boolean };
+  return typed.retryable === true && typed.overloaded !== true;
+}
+
+function routingRetryDelayMs(
+  attempt: number,
+  options: ResolvedRoutingRetryOptions
+): number {
+  const upperBoundMs = Math.min(
+    options.maxDelayMs,
+    options.baseDelayMs * 2 ** (attempt - 1)
+  );
+  return Math.floor(Math.random() * upperBoundMs);
+}
+
+async function retryDurableObjectOperation<T>(
+  operation: () => Promise<T>,
+  context: RoutingRetryContext,
+  retryOptions: false | RoutingRetryOptions | undefined
+): Promise<T> {
+  const resolved = resolveRoutingRetryOptions(retryOptions);
+  if (!resolved) return await operation();
+
+  let attempt = 1;
+  while (true) {
+    try {
+      return await operation();
+    } catch (error) {
+      const nextAttempt = attempt + 1;
+      if (
+        nextAttempt > resolved.maxAttempts ||
+        !isRetryableDurableObjectError(error)
+      ) {
+        throw error;
+      }
+
+      const delayMs = routingRetryDelayMs(attempt, resolved);
+      try {
+        await resolved.onRetry?.({
+          error,
+          attempt,
+          maxAttempts: resolved.maxAttempts,
+          delayMs,
+          name: context.name,
+          className: context.className
+        });
+      } catch (callbackError) {
+        console.warn(
+          "PartyServer routingRetry onRetry callback failed:",
+          callbackError
+        );
+      }
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+      attempt = nextAttempt;
+    }
+  }
+}
+
 /**
  * For a given server namespace, create a server with a name.
  *
- * Makes a single RPC that awaits the DO's `onStart()` before returning,
- * so callers can invoke user-defined RPC methods on the returned stub and
- * trust that `onStart()` has completed. (User-defined RPC methods don't
+ * Makes an RPC that awaits the DO's `onStart()` before returning, so callers
+ * can invoke user-defined RPC methods on the returned stub and trust that
+ * `onStart()` has completed. (User-defined RPC methods don't
  * otherwise pass through `Server.fetch()`, which is where initialization
  * would normally be triggered.)
  *
@@ -115,6 +259,7 @@ export async function getServerByName<
     jurisdiction?: DurableObjectJurisdiction;
     locationHint?: DurableObjectLocationHint;
     props?: Props;
+    routingRetry?: false | RoutingRetryOptions;
   }
 ): Promise<DurableObjectStub<T>> {
   if (options?.jurisdiction) {
@@ -122,11 +267,15 @@ export async function getServerByName<
   }
 
   const id = serverNamespace.idFromName(name);
-  const stub = serverNamespace.get(id, options);
+  const getOptions = durableObjectGetOptions(options);
 
-  await stub.setName(name, options?.props);
+  await retryDurableObjectOperation(
+    () => serverNamespace.get(id, getOptions).setName(name, options?.props),
+    { name },
+    options?.routingRetry
+  );
 
-  return stub;
+  return serverNamespace.get(id, getOptions);
 }
 
 function camelCaseToKebabCase(str: string): string {
@@ -189,6 +338,14 @@ export interface PartyServerOptions<
    * Non-WebSocket responses on matched routes will also have the CORS headers appended.
    */
   cors?: boolean | HeadersInit;
+  /**
+   * Retry transient Durable Object infrastructure errors thrown while routing
+   * to the target DO. Enabled by default; pass `false` to disable.
+   *
+   * Only errors marked `retryable === true` are retried, and overloaded
+   * errors (`overloaded === true`) are never retried.
+   */
+  routingRetry?: false | RoutingRetryOptions;
   onBeforeConnect?: (
     req: Request,
     lobby: Lobby<Env>
@@ -320,7 +477,7 @@ Did you forget to add a durable object binding to the class ${namespace[0].toUpp
     }
 
     const id = doNamespace.idFromName(name);
-    const stub = doNamespace.get(id, options);
+    const getOptions = durableObjectGetOptions(options);
 
     req = new Request(req);
     req.headers.set("x-partykit-namespace", namespace);
@@ -377,7 +534,11 @@ Did you forget to add a durable object binding to the class ${namespace[0].toUpp
     // `ctx.id.name` inside the DO, so there's no need for a prior
     // `setName()` round-trip. Props (if any) travel in the request header
     // and are picked up in `Server.fetch()`.
-    const response = await stub.fetch(req);
+    const response = await retryDurableObjectOperation(
+      () => doNamespace.get(id, getOptions).fetch(req.clone()),
+      { name, className },
+      options?.routingRetry
+    );
     return isWebSocket ? response : withCorsHeaders(response);
   } else {
     return null;
