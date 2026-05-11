@@ -1,5 +1,11 @@
 # partysocket
 
+## 1.1.19
+
+### Patch Changes
+
+- [#397](https://github.com/cloudflare/partykit/pull/397) [`798aae5`](https://github.com/cloudflare/partykit/commit/798aae5053d0e482e4aaa65e0efe0633e0d07b8c) Thanks [@agcty](https://github.com/agcty)! - fix(partysocket): avoid module-scope random default
+
 ## 1.1.18
 
 ### Patch Changes
@@ -331,6 +337,7 @@
 ### Patch Changes
 
 - [#251](https://github.com/partykit/partykit/pull/251) [`049bcac`](https://github.com/partykit/partykit/commit/049bcac42aa49e4bddec975c63b7d7984112e450) Thanks [@threepointone](https://github.com/threepointone)! - small tweaks to `init`
+
   - replace `process.env.PARTYKIT_HOST` with just `PARTYKIT_HOST`
   - add a `tsconfig.json`
   - add partykit to devDependencies in `init`
@@ -351,6 +358,7 @@
 - [#211](https://github.com/partykit/partykit/pull/211) [`fffe721`](https://github.com/partykit/partykit/commit/fffe72148e5cc425e80c90b6bf180192df410080) Thanks [@threepointone](https://github.com/threepointone)! - update dependencies
 
 - [#191](https://github.com/partykit/partykit/pull/191) [`39cf5ce`](https://github.com/partykit/partykit/commit/39cf5cebf5e699bc50ace8b6d25cd82c807e863a) Thanks [@jevakallio](https://github.com/jevakallio)! - Improve PartySocket types and React hooks API:
+
   - Add websocket lifecycle event handlers to usePartyKit options to reduce need for effects in userland
   - Allow usePartySocket to provide startClosed option to initialize without opening connection
   - Fix types for PartySocket#removeEventListener
