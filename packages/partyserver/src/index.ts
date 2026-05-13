@@ -1142,13 +1142,13 @@ export class Server<
    * Called when an error occurs on a connection.
    */
   onError(connection: Connection, error: unknown): void | Promise<void> {
-    console.error(
-      `Error on connection ${connection.id} in ${this.#ParentClass.name}:${this.name}:`,
-      error
-    );
-    console.info(
-      `Implement onError on ${this.#ParentClass.name} to handle this error.`
-    );
+    // console.error(
+    //   `Error on connection ${connection.id} in ${this.#ParentClass.name}:${this.name}:`,
+    //   error
+    // );
+    // console.info(
+    //   `Implement onError on ${this.#ParentClass.name} to handle this error.`
+    // );
   }
 
   /**
@@ -1157,9 +1157,9 @@ export class Server<
   onRequest(request: Request): Response | Promise<Response> {
     // default to 404
 
-    console.warn(
-      `onRequest hasn't been implemented on ${this.#ParentClass.name}:${this.name} responding to ${request.url}`
-    );
+    // console.warn(
+    //   `onRequest hasn't been implemented on ${this.#ParentClass.name}:${this.name} responding to ${request.url}`
+    // );
 
     return new Response("Not implemented", { status: 404 });
   }
@@ -1169,19 +1169,19 @@ export class Server<
    * @param error - The error that occurred.
    */
   onException(error: unknown): void | Promise<void> {
-    console.error(
-      `Exception in ${this.#ParentClass.name}:${this.name}:`,
-      error
-    );
-    console.info(
-      `Implement onException on ${this.#ParentClass.name} to handle this error.`
-    );
+    // console.error(
+    //   `Exception in ${this.#ParentClass.name}:${this.name}:`,
+    //   error
+    // );
+    // console.info(
+    //   `Implement onException on ${this.#ParentClass.name} to handle this error.`
+    // );
   }
 
   onAlarm(): void | Promise<void> {
-    console.log(
-      `Implement onAlarm on ${this.#ParentClass.name} to handle alarms.`
-    );
+    // console.log(
+    //   `Implement onAlarm on ${this.#ParentClass.name} to handle alarms.`
+    // );
   }
 
   async alarm(): Promise<void> {
