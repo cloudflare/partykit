@@ -11,7 +11,7 @@ import type { SocketOptions } from "./use-socket";
 
 type UsePartySocketOptions = Omit<PartySocketOptions, "host"> &
   EventHandlerOptions &
-  Pick<SocketOptions, "enabled"> & {
+  Pick<SocketOptions, "enabled" | "transferEnqueuedMessages"> & {
     host?: string | undefined;
   };
 
@@ -44,6 +44,22 @@ export default function usePartySocket(options: UsePartySocketOptions) {
         options.basePath,
         options.prefix,
         ...getOptionsThatShouldCauseRestartWhenChanged(options)
+      ]),
+    // Identifies *where* the socket connects. Deliberately excludes
+    // `query` (credentials — a token refresh shouldn't drop buffered
+    // messages) and `id` (connection identity, not destination). Used
+    // to decide whether messages buffered in a replaced socket can be
+    // re-sent on its replacement.
+    createSocketDestinationKey: (options) =>
+      JSON.stringify([
+        options.host,
+        options.room,
+        options.party,
+        options.path,
+        options.protocol,
+        options.protocols,
+        options.basePath,
+        options.prefix
       ])
   });
 

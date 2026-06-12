@@ -68,16 +68,17 @@ describe.skipIf(!!process.env.GITHUB_ACTIONS)(
           ps.send(testMessage);
         });
 
+        // close() dispatches its close event synchronously, so the listener
+        // must be attached before close() is called
+        ps.addEventListener("close", () => {
+          expect(ps.readyState).toBe(WebSocket.CLOSED);
+          resolve();
+        });
+
         ps.addEventListener("message", async (event) => {
           const text = await getMessageText(event.data);
           expect(text).toContain(testMessage);
           ps.close();
-
-          // Wait for close event before resolving
-          ps.addEventListener("close", () => {
-            expect(ps.readyState).toBe(WebSocket.CLOSED);
-            resolve();
-          });
         });
       });
     });

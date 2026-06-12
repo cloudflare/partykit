@@ -136,6 +136,10 @@ const DEFAULT = {
 
 let didWarnAboutMissingWebSocket = false;
 
+// no-op error listener attached to inner sockets we've detached from, so
+// their late error events don't surface as unhandled errors
+function absorbError() {}
+
 export type UrlProvider = string | (() => string) | (() => Promise<string>);
 export type ProtocolsProvider =
   | null
@@ -159,6 +163,7 @@ export default class ReconnectingWebSocket extends (EventTarget as TypedEventTar
   private _connectLock = false;
   private _binaryType: BinaryType = "blob";
   private _closeCalled = false;
+  private _didWarnAboutClosedSend = false;
   private _messageQueue: Message[] = [];
 
   private _debugLogger = console.log.bind(console);
@@ -270,6 +275,13 @@ export default class ReconnectingWebSocket extends (EventTarget as TypedEventTar
    * The current state of the connection; this is one of the Ready state constants
    */
   get readyState(): number {
+    if (this._closeCalled) {
+      // close() permanently closes the socket (no automatic reconnects)
+      // and dispatches its close event synchronously — report CLOSED
+      // immediately, even while the underlying socket is still finishing
+      // its closing handshake.
+      return ReconnectingWebSocket.CLOSED;
+    }
     if (this._ws) {
       return this._ws.readyState;
     }
@@ -315,7 +327,14 @@ export default class ReconnectingWebSocket extends (EventTarget as TypedEventTar
 
   /**
    * Closes the WebSocket connection or connection attempt, if any. If the connection is already
-   * CLOSED, this method does nothing
+   * CLOSED or CLOSING, this method does nothing.
+   *
+   * The `close` event is dispatched synchronously (mirroring how
+   * `reconnect()` dispatches its synthetic close). This guarantees
+   * consumers observe a terminal event for every explicit close, even
+   * if their listeners are detached right after this call — previously
+   * the real (asynchronous) browser close event could fire after
+   * listeners were removed and go unobserved entirely.
    */
   public close(code = 1000, reason?: string) {
     this._closeCalled = true;
@@ -325,11 +344,17 @@ export default class ReconnectingWebSocket extends (EventTarget as TypedEventTar
       this._debug("close enqueued: no ws instance");
       return;
     }
-    if (this._ws.readyState === this.CLOSED) {
-      this._debug("close: already closed");
+    if (
+      this._ws.readyState === this.CLOSED ||
+      this._ws.readyState === this.CLOSING
+    ) {
+      this._debug("close: already closing or closed");
       return;
     }
-    this._ws.close(code, reason);
+    // _disconnect detaches the inner socket's listeners (so the real
+    // close event is not dispatched a second time later) and dispatches
+    // a synthetic close event synchronously.
+    this._disconnect(code, reason);
   }
 
   /**
@@ -339,8 +364,15 @@ export default class ReconnectingWebSocket extends (EventTarget as TypedEventTar
   public reconnect(code?: number, reason?: string) {
     this._shouldReconnect = true;
     this._closeCalled = false;
+    this._didWarnAboutClosedSend = false;
     this._retryCount = -1;
-    if (!this._ws || this._ws.readyState === this.CLOSED) {
+    if (
+      !this._ws ||
+      this._ws.readyState === this.CLOSED ||
+      // CLOSING means a close was already initiated (and its close event
+      // already dispatched synthetically) — don't dispatch another one.
+      this._ws.readyState === this.CLOSING
+    ) {
       this._connect();
     } else {
       this._disconnect(code, reason);
@@ -349,20 +381,54 @@ export default class ReconnectingWebSocket extends (EventTarget as TypedEventTar
   }
 
   /**
-   * Enqueue specified data to be transmitted to the server over the WebSocket connection
+   * Enqueue specified data to be transmitted to the server over the WebSocket connection.
+   *
+   * @returns `true` if the message was transmitted immediately over an open
+   * connection; `false` if it was buffered (sent when the connection next
+   * opens — the buffer is always flushed before the `open` event is
+   * dispatched) or dropped because `maxEnqueuedMessages` was reached.
    */
-  public send(data: Message) {
+  public send(data: Message): boolean {
     if (this._ws && this._ws.readyState === this.OPEN) {
       this._debug("send", data);
       this._ws.send(data);
-    } else {
-      const { maxEnqueuedMessages = DEFAULT.maxEnqueuedMessages } =
-        this._options;
-      if (this._messageQueue.length < maxEnqueuedMessages) {
-        this._debug("enqueue", data);
-        this._messageQueue.push(data);
-      }
+      return true;
     }
+    if (this._closeCalled && !this._didWarnAboutClosedSend) {
+      // After close() the socket will not reconnect on its own, so
+      // buffered messages are silently lost unless reconnect() is
+      // called later. Surface this instead of swallowing it — sends
+      // against a permanently closed socket usually indicate a stale
+      // reference bug in the caller.
+      this._didWarnAboutClosedSend = true;
+      console.warn(
+        "ReconnectingWebSocket: send() was called after close(). The message has been buffered, " +
+          "but it will only be delivered if reconnect() is called on this socket. " +
+          "If this socket has been discarded, the message is lost — this usually means " +
+          "a stale socket reference is being used."
+      );
+    }
+    const { maxEnqueuedMessages = DEFAULT.maxEnqueuedMessages } = this._options;
+    if (this._messageQueue.length < maxEnqueuedMessages) {
+      this._debug("enqueue", data);
+      this._messageQueue.push(data);
+    }
+    return false;
+  }
+
+  /**
+   * Removes and returns all messages that were passed to send() but never
+   * transmitted (they were buffered while the connection wasn't open).
+   *
+   * Useful when a socket is being discarded and replaced (e.g. the React
+   * hooks recreate the socket when connection options change): the
+   * replacement socket can re-send these messages, instead of them being
+   * silently lost with the old instance.
+   */
+  public drainQueuedMessages(): Message[] {
+    const queue = this._messageQueue;
+    this._messageQueue = [];
+    return queue;
   }
 
   private _debug(...args: unknown[]) {
@@ -622,6 +688,11 @@ const partysocket = new PartySocket({
     this._ws.removeEventListener("message", this._handleMessage);
     // @ts-expect-error we need to fix event/listerner types
     this._ws.removeEventListener("error", this._handleError);
+    // The detached socket can still emit a late error (e.g. "WebSocket was
+    // closed before the connection was established" when it's closed while
+    // CONNECTING). We no longer care about this socket — absorb the event
+    // so it doesn't surface as an unhandled error.
+    this._ws.addEventListener("error", absorbError);
   }
 
   private _addListeners() {

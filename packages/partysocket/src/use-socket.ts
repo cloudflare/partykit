@@ -6,6 +6,22 @@ import type { Options } from "./ws";
 export type SocketOptions = Options & {
   /** Whether the socket should be connected. Defaults to true. */
   enabled?: boolean;
+  /**
+   * Controls what happens to messages buffered by send() (sent while the
+   * connection wasn't open) when the hook replaces the socket because
+   * connection options changed.
+   *
+   * - `undefined` (default): transfer the buffered messages to the new
+   *   socket only when the destination is unchanged — i.e. only
+   *   credential-style options like `query` changed. If destination
+   *   options (room, party, path, host, URL, ...) changed, the messages
+   *   are discarded with a warning, since delivering messages composed
+   *   for one destination to a different one is rarely what you want.
+   * - `true`: always transfer buffered messages to the new socket.
+   * - `false`: never transfer; buffered messages are discarded with a
+   *   warning when the socket is replaced.
+   */
+  transferEnqueuedMessages?: boolean;
 };
 
 /** When any of the option values are changed, we should reinitialize the socket */
@@ -34,11 +50,20 @@ export function useStableSocket<
 >({
   options,
   createSocket,
-  createSocketMemoKey: createOptionsMemoKey
+  createSocketMemoKey: createOptionsMemoKey,
+  createSocketDestinationKey
 }: {
   options: TOpts;
   createSocket: (options: TOpts) => T;
   createSocketMemoKey: (options: TOpts) => string;
+  /**
+   * Serializes the parts of the options that identify *where* the socket
+   * connects (room, party, path, host, URL — but not credentials like
+   * query params). Used to decide whether messages buffered in a replaced
+   * socket can safely be re-sent on its replacement: a matching
+   * destination key means the messages still go to the same place.
+   */
+  createSocketDestinationKey?: (options: TOpts) => string;
 }) {
   // extract enabled with default value of true
   const { enabled = true } = options;
@@ -81,6 +106,52 @@ export function useStableSocket<
   // to remember that options drifted and create a new socket on re-enable.
   const optionsChangedWhileDisabledRef = useRef(false);
 
+  // the options the *current* socket was created with. Messages buffered in
+  // a socket were destined for these options — when the socket is replaced,
+  // we compare destination keys against them (not against the previous
+  // render's options, which may have drifted while disabled).
+  const socketCreatedWithOptionsRef = useRef(socketOptions);
+
+  // Creates the replacement socket for an options change, migrating the old
+  // socket's unsent message buffer per the transferEnqueuedMessages policy.
+  // Anything in that buffer was never transmitted, so re-sending it on the
+  // new socket cannot double-deliver; the only question is whether the new
+  // socket still points at the same destination.
+  // Held in a ref (like createSocketRef) so the effect below doesn't need
+  // it as a dependency — it always reads the latest render's options.
+  const createReplacementSocket = (oldSocket: T): T => {
+    const newSocket = createSocketRef.current({
+      ...socketOptions,
+      startClosed: true
+    });
+
+    const queued = oldSocket.drainQueuedMessages();
+    if (queued.length > 0) {
+      const sameDestination = createSocketDestinationKey
+        ? createSocketDestinationKey(socketCreatedWithOptionsRef.current) ===
+          createSocketDestinationKey(socketOptions)
+        : false;
+      const shouldTransfer =
+        socketOptions.transferEnqueuedMessages ?? sameDestination;
+      if (shouldTransfer) {
+        for (const message of queued) {
+          newSocket.send(message);
+        }
+      } else {
+        console.warn(
+          `PartySocket: discarded ${queued.length} buffered message(s) while replacing the socket, ` +
+            "because the connection destination changed. Pass transferEnqueuedMessages: true to " +
+            "deliver buffered messages to the new destination instead."
+        );
+      }
+    }
+
+    socketCreatedWithOptionsRef.current = socketOptions;
+    return newSocket;
+  };
+  const createReplacementSocketRef = useRef(createReplacementSocket);
+  createReplacementSocketRef.current = createReplacementSocket;
+
   // finally, initialize the socket
   useEffect(() => {
     const optionsChanged = prevSocketOptionsRef.current !== socketOptions;
@@ -114,10 +185,7 @@ export function useStableSocket<
       }
 
       // options changed while disabled — create new socket with current config
-      const newSocket = createSocketRef.current({
-        ...socketOptions,
-        startClosed: true
-      });
+      const newSocket = createReplacementSocketRef.current(socket);
       setSocket(newSocket);
       return () => {
         newSocket.close();
@@ -133,10 +201,7 @@ export function useStableSocket<
         // startClosed: true so it's inert until the else branch below
         // connects it on the next render. This ensures the socket is safe
         // to clean up if the component unmounts before that re-render.
-        const newSocket = createSocketRef.current({
-          ...socketOptions,
-          startClosed: true
-        });
+        const newSocket = createReplacementSocketRef.current(socket);
 
         // update socket reference (this will cause the effect to run again)
         setSocket(newSocket);
