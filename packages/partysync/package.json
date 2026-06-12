@@ -52,7 +52,7 @@
     "@cloudflare/workers-types": "^4.20260426.1",
     "partyfn": "^0.1.0",
     "partyserver": "^0.5.6",
-    "partysocket": "^1.1.19"
+    "partysocket": "^1.2.0"
   },
   "peerDependencies": {
     "@cloudflare/workers-types": "^4.20260424.1",
