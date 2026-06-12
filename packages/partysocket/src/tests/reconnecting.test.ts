@@ -12,9 +12,12 @@ import {
   test,
   vitest
 } from "vitest";
+import { createServer } from "node:net";
 import { type WebSocket as NodeWebSocket, WebSocketServer } from "ws";
 
 import ReconnectingWebSocket from "../ws";
+
+import type { AddressInfo } from "node:net";
 
 import type { ErrorEvent } from "../ws";
 
@@ -509,7 +512,9 @@ testDone("start closed", (done, fail) => {
     ws.addEventListener("message", (msg) => {
       expect(msg.data).toEqual(new Blob([anyMessageText]));
       ws.close(1000, "some reason");
-      expect(ws.readyState).toBe(ws.CLOSING);
+      // close() is permanent and dispatches its close event synchronously,
+      // so the socket reports CLOSED as soon as close() returns
+      expect(ws.readyState).toBe(ws.CLOSED);
     });
 
     ws.addEventListener("close", (event) => {
@@ -553,7 +558,9 @@ testDone("connect, send, receive, close", (done, fail) => {
   ws.addEventListener("message", (msg) => {
     expect(msg.data).toEqual(new Blob([anyMessageText]));
     ws.close(1000, "some reason");
-    expect(ws.readyState).toBe(ws.CLOSING);
+    // close() is permanent and dispatches its close event synchronously,
+    // so the socket reports CLOSED as soon as close() returns
+    expect(ws.readyState).toBe(ws.CLOSED);
   });
 
   ws.addEventListener("close", (event) => {
@@ -602,10 +609,12 @@ testDone("connect, send, receive, reconnect", (done) => {
     if (currentRound < totalRounds) {
       ws.reconnect(1000, "reconnect");
       expect(ws.retryCount).toBe(0);
+      expect(ws.readyState).toBe(ws.CLOSING);
     } else {
       ws.close(1000, "close");
+      // close() is permanent: reports CLOSED as soon as it returns
+      expect(ws.readyState).toBe(ws.CLOSED);
     }
-    expect(ws.readyState).toBe(ws.CLOSING);
   };
 
   ws.addEventListener("close", (event) => {
@@ -944,6 +953,275 @@ testDone("reconnect after closing", (done, fail) => {
     }
   });
 });
+
+testDone(
+  "send() returns true when transmitted and false when buffered",
+  (done, fail) => {
+    const ws = new ReconnectingWebSocket(URL);
+
+    // not yet open — buffered
+    try {
+      expect(ws.send("queued")).toBe(false);
+    } catch (e) {
+      fail(e);
+      return;
+    }
+
+    ws.addEventListener("open", () => {
+      try {
+        expect(ws.send("immediate")).toBe(true);
+      } catch (e) {
+        fail(e);
+        return;
+      }
+      ws.close();
+      done();
+    });
+  }
+);
+
+test("drainQueuedMessages() removes and returns buffered messages", () => {
+  const ws = new ReconnectingWebSocket(URL, undefined, { startClosed: true });
+
+  ws.send("one");
+  ws.send("two");
+  expect(ws.bufferedAmount).toBe("one".length + "two".length);
+
+  expect(ws.drainQueuedMessages()).toEqual(["one", "two"]);
+  expect(ws.bufferedAmount).toBe(0);
+  expect(ws.drainQueuedMessages()).toEqual([]);
+
+  ws.close();
+});
+
+testDone(
+  "close() dispatches its close event synchronously, exactly once",
+  (done, fail) => {
+    const ws = new ReconnectingWebSocket(URL);
+    let closeEvents = 0;
+    ws.addEventListener("close", () => {
+      closeEvents++;
+    });
+
+    ws.addEventListener("open", () => {
+      try {
+        ws.close(1000, "sync close");
+        // the close event must have fired during close() itself — this is
+        // what guarantees consumers that detach their listeners right
+        // after closing still observe the terminal close
+        expect(closeEvents).toBe(1);
+        expect(ws.readyState).toBe(ws.CLOSED);
+      } catch (e) {
+        fail(e);
+        return;
+      }
+      // give the real (inner) close handshake time to finish — it must
+      // not produce a second close event
+      setTimeout(() => {
+        try {
+          expect(closeEvents).toBe(1);
+        } catch (e) {
+          fail(e);
+          return;
+        }
+        done();
+      }, 300);
+    });
+  }
+);
+
+test("close() while still CONNECTING dispatches its close event synchronously", async () => {
+  // a raw TCP server that accepts connections but never answers the
+  // WebSocket upgrade — the client socket stays in CONNECTING
+  const stallServer = createServer(() => {});
+  const stallPort = await new Promise<number>((resolve) => {
+    stallServer.listen(0, () => {
+      resolve((stallServer.address() as AddressInfo).port);
+    });
+  });
+
+  try {
+    const ws = new ReconnectingWebSocket(
+      `ws://localhost:${stallPort}/`,
+      undefined,
+      {
+        maxRetries: 0,
+        connectionTimeout: 10000
+      }
+    );
+    let closeEvents = 0;
+    ws.addEventListener("close", () => {
+      closeEvents++;
+    });
+
+    // wait for the inner socket to be created (connection attempt started)
+    await new Promise((r) => setTimeout(r, 100));
+    expect(ws.readyState).toBe(ws.CONNECTING);
+
+    ws.close();
+    expect(closeEvents).toBe(1);
+    expect(ws.readyState).toBe(ws.CLOSED);
+
+    // the aborted handshake must not produce a second close (or an
+    // unhandled error — its error event is absorbed after detach)
+    await new Promise((r) => setTimeout(r, 200));
+    expect(closeEvents).toBe(1);
+  } finally {
+    stallServer.close();
+  }
+});
+
+testDone(
+  "close() inside a close listener does not dispatch a duplicate close event",
+  (done, fail) => {
+    const ws = new ReconnectingWebSocket(URL);
+    let closeEvents = 0;
+
+    ws.addEventListener("close", () => {
+      closeEvents++;
+      // re-entrant close — must be a no-op, not recurse
+      ws.close();
+    });
+
+    ws.addEventListener("open", () => {
+      ws.close();
+      setTimeout(() => {
+        try {
+          expect(closeEvents).toBe(1);
+        } catch (e) {
+          fail(e);
+          return;
+        }
+        done();
+      }, 300);
+    });
+  }
+);
+
+testDone(
+  "reconnect() immediately after close() does not dispatch a duplicate close event",
+  (done, fail) => {
+    const ws = new ReconnectingWebSocket(URL, undefined, {
+      minReconnectionDelay: 10,
+      maxReconnectionDelay: 50
+    });
+    let closeEvents = 0;
+    let opens = 0;
+
+    ws.addEventListener("close", () => {
+      closeEvents++;
+    });
+
+    ws.addEventListener("open", () => {
+      opens++;
+      if (opens === 1) {
+        ws.close();
+        // reconnect before the inner closing handshake completes
+        ws.reconnect();
+      } else {
+        try {
+          // exactly one close event (from close()) — reconnect() must not
+          // dispatch another synthetic close for an already-closed socket
+          expect(closeEvents).toBe(1);
+        } catch (e) {
+          fail(e);
+          return;
+        }
+        ws.close();
+        done();
+      }
+    });
+  }
+);
+
+testDone("warns when send() is called after close()", (done, fail) => {
+  const warnSpy = vitest.spyOn(console, "warn").mockReturnValue();
+  const ws = new ReconnectingWebSocket(URL);
+
+  ws.addEventListener("open", () => {
+    ws.close();
+  });
+
+  ws.addEventListener("close", () => {
+    try {
+      expect(warnSpy).not.toHaveBeenCalled();
+
+      // The socket is permanently closed (no reconnect scheduled) —
+      // sending now buffers into a queue nothing will ever flush.
+      ws.send("late message");
+      expect(warnSpy).toHaveBeenCalledTimes(1);
+      expect(warnSpy.mock.calls[0][0]).toMatch(
+        /send\(\) was called after close\(\)/
+      );
+
+      // The message is still buffered (back-compat: reconnect() can
+      // flush it), and the warning is deduped per close cycle.
+      ws.send("another late message");
+      expect(warnSpy).toHaveBeenCalledTimes(1);
+      expect(ws.bufferedAmount).toBe(
+        "late message".length + "another late message".length
+      );
+    } catch (e) {
+      fail(e);
+      return;
+    }
+    done();
+  });
+});
+
+testDone(
+  "messages sent after close() are delivered after reconnect(), and the warning resets",
+  (done, fail) => {
+    const warnSpy = vitest.spyOn(console, "warn").mockReturnValue();
+    const ws = new ReconnectingWebSocket(URL, undefined, {
+      minReconnectionDelay: 10,
+      maxReconnectionDelay: 50
+    });
+
+    let opens = 0;
+    ws.addEventListener("open", () => {
+      opens++;
+      if (opens === 1) {
+        ws.close();
+      }
+    });
+
+    function onConnection(client: NodeWebSocket) {
+      client.on("message", (data: Buffer) => {
+        // eslint-disable-next-line @typescript-eslint/no-base-to-string
+        if (data.toString() === "buffered while closed") {
+          try {
+            // reconnect() resets the warn flag for the next close cycle
+            // @ts-expect-error - accessing private field
+            expect(ws._didWarnAboutClosedSend).toBe(false);
+          } catch (e) {
+            fail(e);
+            return;
+          }
+          wss.off("connection", onConnection);
+          ws.close();
+          done();
+        }
+      });
+    }
+    wss.on("connection", onConnection);
+
+    let closes = 0;
+    ws.addEventListener("close", () => {
+      closes++;
+      if (closes === 1) {
+        ws.send("buffered while closed");
+        try {
+          expect(warnSpy).toHaveBeenCalledTimes(1);
+        } catch (e) {
+          fail(e);
+          return;
+        }
+        ws.reconnect();
+      }
+    });
+  }
+);
 
 testDone(
   "reconnect() works after maxRetries has been exhausted",

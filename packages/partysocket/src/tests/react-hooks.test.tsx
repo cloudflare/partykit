@@ -1563,6 +1563,246 @@ describe.skipIf(!!process.env.GITHUB_ACTIONS)(
   }
 );
 
+const QUEUE_PORT = 50150;
+
+describe.skipIf(!!process.env.GITHUB_ACTIONS)(
+  "buffered message handling across socket replacement",
+  () => {
+    let wss: WebSocketServer;
+    let connections: { url: string; messages: string[] }[];
+
+    beforeAll(() => {
+      connections = [];
+      return new Promise<void>((resolve) => {
+        wss = new WebSocketServer({ port: QUEUE_PORT }, () => resolve());
+        wss.on("connection", (ws, req) => {
+          const record = { url: req.url ?? "", messages: [] as string[] };
+          connections.push(record);
+          ws.on("message", (data) => {
+            record.messages.push(data.toString());
+          });
+        });
+      });
+    });
+
+    afterAll(() => {
+      return new Promise<void>((resolve) => {
+        wss.clients.forEach((client) => {
+          client.terminate();
+        });
+        wss.close(() => {
+          resolve();
+        });
+      });
+    });
+
+    test("transfers buffered messages to the replacement socket when only query changes", async () => {
+      connections.length = 0;
+      // silence the send-after-close warning from sending while disabled
+      const warnSpy = vitest.spyOn(console, "warn").mockReturnValue();
+
+      const { result, rerender } = renderHook(
+        ({
+          enabled,
+          query
+        }: {
+          enabled: boolean;
+          query: Record<string, string>;
+        }) =>
+          usePartySocket({
+            host: `localhost:${QUEUE_PORT}`,
+            room: "queue-room",
+            query,
+            enabled,
+            ...FAST_RECONNECT
+          }),
+        { initialProps: { enabled: false, query: { token: "old" } } }
+      );
+
+      // buffered: the socket is disabled, nothing is connected
+      result.current.send("hello-from-queue");
+
+      // re-enable with a fresh token — same destination, different credentials
+      rerender({ enabled: true, query: { token: "fresh" } });
+
+      await waitFor(
+        () => {
+          expect(connections.length).toBeGreaterThanOrEqual(1);
+          const latest = connections[connections.length - 1];
+          expect(latest.url).toContain("token=fresh");
+          expect(latest.messages).toContain("hello-from-queue");
+        },
+        { timeout: 10000 }
+      );
+
+      result.current.close();
+      warnSpy.mockRestore();
+    }, 30000);
+
+    test("transferred messages arrive in the order they were sent", async () => {
+      connections.length = 0;
+      const warnSpy = vitest.spyOn(console, "warn").mockReturnValue();
+
+      const { result, rerender } = renderHook(
+        ({
+          enabled,
+          query
+        }: {
+          enabled: boolean;
+          query: Record<string, string>;
+        }) =>
+          usePartySocket({
+            host: `localhost:${QUEUE_PORT}`,
+            room: "order-room",
+            query,
+            enabled,
+            ...FAST_RECONNECT
+          }),
+        { initialProps: { enabled: false, query: { token: "old" } } }
+      );
+
+      result.current.send("first");
+      result.current.send("second");
+      result.current.send("third");
+
+      rerender({ enabled: true, query: { token: "fresh" } });
+
+      await waitFor(
+        () => {
+          const latest = connections[connections.length - 1];
+          expect(latest?.messages).toEqual(["first", "second", "third"]);
+        },
+        { timeout: 10000 }
+      );
+
+      result.current.close();
+      warnSpy.mockRestore();
+    }, 30000);
+
+    test("drops buffered messages with a warning when the destination changes", async () => {
+      connections.length = 0;
+      const warnSpy = vitest.spyOn(console, "warn").mockReturnValue();
+
+      const { result, rerender } = renderHook(
+        ({ enabled, room }: { enabled: boolean; room: string }) =>
+          usePartySocket({
+            host: `localhost:${QUEUE_PORT}`,
+            room,
+            enabled,
+            ...FAST_RECONNECT
+          }),
+        { initialProps: { enabled: false, room: "room-a" } }
+      );
+
+      // buffered while disabled, destined for room-a
+      result.current.send("secret-for-room-a");
+
+      // re-enable pointing at a different room — the buffered message must
+      // NOT follow the socket to room-b
+      rerender({ enabled: true, room: "room-b" });
+
+      await waitFor(
+        () => {
+          expect(connections.length).toBeGreaterThanOrEqual(1);
+          expect(connections[connections.length - 1].url).toContain("room-b");
+        },
+        { timeout: 10000 }
+      );
+
+      // allow any in-flight frames to arrive before asserting absence
+      await new Promise((r) => setTimeout(r, 300));
+      for (const connection of connections) {
+        expect(connection.messages).not.toContain("secret-for-room-a");
+      }
+      expect(
+        warnSpy.mock.calls.some((call) =>
+          String(call[0]).includes("discarded 1 buffered message")
+        )
+      ).toBe(true);
+
+      result.current.close();
+      warnSpy.mockRestore();
+    }, 30000);
+
+    test("transferEnqueuedMessages: true forces transfer across a destination change", async () => {
+      connections.length = 0;
+      const warnSpy = vitest.spyOn(console, "warn").mockReturnValue();
+
+      const { result, rerender } = renderHook(
+        ({ enabled, room }: { enabled: boolean; room: string }) =>
+          usePartySocket({
+            host: `localhost:${QUEUE_PORT}`,
+            room,
+            enabled,
+            transferEnqueuedMessages: true,
+            ...FAST_RECONNECT
+          }),
+        { initialProps: { enabled: false, room: "force-a" } }
+      );
+
+      result.current.send("follow-me");
+
+      rerender({ enabled: true, room: "force-b" });
+
+      await waitFor(
+        () => {
+          const target = connections.find((c) => c.url.includes("force-b"));
+          expect(target).toBeDefined();
+          expect(target?.messages).toContain("follow-me");
+        },
+        { timeout: 10000 }
+      );
+
+      result.current.close();
+      warnSpy.mockRestore();
+    }, 30000);
+
+    test("transferEnqueuedMessages: false drops buffered messages even when only query changes", async () => {
+      connections.length = 0;
+      const warnSpy = vitest.spyOn(console, "warn").mockReturnValue();
+
+      const { result, rerender } = renderHook(
+        ({
+          enabled,
+          query
+        }: {
+          enabled: boolean;
+          query: Record<string, string>;
+        }) =>
+          usePartySocket({
+            host: `localhost:${QUEUE_PORT}`,
+            room: "no-transfer-room",
+            query,
+            enabled,
+            transferEnqueuedMessages: false,
+            ...FAST_RECONNECT
+          }),
+        { initialProps: { enabled: false, query: { token: "old" } } }
+      );
+
+      result.current.send("do-not-deliver");
+
+      rerender({ enabled: true, query: { token: "fresh" } });
+
+      await waitFor(
+        () => {
+          const target = connections.find((c) => c.url.includes("token=fresh"));
+          expect(target).toBeDefined();
+        },
+        { timeout: 10000 }
+      );
+
+      await new Promise((r) => setTimeout(r, 300));
+      for (const connection of connections) {
+        expect(connection.messages).not.toContain("do-not-deliver");
+      }
+
+      result.current.close();
+      warnSpy.mockRestore();
+    }, 30000);
+  }
+);
+
 const WIRE_PORT = 50145;
 
 describe.skipIf(!!process.env.GITHUB_ACTIONS)(

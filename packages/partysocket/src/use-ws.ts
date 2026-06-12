@@ -27,7 +27,12 @@ export default function useWebSocket(
         url,
         protocols,
         ...getOptionsThatShouldCauseRestartWhenChanged(options)
-      ])
+      ]),
+    // For a plain WebSocket the URL *is* the destination (credentials
+    // can't be distinguished from it), so buffered messages only carry
+    // over when the socket was replaced for non-URL reasons (e.g. a
+    // retry/debug option changed).
+    createSocketDestinationKey: () => JSON.stringify([url, protocols])
   });
 
   useAttachWebSocketEventHandlers(socket, options);
