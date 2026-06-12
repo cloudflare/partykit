@@ -9,6 +9,6 @@
   },
   "dependencies": {
     "nanoid": "^5.1.9",
-    "partysocket": "^1.1.19"
+    "partysocket": "^1.2.0"
   }
 }

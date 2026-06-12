@@ -1,5 +1,17 @@
 # partysocket
 
+## 1.2.0
+
+### Minor Changes
+
+- [#403](https://github.com/cloudflare/partykit/pull/403) [`7e042eb`](https://github.com/cloudflare/partykit/commit/7e042ebeb2e2796a76079a102f8d95ad07e39946) Thanks [@threepointone](https://github.com/threepointone)! - Make buffered messages and connection teardown reliable across socket replacement and explicit close (see cloudflare/agents#1738).
+
+  - **`close()` now dispatches its `close` event synchronously** (mirroring how `reconnect()` already dispatched its synthetic close). Consumers that detach their listeners right after closing — like the React hooks during cleanup — previously never observed the terminal close event, leaving "connection closed" handling (pending-call rejection, state resets) to never run. After `close()` returns, `readyState` reports `CLOSED` immediately, even while the underlying socket finishes its closing handshake. Code that attached a `close` listener _after_ calling `close()` and relied on the event arriving asynchronously must attach the listener first.
+  - **`send()` now returns a `boolean`**: `true` if the message was transmitted immediately over an open connection, `false` if it was buffered (delivered when the connection next opens, always before the `open` event is dispatched) or dropped because `maxEnqueuedMessages` was reached. Callers implementing request/response protocols can use this to know whether a request is actually in flight.
+  - **New `drainQueuedMessages()` method** removes and returns all messages that were buffered by `send()` but never transmitted, so a socket that's being discarded can hand its unsent buffer to a replacement instead of silently losing it.
+  - **React hooks (`usePartySocket`, `useWebSocket`) now migrate buffered messages when they replace the socket** because connection options changed. By default, buffered messages transfer only when the destination is unchanged (e.g. only `query` — credentials — changed); if destination options (`room`, `party`, `path`, `host`, URL, ...) changed, the messages are discarded with a warning rather than delivered to a destination they weren't composed for. The new `transferEnqueuedMessages` option overrides this: `true` always transfers, `false` never does.
+  - **Warn when `send()` is called after `close()`.** Messages sent against a permanently closed socket are buffered into a queue that nothing will ever flush (unless `reconnect()` is called later), which silently strands the message — and any caller waiting on a reply. This usually indicates a stale socket reference in the caller. The message is still buffered for backwards compatibility; the warning is emitted once per close cycle and resets on `reconnect()`.
+
 ## 1.1.19
 
 ### Patch Changes
@@ -337,6 +349,7 @@
 ### Patch Changes
 
 - [#251](https://github.com/partykit/partykit/pull/251) [`049bcac`](https://github.com/partykit/partykit/commit/049bcac42aa49e4bddec975c63b7d7984112e450) Thanks [@threepointone](https://github.com/threepointone)! - small tweaks to `init`
+
   - replace `process.env.PARTYKIT_HOST` with just `PARTYKIT_HOST`
   - add a `tsconfig.json`
   - add partykit to devDependencies in `init`
@@ -357,6 +370,7 @@
 - [#211](https://github.com/partykit/partykit/pull/211) [`fffe721`](https://github.com/partykit/partykit/commit/fffe72148e5cc425e80c90b6bf180192df410080) Thanks [@threepointone](https://github.com/threepointone)! - update dependencies
 
 - [#191](https://github.com/partykit/partykit/pull/191) [`39cf5ce`](https://github.com/partykit/partykit/commit/39cf5cebf5e699bc50ace8b6d25cd82c807e863a) Thanks [@jevakallio](https://github.com/jevakallio)! - Improve PartySocket types and React hooks API:
+
   - Add websocket lifecycle event handlers to usePartyKit options to reduce need for effects in userland
   - Allow usePartySocket to provide startClosed option to initialize without opening connection
   - Fix types for PartySocket#removeEventListener
