@@ -25,3 +25,6 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: npm run check
+      # Compat-matrix: lock the WebSocket binaryType contract across the
+      # compatibility-date flag transitions (websocket_standard_binary_type).
+      - run: npm run test:compat-matrix -w partyserver
