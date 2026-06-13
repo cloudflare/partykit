@@ -135,3 +135,6 @@ dist
 .DS_Store
 .env
 .dev.vars
+
+# Temporary compat-verification harness (Layer A)
+.compat-harness/

@@ -44,7 +44,21 @@ export type Env = {
   ThrowingCloseInMemory: DurableObjectNamespace<ThrowingCloseInMemory>;
   UserClosesInOnCloseHibernating: DurableObjectNamespace<UserClosesInOnCloseHibernating>;
   UserClosesInOnCloseInMemory: DurableObjectNamespace<UserClosesInOnCloseInMemory>;
+  BinaryTypeProbe: DurableObjectNamespace<BinaryTypeProbe>;
 };
+
+/**
+ * Reports the server-side `connection.binaryType` back to the client in
+ * `onConnect`. Used by the compat-matrix suite to lock the ArrayBuffer binary
+ * delivery contract across compatibility dates: on dates >= 2026-03-17 the
+ * `websocket_standard_binary_type` flag would otherwise default this to "blob".
+ * Non-hibernating so it exercises the in-memory accept path where the pin lives.
+ */
+export class BinaryTypeProbe extends Server {
+  onConnect(connection: Connection): void {
+    connection.send(connection.binaryType);
+  }
+}
 
 export class Stateful extends Server {
   static options = {

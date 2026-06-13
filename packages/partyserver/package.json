@@ -13,6 +13,8 @@
   "scripts": {
     "check:test": "vitest -r src/tests --watch false",
     "test": "vitest -r src/tests",
+    "test:compat": "vitest run --config src/tests/vitest.compat.config.ts",
+    "test:compat-matrix": "node scripts/compat-matrix.mjs",
     "build": "tsx scripts/build.ts"
   },
   "files": [

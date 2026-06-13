@@ -319,7 +319,43 @@ export class InMemoryConnectionManager<TState> implements ConnectionManager {
   }
 
   accept(connection: Connection, options: { tags: string[] }) {
-    connection.accept();
+    // Accept in half-open mode so PartyServer stays in control of the close
+    // handshake. On compat dates >= 2026-04-07 the `web_socket_auto_reply_to_close`
+    // flag otherwise makes the runtime send a reciprocal Close frame and tear
+    // the socket down automatically — behind the back of our own close handling
+    // (`handleCloseFromClient` already reciprocates via `closeQuietly`). That
+    // auto-teardown is the WebSocket-proxying hazard called out in the flag
+    // docs: because a PartyServer Durable Object sits on the server end of a
+    // connection that the runtime tunnels back to the client, the auto-close
+    // can fire through an already-severed tunnel and surface as a spurious
+    // retryable "Network connection lost." rejection (e.g. when a Durable
+    // Object is reset while a connection is still open). Half-open mode
+    // restores the historical behavior our close handlers were written for;
+    // `closeQuietly` still sends the reciprocal frame on every compat date.
+    try {
+      connection.accept({ allowHalfOpen: true });
+    } catch {
+      // Older runtime/shim builds may not accept the options argument. Falling
+      // back to a bare accept() matches the pre-2026-04-07 behavior (no runtime
+      // auto-reply), which PartyServer's manual close handling already covers.
+      connection.accept();
+    }
+
+    // Preserve PartyServer's historical binary delivery contract. On compat
+    // dates >= 2026-03-17 the `websocket_standard_binary_type` flag flips the
+    // default server-side `binaryType` from "arraybuffer" to "blob", so binary
+    // frames arrive as `Blob` instead of `ArrayBuffer` on this in-memory path.
+    // Every PartyServer consumer (and the frameworks built on it, e.g.
+    // Cloudflare Agents) has always received `ArrayBuffer`, so pin it back.
+    // This is a no-op on older dates (already the default) and is corrective on
+    // newer ones. Guarded because some runtime/shim builds may not expose a
+    // settable `binaryType`. The hibernation path is unaffected (the
+    // Hibernation API always delivers `ArrayBuffer`).
+    try {
+      connection.binaryType = "arraybuffer";
+    } catch {
+      // older runtimes may not allow setting binaryType here
+    }
 
     const tags = prepareTags(connection.id, options.tags);
 

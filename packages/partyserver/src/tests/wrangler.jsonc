@@ -134,6 +134,10 @@
       {
         "name": "UserClosesInOnCloseInMemory",
         "class_name": "UserClosesInOnCloseInMemory"
+      },
+      {
+        "name": "BinaryTypeProbe",
+        "class_name": "BinaryTypeProbe"
       }
     ]
   },
@@ -172,7 +176,8 @@
         "ThrowingCloseHibernating",
         "ThrowingCloseInMemory",
         "UserClosesInOnCloseHibernating",
-        "UserClosesInOnCloseInMemory"
+        "UserClosesInOnCloseInMemory",
+        "BinaryTypeProbe"
       ]
     }
   ]

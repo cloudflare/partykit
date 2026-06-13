@@ -8,6 +8,8 @@ import {
   isPartyServerWebSocket
 } from "./connection";
 
+import { isBenignTeardownError } from "./transport-errors";
+
 import type { ConnectionManager } from "./connection";
 import type {
   Connection,
@@ -761,6 +763,14 @@ export class Server<
       return;
     }
 
+    // Suppress retryable transport-teardown errors on an already closing/closed
+    // socket — the connection going away during/after the close handshake, not
+    // an application error. Genuine mid-connection (OPEN) errors still reach
+    // onError below.
+    if (isBenignTeardownError(ws, error)) {
+      return;
+    }
+
     try {
       const connection = createLazyConnection(ws);
 
@@ -904,8 +914,11 @@ export class Server<
     const handleErrorFromClient = (e: ErrorEvent) => {
       connection.removeEventListener("message", handleMessageFromClient);
       connection.removeEventListener("error", handleErrorFromClient);
-      this.onError(connection, e.error)?.catch((e) => {
-        console.error("onError error:", e);
+      // A transport-teardown error on an already closing/closed connection is
+      // the socket going away during the close handshake, not an app error.
+      if (isBenignTeardownError(connection, e.error)) return;
+      this.onError(connection, e.error)?.catch((err) => {
+        console.error("onError error:", err);
       });
     };
 
