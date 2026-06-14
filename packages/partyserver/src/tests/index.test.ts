@@ -1646,6 +1646,33 @@ describe("Props via x-partykit-props header", () => {
     expect(response.status).toBe(200);
     expect(request.headers.get("x-partykit-props")).toBeNull();
   });
+
+  // Regression for cloudflare/agents#1751: non-ASCII props (e.g. accented
+  // names) used to be written into the x-partykit-props header verbatim,
+  // triggering workerd's "header value contains non-ASCII characters"
+  // warning (and a TypeError in browser fetch implementations). Props are
+  // now base64-encoded so the header value is always ASCII while still
+  // round-tripping the original Unicode payload.
+  it("encodes non-ASCII props as an ASCII-safe header value", async () => {
+    const ctx = createExecutionContext();
+    const request = new Request(
+      "http://example.com/unicode-props-parties/props-server/room-unicode"
+    );
+    const response = await worker.fetch(request, env, ctx);
+    expect(response.status).toBe(200);
+    const data = (await response.json()) as {
+      name: string;
+      props: { secret: string };
+      rawPropsHeader: string | null;
+    };
+    expect(data.name).toBe("room-unicode");
+    // Props round-trip back to their original Unicode form.
+    expect(data.props).toEqual({ secret: "Usuário 日本語 🎉" });
+    // The header value the DO received must be ASCII-only.
+    expect(data.rawPropsHeader).not.toBeNull();
+    // oxlint-disable-next-line no-control-regex
+    expect(data.rawPropsHeader).toMatch(/^[\x00-\x7f]*$/);
+  });
 });
 
 /**

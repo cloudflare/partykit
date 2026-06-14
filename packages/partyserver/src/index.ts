@@ -238,6 +238,45 @@ async function retryDurableObjectOperation<T>(
 }
 
 /**
+ * Encode props for the `x-partykit-props` header.
+ *
+ * The value travels in an HTTP header, so it must be ASCII-safe. Raw
+ * `JSON.stringify` output can contain non-ASCII characters (e.g. accented
+ * names like "Usuário"), which makes workerd emit a "header value contains
+ * non-ASCII characters" warning and throws in browser fetch implementations.
+ * We UTF-8 encode the JSON and base64 it so the header is always ASCII.
+ */
+function encodeProps(props: unknown): string {
+  const bytes = new TextEncoder().encode(JSON.stringify(props));
+  let binary = "";
+  for (let i = 0; i < bytes.length; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+}
+
+/**
+ * Decode props from the `x-partykit-props` header.
+ *
+ * Handles both the base64 encoding produced by `encodeProps` and, for
+ * backwards compatibility with stubs/requests created by older versions,
+ * raw JSON. Base64 never starts with `{` or `[`, so a leading brace/bracket
+ * unambiguously identifies the legacy raw-JSON form.
+ */
+function decodeProps(header: string): unknown {
+  const trimmed = header.trim();
+  if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
+    return JSON.parse(trimmed);
+  }
+  const binary = atob(header);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return JSON.parse(new TextDecoder().decode(bytes));
+}
+
+/**
  * For a given server namespace, create a server with a name.
  *
  * Makes an RPC that awaits the DO's `onStart()` before returning, so callers
@@ -529,7 +568,7 @@ Did you forget to add a durable object binding to the class ${namespace[0].toUpp
     // onBeforeConnect / onBeforeRequest callbacks don't see the serialized
     // props header on the inspection request.
     if (options?.props !== undefined) {
-      req.headers.set("x-partykit-props", JSON.stringify(options.props));
+      req.headers.set("x-partykit-props", encodeProps(options.props));
     }
 
     // Single RPC for both WS and HTTP: `this.name` is populated from
@@ -608,7 +647,7 @@ export class Server<
       // Set the props in-mem if the request included them.
       const props = request.headers.get("x-partykit-props");
       if (props) {
-        this.#_props = JSON.parse(props);
+        this.#_props = decodeProps(props) as Props;
       }
 
       // Name resolution priority: ctx.id.name > x-partykit-room header
