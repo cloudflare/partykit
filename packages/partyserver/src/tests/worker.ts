@@ -667,10 +667,12 @@ export class PropsServer extends Server<Env, { secret: string }> {
     this.receivedProps = props;
   }
 
-  onRequest(): Response {
+  onRequest(request: Request): Response {
     return Response.json({
       name: this.name,
-      props: this.receivedProps
+      props: this.receivedProps,
+      // Echo the raw header so tests can verify it is ASCII-safe.
+      rawPropsHeader: request.headers.get("x-partykit-props")
     });
   }
 
@@ -1013,6 +1015,18 @@ export default {
         (await routePartykitRequest(request, env, {
           prefix: "props-parties",
           props: { secret: "my-secret-value" }
+        })) || new Response("Not Found", { status: 404 })
+      );
+    }
+
+    // Route requests under /unicode-props-parties/ with non-ASCII props.
+    // Regression coverage for cloudflare/agents#1751: header values must be
+    // ASCII-safe so workerd doesn't warn (and browsers don't throw).
+    if (url.pathname.startsWith("/unicode-props-parties/")) {
+      return (
+        (await routePartykitRequest(request, env, {
+          prefix: "unicode-props-parties",
+          props: { secret: "Usuário 日本語 🎉" }
         })) || new Response("Not Found", { status: 404 })
       );
     }
