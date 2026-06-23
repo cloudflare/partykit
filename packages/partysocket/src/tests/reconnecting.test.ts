@@ -848,6 +848,113 @@ testDone(
   }
 );
 
+testDone(
+  "shouldReconnectOnClose=false stops reconnecting before close listeners run",
+  (done, fail) => {
+    const ws = new ReconnectingWebSocket(URL, undefined, {
+      minReconnectionDelay: 50,
+      maxReconnectionDelay: 100,
+      shouldReconnectOnClose: (event) => event.code !== 1008
+    });
+
+    let connections = 0;
+    function onConnection(client: NodeWebSocket) {
+      connections++;
+      if (connections === 1) {
+        client.close(1008, "policy");
+        return;
+      }
+      fail(new Error("unexpected reconnect"));
+    }
+    wss.on("connection", onConnection);
+
+    ws.addEventListener("close", (event) => {
+      try {
+        expect(event.code).toBe(1008);
+        expect(event.reason).toBe("policy");
+        expect(ws.shouldReconnect).toBe(false);
+      } catch (error) {
+        wss.off("connection", onConnection);
+        fail(error);
+        return;
+      }
+
+      setTimeout(() => {
+        try {
+          expect(connections).toBe(1);
+          wss.off("connection", onConnection);
+          done();
+        } catch (error) {
+          wss.off("connection", onConnection);
+          fail(error);
+        }
+      }, 200);
+    });
+  }
+);
+
+testDone(
+  "shouldReconnectOnClose preserves default reconnect behavior when omitted",
+  (done, fail) => {
+    const ws = new ReconnectingWebSocket(URL, undefined, {
+      minReconnectionDelay: 50,
+      maxReconnectionDelay: 100
+    });
+
+    let connections = 0;
+    function onConnection(client: NodeWebSocket) {
+      connections++;
+      if (connections === 1) {
+        client.close(1008, "policy");
+        return;
+      }
+      if (connections === 2) {
+        ws.close();
+        wss.off("connection", onConnection);
+        done();
+        return;
+      }
+      fail(new Error("unexpected reconnect"));
+    }
+    wss.on("connection", onConnection);
+  }
+);
+
+testDone(
+  "reconnect() re-enables a socket stopped by shouldReconnectOnClose",
+  (done, fail) => {
+    const ws = new ReconnectingWebSocket(URL, undefined, {
+      minReconnectionDelay: 50,
+      maxReconnectionDelay: 100,
+      shouldReconnectOnClose: (event) => event.code !== 1008
+    });
+
+    let connections = 0;
+    function onConnection(client: NodeWebSocket) {
+      connections++;
+      if (connections === 1) {
+        client.close(1008, "policy");
+        return;
+      }
+      if (connections === 2) {
+        ws.close();
+        wss.off("connection", onConnection);
+        done();
+        return;
+      }
+      fail(new Error("unexpected reconnect"));
+    }
+    wss.on("connection", onConnection);
+
+    ws.addEventListener("close", (event) => {
+      if (event.code === 1008) {
+        expect(ws.shouldReconnect).toBe(false);
+        ws.reconnect();
+      }
+    });
+  }
+);
+
 testDone("reconnection delay grow factor", (done) => {
   const ws = new ReconnectingWebSocket(ERROR_URL, [], {
     minReconnectionDelay: 50,
