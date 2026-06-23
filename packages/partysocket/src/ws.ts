@@ -117,6 +117,7 @@ export type Options = {
   maxRetries?: number;
   maxEnqueuedMessages?: number;
   startClosed?: boolean;
+  shouldReconnectOnClose?: (event: CloseEvent) => boolean;
   debug?: boolean;
   // oxlint-disable-next-line no-explicit-any
   debugLogger?: (...args: any[]) => void;
@@ -667,6 +668,13 @@ const partysocket = new PartySocket({
   private _handleClose = (event: CloseEvent) => {
     this._debug("close event");
     this._clearTimeouts();
+
+    if (
+      this._options.shouldReconnectOnClose &&
+      !this._options.shouldReconnectOnClose(event)
+    ) {
+      this._shouldReconnect = false;
+    }
 
     if (this._shouldReconnect) {
       this._connect();
