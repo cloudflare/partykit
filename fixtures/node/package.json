@@ -7,6 +7,6 @@
     "types": "wrangler types env.d.ts --include-runtime false"
   },
   "dependencies": {
-    "partysocket": "^1.2.0"
+    "partysocket": "^1.3.0"
   }
 }
