@@ -291,8 +291,8 @@ function decodeProps(header: string): unknown {
  */
 export async function getServerByName<
   Env extends Cloudflare.Env = Cloudflare.Env,
-  T extends Server<Env> = Server<Env>,
-  Props extends Record<string, unknown> = Record<string, unknown>
+  T extends Server<Env, object> = Server<Env>,
+  Props extends object = Record<string, unknown>
 >(
   serverNamespace: DurableObjectNamespace<T>,
   name: string,
@@ -428,8 +428,8 @@ function resolveCorsHeaders(
 
 export async function routePartykitRequest<
   Env extends Cloudflare.Env = Cloudflare.Env,
-  T extends Server<Env> = Server<Env>,
-  Props extends Record<string, unknown> = Record<string, unknown>
+  T extends Server<Env, object> = Server<Env>,
+  Props extends object = Record<string, unknown>
 >(
   req: Request,
   env: Env = defaultEnv as Env,
@@ -586,9 +586,15 @@ Did you forget to add a durable object binding to the class ${namespace[0].toUpp
   }
 }
 
+/**
+ * @template Env Environment type containing bindings
+ * @template Props Initial-props type delivered to `onStart()`. Bounded by
+ * `object` rather than `Record<string, unknown>` so user-defined interfaces
+ * qualify — interfaces have no implicit index signature.
+ */
 export class Server<
   Env extends Cloudflare.Env = Cloudflare.Env,
-  Props extends Record<string, unknown> = Record<string, unknown>
+  Props extends object = Record<string, unknown>
 > extends DurableObject<Env> {
   static options: { hibernate?: boolean } = {
     hibernate: false
