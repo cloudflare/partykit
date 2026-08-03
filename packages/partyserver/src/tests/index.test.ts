@@ -777,6 +777,23 @@ describe("Name resolution", () => {
     expect(data.name).toBe("ctx-id-name-test");
   });
 
+  it("named-access cold init does not write a __ps_name fallback record", async () => {
+    // The self-heal write was removed after production verification (on a
+    // worker pinned to compatibility_date 2024-06-01) that ctx.id.name is
+    // populated in the constructor, on hibernating-WebSocket wakeups, and
+    // in alarm handlers on cold instances after eviction. Storage stays
+    // clean of __ps_name for named-access DOs.
+    const id = env.AlarmNameServer.idFromName("no-selfheal-write");
+    const stub = env.AlarmNameServer.get(id);
+
+    const res = await stub.fetch(new Request("http://example.com/"));
+    expect(res.status).toBe(200);
+    const data = (await res.json()) as { name: string };
+    expect(data.name).toBe("no-selfheal-write");
+
+    await expect(stub.readStoredName()).resolves.toBeUndefined();
+  });
+
   it("this.name is available inside onAlarm after normal setup", async () => {
     const id = env.AlarmNameServer.idFromName("alarm-name-normal");
     const stub = env.AlarmNameServer.get(id);
@@ -787,7 +804,9 @@ describe("Name resolution", () => {
       )
     );
     expect(await setupRes.text()).toBe("alarm set");
-    await expect(stub.readStoredName()).resolves.toBe("alarm-name-normal");
+    // Named-access init no longer persists a __ps_name fallback record —
+    // ctx.id.name carries the name natively, including into alarm().
+    await expect(stub.readStoredName()).resolves.toBeUndefined();
 
     const ran = await runDurableObjectAlarm(stub);
     expect(ran).toBe(true);
@@ -894,18 +913,17 @@ describe("Name resolution", () => {
       // name. Consumers reading this.name from inside an implicit-id
       // facet will see the wrong value.
       expect(result.facet.name).toBe(parentName);
-      // PartyServer persists the native ctx.id.name as an alarm fallback.
-      // For implicit-id facets that is the parent's name, which is another
-      // reason this flow is not recommended.
-      expect(result.facet.storedName).toBe(parentName);
+      // PartyServer no longer persists a __ps_name fallback copy of the
+      // native ctx.id.name, so the facet's storage stays clean of it.
+      expect(result.facet.storedName).toBeUndefined();
     });
 
-    it("facet WITH explicit id survives cold wake with its own persisted fallback", async () => {
+    it("facet WITH explicit id survives cold wake via the deterministic factory id", async () => {
       // Variant of the explicit-id path that exercises cold wake.
       // The factory passed to ctx.facets.get() runs again on resume,
       // and idFromName(facetName) is deterministic, so the resumed
-      // facet gets the same ctx.id.name. PartyServer also persists it
-      // so old-compat alarm handlers have a fallback.
+      // facet gets the same ctx.id.name — no persisted fallback needed
+      // (and none is written).
       const parentName = "facet-parent-" + Math.random().toString(36).slice(2);
       const facetName = "facet-child-" + Math.random().toString(36).slice(2);
 
@@ -913,11 +931,10 @@ describe("Name resolution", () => {
       const stub = env.FacetParent.get(id);
 
       await stub.spawnWithExplicitId(facetName, "env-namespace");
-      // The fallback record is populated from the facet's own explicit id.
       const result = await stub.spawnWithExplicitId(facetName, "env-namespace");
       expect(result.facet.name).toBe(facetName);
       expect(result.facet.ctxIdName).toBe(facetName);
-      expect(result.facet.storedName).toBe(facetName);
+      expect(result.facet.storedName).toBeUndefined();
     });
 
     it("facet WITH explicit id (FacetStartupOptions.id) gets its own ctx.id.name — no setName needed", async () => {
@@ -965,10 +982,11 @@ describe("Name resolution", () => {
         )
       ).facet;
 
-      // env-namespace: works.
+      // env-namespace: works. No __ps_name fallback is written — the
+      // native ctx.id.name is the only name source.
       expect(fromEnvNs.name).toBe(`${facetName}-env-namespace`);
       expect(fromEnvNs.ctxIdName).toBe(`${facetName}-env-namespace`);
-      expect(fromEnvNs.storedName).toBe(`${facetName}-env-namespace`);
+      expect(fromEnvNs.storedName).toBeUndefined();
       expect(fromEnvNs.onStartName).toBe(`${facetName}-env-namespace`);
 
       // ctx-exports-namespace: also works, no env knowledge needed.
@@ -977,9 +995,7 @@ describe("Name resolution", () => {
       expect(fromCtxExportsNs.ctxIdName).toBe(
         `${facetName}-ctx-exports-namespace`
       );
-      expect(fromCtxExportsNs.storedName).toBe(
-        `${facetName}-ctx-exports-namespace`
-      );
+      expect(fromCtxExportsNs.storedName).toBeUndefined();
       expect(fromCtxExportsNs.onStartName).toBe(
         `${facetName}-ctx-exports-namespace`
       );
@@ -1099,19 +1115,19 @@ describe("setName() as bootstrap API for non-idFromName DOs", () => {
     expect(data.name).toBe("setname-coldwake-test");
   });
 
-  it("persists a fallback when the DO was addressed via idFromName", async () => {
-    // For normal idFromName DOs, ctx.id.name carries the name. PartyServer
-    // also writes a fallback before onStart so old-compat alarm handlers
-    // can recover the name after a cold wake.
+  it("does not persist a fallback when the DO was addressed via idFromName", async () => {
+    // For normal idFromName DOs, ctx.id.name carries the name natively —
+    // there is nothing to persist. Calling setName with the matching name
+    // is redundant but still triggers initialization; it must NOT write a
+    // __ps_name record (the bootstrap write is only for raw-ID DOs where
+    // ctx.id.name is undefined).
     const id = env.SetNameBootstrapServer.idFromName("setname-fallback-write");
     const stub = env.SetNameBootstrapServer.get(id);
 
-    // Calling setName with the matching name is redundant, but still
-    // triggers initialization and the fallback persistence path.
     await stub.setName("setname-fallback-write");
 
     const stored = await stub.readStoredName();
-    expect(stored).toBe("setname-fallback-write");
+    expect(stored).toBeUndefined();
   });
 });
 

@@ -676,6 +676,15 @@ export class Server<
       // regardless of how it was supplied. `#ensureInitialized()` will
       // fall back to reading storage when neither ctx.id.name nor the
       // header has provided one.
+      //
+      // DEPRECATED: the `x-partykit-room` header fallback is a legacy
+      // name source for raw `stub.fetch()` callers and old clients, and
+      // will be removed in a future major version. Address servers via
+      // `idFromName()`/`getByName()` (routePartykitRequest and
+      // getServerByName already do) — the runtime populates
+      // `ctx.id.name` natively inside the DO since 2026-03-15:
+      // https://developers.cloudflare.com/changelog/post/2026-03-15-durable-object-id-name/
+      // https://developers.cloudflare.com/durable-objects/api/id/#name
       if (!this.ctx.id.name && !this.#_name) {
         const room = request.headers.get("x-partykit-room");
         if (room) this.#_name = room;
@@ -687,7 +696,7 @@ export class Server<
         throw new Error(`Cannot determine the name for ${this.#ParentClass.name}: this.ctx.id.name is undefined, no legacy __ps_name storage record is present, and no x-partykit-room header was supplied. Likely causes:
   1. The stub was built via idFromString()/newUniqueId(). PartyServer requires name-based addressing (idFromName/getByName).
   2. The workerd/wrangler runtime is too old to expose ctx.id.name — update to a recent wrangler release.
-  3. You called stub.fetch() directly without going through routePartykitRequest()/getServerByName(). Prefer those, or set the x-partykit-room header.`);
+  3. You called stub.fetch() directly without going through routePartykitRequest()/getServerByName(). Prefer those; the x-partykit-room header fallback is deprecated.`);
       }
 
       const url = new URL(request.url);
@@ -861,6 +870,14 @@ export class Server<
    *      `__ps_name` directly (or call `setName()`) before triggering
    *      `__unsafe_ensureInitialized()` — typically DOs addressed via
    *      `idFromString()` / `newUniqueId()` plus a name override.
+   *
+   * PartyServer no longer WRITES this record during named-access
+   * initialization: `ctx.id.name` is populated natively across cold
+   * starts, hibernating-WebSocket wakeups, and alarm wakeups after
+   * eviction (verified in production on a worker pinned to
+   * `compatibility_date` 2024-06-01, so the behavior is not compat-date
+   * gated). Existing records — written by older partyserver versions or
+   * by the `setName()` bootstrap — are honored on read.
    */
   async #hydrateNameFromLegacyStorage(): Promise<void> {
     if (this.#_name) return;
@@ -868,17 +885,6 @@ export class Server<
     if (stored) {
       this.#_name = stored;
     }
-  }
-
-  async #persistNameFallbackFromCtxId(): Promise<void> {
-    const ctxName = this.ctx.id.name;
-    if (ctxName === undefined || this.#_name) return;
-
-    const stored = await this.ctx.storage.get<string>(NAME_STORAGE_KEY);
-    if (stored !== ctxName) {
-      await this.ctx.storage.put(NAME_STORAGE_KEY, ctxName);
-    }
-    this.#_name = ctxName;
   }
 
   /**
@@ -895,15 +901,18 @@ export class Server<
   async #ensureInitialized(): Promise<void> {
     if (this.#status === "started") return;
 
-    // Persist a fallback record for name-based DOs before user startup
-    // code can schedule alarms. Current workerd populates `ctx.id.name`
-    // in alarm handlers, but stale on-disk alarm records scheduled by
-    // older workerd versions do not, and we want recovery from those
-    // without requiring users to wipe `.wrangler/state` or to reschedule
-    // alarms from a fetch handler. See cloudflare/partykit#390.
-    if (this.ctx.id.name !== undefined) {
-      await this.#persistNameFallbackFromCtxId();
-    } else if (!this.#_name) {
+    // When the runtime provides no native name (raw-ID addressing, or
+    // an alarm record scheduled before 2026-03-15), fall back to the
+    // legacy `__ps_name` storage record. When `ctx.id.name` IS defined
+    // there is nothing to do: PartyServer no longer persists a
+    // `__ps_name` fallback copy of the native name — production
+    // verification on a worker pinned to `compatibility_date`
+    // 2024-06-01 (i.e. ungated by compat date) confirmed `ctx.id.name`
+    // is populated in the constructor, on hibernating-WebSocket
+    // wakeups, and in alarm handlers firing on cold instances after
+    // eviction. Records written by older partyserver versions (or by
+    // the `setName()` bootstrap) are still honored on read.
+    if (this.ctx.id.name === undefined && !this.#_name) {
       await this.#hydrateNameFromLegacyStorage();
     }
 
@@ -993,46 +1002,73 @@ export class Server<
   /**
    * The name for this server.
    *
-   * Resolves from `this.ctx.id.name` — the native DO id name, populated
-   * whenever the stub was created via `idFromName()` or `getByName()`.
-   * This is available inside every entry point (including the constructor,
-   * alarms, and hibernating websocket handlers).
+   * Resolves from `this.ctx.id.name` — the native DO id name, which the
+   * runtime populates since 2026-03-15
+   * (https://developers.cloudflare.com/changelog/post/2026-03-15-durable-object-id-name/).
+   * Availability matrix:
    *
-   * For alarm handlers firing on stale on-disk alarm records from
-   * older workerd versions that didn't persist `name` into the alarm
-   * record, the name is recovered from a storage fallback record.
+   *   - `idFromName()` / `getByName()`: POPULATED. Availability inside
+   *     the constructor and class field initializers isn't spelled out
+   *     in the docs — it is pinned by workerd's own tests
+   *     (https://github.com/cloudflare/workerd/pull/6421) and this
+   *     repo's `NameInConstructorServer` / "Raw runtime contract"
+   *     tests. Availability on hibernating-WebSocket wakeups is not
+   *     documented either — it is pinned by production verification
+   *     (a hibernated instance woken by a WebSocket message sees
+   *     `ctx.id.name` in both the constructor and `webSocketMessage`,
+   *     on a worker pinned to `compatibility_date` 2024-06-01).
+   *   - `idFromString()`: UNDEFINED, permanently, by design (per
+   *     https://developers.cloudflare.com/durable-objects/api/id/#name)
+   *     — even if the ID was originally created with `idFromName()`.
+   *   - `newUniqueId()`: UNDEFINED.
+   *   - Names longer than 1,024 bytes: UNDEFINED (not passed through
+   *     to `ctx.id`).
+   *   - Alarms: POPULATED only for alarms scheduled on or after
+   *     2026-03-15 from a context where `ctx.id.name` was itself
+   *     available. Alarms scheduled before 2026-03-15 fire with it
+   *     UNDEFINED (the on-disk alarm record carries no name), and per
+   *     the DO id docs an alarm rescheduled from such a nameless
+   *     handler also fires without a name. Where a legacy `__ps_name`
+   *     record exists (written by an older partyserver version or a
+   *     `setName()` bootstrap), PartyServer recovers the name from it
+   *     in both cases; otherwise, per the DO id docs, reschedule the
+   *     alarm from a fetch/RPC handler where the name is available.
    *
-   * Throws if neither source is available — typically this means the DO
-   * was addressed via `idFromString()` or `newUniqueId()`, which is not
-   * supported by PartyServer.
+   * When `ctx.id.name` is undefined, falls back to the in-memory /
+   * stored name (`setName()` bootstrap or `__ps_name` record). Throws
+   * if neither source is available — typically this means the DO was
+   * addressed via `idFromString()` or `newUniqueId()` without a
+   * bootstrap, which is not supported by PartyServer.
    */
   get name(): string {
     const ctxName = this.ctx.id.name;
     if (ctxName !== undefined) return ctxName;
     if (this.#_name) return this.#_name;
     throw new Error(
-      `Attempting to read .name on ${this.#ParentClass.name}, but this.ctx.id.name is not set and no ${NAME_STORAGE_KEY} fallback record is available. PartyServer requires DOs to be addressed via idFromName()/getByName(), or explicitly bootstrapped with setName() when using idFromString()/newUniqueId(). If this happens in an alarm handler firing on a stale alarm record, initialize the DO from a fetch/RPC entry point first so PartyServer can persist the fallback name.`
+      `Attempting to read .name on ${this.#ParentClass.name}, but this.ctx.id.name is not set and no ${NAME_STORAGE_KEY} fallback record is available. PartyServer requires DOs to be addressed via idFromName()/getByName(), or explicitly bootstrapped with setName() when using idFromString()/newUniqueId(). If this happens in an alarm handler firing on a stale (pre-2026-03-15) alarm record, reschedule the alarm from a fetch or RPC handler where ctx.id.name is available.`
     );
   }
 
   /**
    * Establish this server's name and trigger `onStart()`.
    *
-   * Use cases:
+   * Two roles:
    *
-   *   1. **Framework-level bootstrap of DOs where `ctx.id.name` is
-   *      undefined** — e.g. DOs addressed via `idFromString()` /
-   *      `newUniqueId()`. `setName()` stashes the name in memory and
-   *      persists it under `__ps_name` so cold-wake invocations
-   *      recover it via `#ensureInitialized()`'s legacy fallback.
-   *   2. **Delivering initial `props` to `onStart()`** via the
-   *      optional second argument.
+   *   1. **onStart synchronization + `props` delivery** — `getServerByName()`
+   *      calls this on every resolution so that `onStart()` has completed
+   *      (and received `props`) before user-defined RPC methods run.
+   *      This role is NOT deprecated; the method stays.
+   *   2. **Legacy name establishment for raw-ID DOs** — DOs addressed
+   *      via `idFromString()` / `newUniqueId()` have no `ctx.id.name`,
+   *      so `setName()` stashes the name in memory and persists it
+   *      under `__ps_name` so cold-wake invocations recover it via
+   *      `#ensureInitialized()`'s legacy fallback. This role is
+   *      DEPRECATED — see the `@deprecated` note below.
    *
-   * For DOs addressed via `idFromName()` / `getByName()`, calling
-   * `setName()` is redundant — `this.name` is available automatically
-   * from `ctx.id.name`. The normal initialization path also persists
-   * a fallback record so old-compat alarm handlers can recover the name.
-   * Throws if `name` does not match `ctx.id.name`.
+   * For DOs addressed via `idFromName()` / `getByName()`, `this.name`
+   * is available automatically from `ctx.id.name`, so the name argument
+   * is purely a consistency check — nothing is persisted. Throws if
+   * `name` does not match `ctx.id.name`.
    *
    * **Not appropriate for facets.** Cloudflare Agents and any other
    * framework using `ctx.facets.get(...)` should pass an explicit
@@ -1053,10 +1089,20 @@ export class Server<
    * https://developers.cloudflare.com/dynamic-workers/usage/durable-object-facets/
    * for the `FacetStartupOptions.id` semantics.
    *
-   * @deprecated for callers that address DOs via `idFromName()` /
-   * `getByName()`. Still the supported API for framework-level
-   * bootstrap of header/`newUniqueId`-addressed DOs and for
-   * delivering initial `props` to `onStart()`.
+   * @deprecated Using `setName()` to ESTABLISH a name — the bootstrap
+   * for DOs addressed via `idFromString()` / `newUniqueId()` — is
+   * deprecated and will become an error in a future major version.
+   * Address servers via `idFromName()` / `getByName()` instead: the
+   * runtime populates `ctx.id.name` natively inside the DO since
+   * 2026-03-15, so no name needs to be passed through arguments or
+   * persisted to storage. See
+   * https://developers.cloudflare.com/changelog/post/2026-03-15-durable-object-id-name/
+   * and
+   * https://developers.cloudflare.com/durable-objects/api/id/#name.
+   *
+   * The onStart-synchronization + `props`-delivery role (used by
+   * `getServerByName()` on every resolution) is NOT deprecated; the
+   * method itself stays.
    */
   async setName(name: string, props?: Props) {
     if (!name) {

@@ -1,9 +1,22 @@
 # `alarm-restart-e2e`
 
-Reproducer for the runtime contract that motivates partyserver's
+Reproducer for the runtime contract that motivated partyserver's
 `__ps_name` fallback record. Pins down behavior reported in
 [cloudflare/partykit#390](https://github.com/cloudflare/partykit/issues/390)
 across three Durable Objects in the same Worker:
+
+> **Status (historical):** the workspace partyserver no longer WRITES
+> the `__ps_name` record during named-access initialization — the
+> local-dev alarm-name gap this fixture reproduces was fixed in workerd
+> (the alarm scheduler persists the actor name since
+> `workerd@1.20260703.1` / wrangler 4.108.0, see
+> [cloudflare/workerd#6850](https://github.com/cloudflare/workerd/issues/6850)),
+> and production behavior was verified on a worker pinned to
+> `compatibility_date: "2024-06-01"`. The legacy `__ps_name` READ
+> remains, so the `FixedAlarm` recovery described below now requires a
+> pre-existing record (seeded manually, or written by an earlier
+> partyserver release that still had the self-heal write). On current
+> tooling all three DOs see `ctx.id.name` in `alarm()` natively.
 
 | DO           | Class                             | Extends                                                                    |
 | ------------ | --------------------------------- | -------------------------------------------------------------------------- |
