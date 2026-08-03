@@ -60,10 +60,14 @@ export class BinaryTypeProbe extends Server {
   }
 }
 
-export class Stateful extends Server {
-  static options = {
+class HibernatingServer extends Server {
+  static options: typeof Server.options = {
     hibernate: true
   };
+}
+
+export class Stateful extends HibernatingServer {
+  static options = {};
 
   onConnect(
     connection: Connection,

@@ -586,6 +586,24 @@ Did you forget to add a durable object binding to the class ${namespace[0].toUpp
   }
 }
 
+type ServerOptions = { hibernate?: boolean };
+
+function resolveServerOptions(serverClass: {
+  options?: ServerOptions;
+}): Required<ServerOptions> {
+  let current: { options?: ServerOptions } | null = serverClass;
+  while (current) {
+    const hibernate = current.options?.hibernate;
+    if (hibernate !== undefined) {
+      return { hibernate };
+    }
+    current = Object.getPrototypeOf(current) as {
+      options?: ServerOptions;
+    } | null;
+  }
+  return { hibernate: false };
+}
+
 export class Server<
   Env extends Cloudflare.Env = Cloudflare.Env,
   Props extends Record<string, unknown> = Record<string, unknown>
@@ -598,7 +616,9 @@ export class Server<
 
   #ParentClass: typeof Server = Object.getPrototypeOf(this).constructor;
 
-  #connectionManager: ConnectionManager = this.#ParentClass.options.hibernate
+  #options = resolveServerOptions(this.#ParentClass);
+
+  #connectionManager: ConnectionManager = this.#options.hibernate
     ? new HibernatingConnectionManager(this.ctx)
     : new InMemoryConnectionManager();
 
@@ -709,7 +729,7 @@ export class Server<
         // Accept the websocket connection
         connection = this.#connectionManager.accept(connection, { tags });
 
-        if (!this.#ParentClass.options.hibernate) {
+        if (!this.#options.hibernate) {
           this.#attachSocketEventHandlers(connection);
         }
         await this.onConnect(connection, ctx);

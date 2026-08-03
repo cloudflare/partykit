@@ -158,6 +158,8 @@ A connection is a standard WebSocket with the following additional properties:
 
 You can enable [hibernation](https://developers.cloudflare.com/durable-objects/reference/websockets/#websocket-hibernation) by setting a static `options` property on your Server class. This allows the server to hibernate when not in use and wake up when a new connection is established. All lifecycle hooks will be called as expected when the server wakes up.
 
+Subclasses inherit the nearest explicitly configured `hibernate` value. Declaring partial static options on a child class does not disable hibernation inherited from its parent.
+
 ```ts
 export class MyServer extends Server {
   static options = {

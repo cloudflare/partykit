@@ -1,5 +1,6 @@
 import {
   createExecutionContext,
+  runInDurableObject,
   runDurableObjectAlarm
   // waitOnExecutionContext
 } from "cloudflare:test";
@@ -66,6 +67,27 @@ describe("Server", () => {
     });
 
     return promise;
+  });
+
+  it("inherits hibernation when a child declares partial static options", async () => {
+    const name = crypto.randomUUID();
+    const response = await worker.fetch(
+      new Request(`http://example.com/parties/stateful/${name}`, {
+        headers: { Upgrade: "websocket" }
+      }),
+      env,
+      createExecutionContext()
+    );
+    const websocket = response.webSocket!;
+    websocket.accept();
+
+    const acceptedWebSockets = await runInDurableObject(
+      env.Stateful.getByName(name),
+      (_instance, ctx) => ctx.getWebSockets().length
+    );
+
+    expect(acceptedWebSockets).toBe(1);
+    websocket.close();
   });
 
   it("calls onStart only once, and does not process messages or requests until it is resolved", async () => {
